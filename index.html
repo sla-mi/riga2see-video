@@ -9,21 +9,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Mulish:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --fg:255,255,255; --bg:#0e0e10; --surface:#17171a; --card:#1d1d22;
-    --ink:#e8ff47; /* бренд-лайм */
-    --border:rgba(255,255,255,.10); --btn-bg:rgba(255,255,255,.07); --btn-border:rgba(255,255,255,.16);
-    --disp:'Unbounded',sans-serif; --body:'Mulish',sans-serif;
-  }
+  :root{ --fg:255,255,255; --bg:#0e0e10; --card:#1d1d22; --ink:#e8ff47;
+    --btn-bg:rgba(255,255,255,.07); --btn-border:rgba(255,255,255,.16);
+    --disp:'Unbounded',sans-serif; --body:'Mulish',sans-serif; }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;height:100%;background:var(--bg);color:rgb(var(--fg));
-    font-family:var(--body);overscroll-behavior:none}
-  #feed{height:100dvh;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch}
+  html,body{margin:0;height:100%;background:var(--bg);color:rgb(var(--fg));font-family:var(--body);overscroll-behavior:none}
+  #feed{height:100dvh;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;transition:transform .2s ease,opacity .2s ease}
   #feed::-webkit-scrollbar{display:none}
-  .card{position:relative;height:100dvh;scroll-snap-align:start;scroll-snap-stop:always;
-    overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;background:#000}
+  .card{position:relative;height:100dvh;scroll-snap-align:start;scroll-snap-stop:always;overflow:hidden;
+    display:flex;flex-direction:column;justify-content:flex-end;background:#000}
   .stage{position:absolute;inset:0;overflow:hidden}
-  /* перекрываем на 1px с каждой стороны — убирает субпиксельный шов слева */
   .poster{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);object-fit:cover;transition:opacity .4s}
   .card.horiz .poster{object-fit:contain}
   .card.horiz .poster.bgp{object-fit:cover;filter:blur(28px) brightness(.5);transform:scale(1.25)}
@@ -34,174 +29,172 @@
   .card.playing video.main,.card.playing video.bg{opacity:1}
   .card.playing .poster:not(.bgp){opacity:0}
   .shade{position:absolute;inset:0;pointer-events:none;
-    background:linear-gradient(to top,rgba(0,0,0,.94) 0%,rgba(0,0,0,.25) 38%,transparent 58%,rgba(0,0,0,.30) 100%)}
+    background:linear-gradient(to top,rgba(0,0,0,.94) 0%,rgba(0,0,0,.2) 34%,transparent 55%,rgba(0,0,0,.34) 100%)}
 
-  .stamp{position:absolute;top:92px;font-family:var(--disp);font-size:22px;font-weight:900;letter-spacing:.04em;
-    padding:8px 15px;border-radius:12px;border:3px solid;opacity:0;z-index:6;pointer-events:none;transition:opacity .12s}
-  .stamp.like{left:20px;color:var(--ink);border-color:var(--ink);transform:rotate(-11deg)}
-  .stamp.nope{right:20px;color:#fff;border-color:#fff;transform:rotate(11deg)}
+  /* ── ВЕРХ: лого + вкладки категорий (как в TikTok) ── */
+  .top{position:fixed;top:0;left:0;right:0;z-index:9;display:flex;align-items:center;gap:12px;
+    padding:14px 16px 8px;background:linear-gradient(to bottom,rgba(0,0,0,.62),transparent)}
+  .hdr{display:flex;align-items:center;gap:14px;min-width:0;flex:1;transition:transform .2s ease,opacity .2s ease}
+  .logo{font-family:var(--disp);font-weight:900;font-size:16px;letter-spacing:-.02em;display:inline-flex;align-items:baseline;flex-shrink:0}
+  .logo .r{color:#fff}.logo .d{color:#fff}
+  .logo .b{color:#15151a;background:var(--ink);padding:1px 5px 2px 3px;border-radius:4px 7px 5px 5px;transform:rotate(-1.6deg);display:inline-block}
+  .tabs{display:flex;gap:16px;overflow-x:auto;scrollbar-width:none;min-width:0}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{font-family:var(--disp);font-size:13px;font-weight:700;letter-spacing:.01em;color:rgba(255,255,255,.5);
+    white-space:nowrap;cursor:pointer;padding:2px 0 6px;position:relative;flex-shrink:0}
+  .tab.on{color:#fff}
+  .tab.on::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;border-radius:2px;background:var(--ink)}
+  .toview{flex-shrink:0;display:grid;place-items:center;width:34px;height:34px;color:#fff;filter:drop-shadow(0 1px 5px rgba(0,0,0,.6))}
+  .toview svg{width:22px;height:22px}
+  /* дата-чип под шапкой */
+  .datebar{position:fixed;top:50px;left:16px;z-index:9}
+  .datechip{display:inline-flex;align-items:center;font-family:var(--disp);font-size:11px;font-weight:700;
+    letter-spacing:.05em;text-transform:uppercase;color:#fff;background:rgba(10,10,12,.55);backdrop-filter:blur(6px);
+    border:1px solid var(--btn-border);padding:5px 12px;border-radius:100px}
 
-  /* нижний блок: пилюля, название, мета, кнопка — в потоке, ничего не перекрывает */
-  .info{position:relative;z-index:5;padding:16px 82px calc(24px + env(safe-area-inset-bottom)) 20px;
-    display:flex;flex-direction:column;gap:10px}
-  .pill{align-self:flex-start;display:inline-flex;align-items:center;gap:7px;font-family:var(--disp);
-    font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:0 13px;min-height:30px;
-    border-radius:100px;border:1px solid var(--btn-border);background:rgba(10,10,12,.5);backdrop-filter:blur(6px);color:rgba(255,255,255,.82)}
-  .pill .dot{width:8px;height:8px;border-radius:50%}
-  h1{font-family:var(--disp);font-weight:900;font-size:22px;line-height:1.16;margin:0;letter-spacing:-.01em;
+  /* ── низ: инфо (заголовок ниже, цена + Подробнее в ряд) ── */
+  .info{position:relative;z-index:5;padding:12px 84px calc(20px + env(safe-area-inset-bottom)) 20px;
+    display:flex;flex-direction:column;gap:8px}
+  .catchip{align-self:flex-start;display:inline-flex;align-items:center;gap:7px;font-family:var(--disp);
+    font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:0 12px;min-height:28px;
+    border-radius:100px;border:1px solid var(--btn-border);background:rgba(10,10,12,.5);backdrop-filter:blur(6px);color:rgba(255,255,255,.85);cursor:pointer}
+  .catchip .dot{width:8px;height:8px;border-radius:50%}
+  h1{font-family:var(--disp);font-weight:900;font-size:22px;line-height:1.14;margin:0;letter-spacing:-.01em;
     text-shadow:0 2px 16px rgba(0,0,0,.85);cursor:pointer}
-  .meta{font-size:14px;color:rgba(255,255,255,.9);line-height:1.5;text-shadow:0 1px 10px rgba(0,0,0,.9)}
+  .meta{font-size:14px;color:rgba(255,255,255,.9);line-height:1.45;text-shadow:0 1px 10px rgba(0,0,0,.9)}
   .meta b{color:#fff;font-weight:700}
-  .ptag{align-self:flex-start;font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.03em;
-    color:var(--ink);border:1px solid rgba(232,255,71,.5);background:rgba(232,255,71,.08);padding:4px 11px;border-radius:100px}
+  .arow{display:flex;align-items:center;gap:12px;margin-top:2px}
+  .ptag{font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.03em;color:var(--ink);
+    border:1px solid rgba(232,255,71,.5);background:rgba(232,255,71,.08);padding:7px 13px;border-radius:100px;white-space:nowrap}
   .ptag.free{color:#0b0b0d;background:var(--ink);border-color:var(--ink)}
-  .cta{margin-top:4px;align-self:flex-start}
-  .cta a{display:inline-block;font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.08em;
-    text-transform:uppercase;text-decoration:none;padding:13px 26px;border-radius:100px}
-  .cta a.buy{background:var(--ink);color:#0b0b0d}
-  .cta a.ghost{background:var(--btn-bg);border:1px solid var(--btn-border);color:#fff;backdrop-filter:blur(6px)}
+  .cta-btn{font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+    text-decoration:none;padding:9px 18px;border-radius:100px;background:var(--btn-bg);border:1px solid var(--btn-border);
+    color:#fff;backdrop-filter:blur(6px);white-space:nowrap}
 
-  /* правый борт — под наши элементы (glass + бренд-акцент) */
-  /* борт как в TikTok: ниже, без подписей, аватар сверху */
-  .rail{position:absolute;right:8px;bottom:110px;z-index:6;display:flex;flex-direction:column;gap:22px;align-items:center}
+  /* правый борт */
+  .rail{position:absolute;right:8px;bottom:104px;z-index:6;display:flex;flex-direction:column;gap:22px;align-items:center}
   .rail button{width:46px;height:46px;border:0;background:none;color:#fff;display:grid;place-items:center;cursor:pointer;
     transition:transform .12s;filter:drop-shadow(0 1px 5px rgba(0,0,0,.55))}
   .rail button:active{transform:scale(.85)}
-  .rail button svg{width:33px;height:33px;stroke-width:1.8}
+  .rail button svg{width:32px;height:32px;stroke-width:1.8}
   .rail button.on{color:var(--ink)}
   .rail button.on svg{fill:currentColor}
-  .rail button.av{width:46px;height:46px;border-radius:50%;background:var(--card);border:2px solid #fff;overflow:hidden}
-  .rail button.av svg{width:26px;height:26px;color:rgba(255,255,255,.85)}
+  .rail button.av{width:44px;height:44px;border-radius:50%;background:var(--card);border:2px solid #fff;overflow:hidden}
+  .rail button.av svg{width:24px;height:24px;color:rgba(255,255,255,.85)}
 
-  /* инлайн-разворот описания ПОВЕРХ видео (тап по названию) */
-  .expand{position:absolute;inset:0;z-index:12;display:flex;flex-direction:column;justify-content:flex-end;
-    padding:0 20px calc(26px + env(safe-area-inset-bottom));opacity:0;pointer-events:none;transition:opacity .25s;
-    background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.82) 55%,rgba(0,0,0,.55) 100%)}
-  .card.open .expand{opacity:1;pointer-events:auto}
-  .expand .x{position:absolute;top:64px;right:18px;width:34px;height:34px;border-radius:50%;border:1px solid var(--btn-border);
-    background:var(--btn-bg);color:#fff;font-size:16px;display:grid;place-items:center}
-  .expand h3{font-family:var(--disp);font-weight:900;font-size:21px;margin:0 0 6px;letter-spacing:-.01em}
-  .expand .esub{font-size:13px;color:rgba(255,255,255,.65);margin-bottom:14px}
-  .expand .etext{font-size:15.5px;line-height:1.62;color:rgba(255,255,255,.92);max-height:52dvh;overflow-y:auto;
-    -webkit-overflow-scrolling:touch;white-space:pre-line}
-  .expand .lib{display:inline-block;margin-top:14px;color:var(--ink);font-size:12px;font-family:var(--disp);
-    font-weight:700;letter-spacing:.06em;text-transform:uppercase;text-decoration:none}
-
-  .top{position:fixed;top:0;left:0;right:0;z-index:8;display:flex;align-items:center;
-    padding:14px 18px calc(14px + 6px);background:linear-gradient(to bottom,rgba(0,0,0,.6),transparent)}
-  .logo{font-family:var(--disp);font-weight:900;font-size:17px;letter-spacing:-.02em;display:inline-flex;align-items:baseline}
-  .logo .r{color:#fff}.logo .d{color:#fff}
-  .logo .b{color:#15151a;background:var(--ink);padding:1px 5px 2px 3px;border-radius:4px 7px 5px 5px;transform:rotate(-1.6deg);display:inline-block}
-  .logo .f{color:rgba(255,255,255,.3);font-size:13px;font-weight:700;margin-left:2px}
-  .toview{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-family:var(--disp);font-size:11px;font-weight:700;
-    letter-spacing:.06em;text-transform:uppercase;color:#fff;text-decoration:none;padding:7px 13px;border-radius:100px;
-    border:1px solid var(--btn-border);background:rgba(10,10,12,.5);backdrop-filter:blur(6px)}
-  .toview .gi svg{width:15px;height:15px;display:block}
-  /* аватар зрителя (мой профиль) — внизу */
-  .pill .cv{font-size:9px;opacity:.7;margin-left:2px}
-  /* РАДИАЛЬНЫЙ ВЕЕР категорий — чипы по дуге от пилюли вверх, дуга крутится */
-  .catfan{position:fixed;inset:0;z-index:22;background:rgba(0,0,0,.66);opacity:0;pointer-events:none;transition:opacity .22s}
-  .catfan.open{opacity:1;pointer-events:auto}
-  #catfan-inner{position:absolute;inset:0;touch-action:none}
-  .fchip{position:absolute;left:0;top:0;transform-origin:center;font-family:var(--disp);font-size:11.5px;font-weight:700;
-    letter-spacing:.03em;text-transform:uppercase;padding:9px 14px;border-radius:100px;border:1px solid var(--btn-border);
-    background:rgba(22,22,27,.96);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:8px;
-    width:150px;white-space:nowrap;cursor:pointer;will-change:transform,opacity;box-shadow:0 4px 18px rgba(0,0,0,.5)}
-  .fchip .ltxt{overflow:hidden;text-overflow:ellipsis}
-  .fchip .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
-  .fchip.on{background:var(--ink);color:#0b0b0d;border-color:var(--ink)}
-  .fchip.empty{filter:grayscale(1)}
-  .fan-hint{position:absolute;left:0;right:0;bottom:calc(22px + env(safe-area-inset-bottom));text-align:center;
-    font-family:var(--disp);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5)}
-  .sound{position:fixed;top:56px;right:16px;z-index:9;width:40px;height:40px;border-radius:50%;
-    border:0;background:none;color:#fff;cursor:pointer;display:grid;place-items:center;filter:drop-shadow(0 1px 6px rgba(0,0,0,.7))}
-  .sound svg{width:24px;height:24px}
+  .sound{position:fixed;top:52px;right:16px;z-index:9;width:38px;height:38px;border:0;background:none;color:#fff;
+    cursor:pointer;display:grid;place-items:center;filter:drop-shadow(0 1px 6px rgba(0,0,0,.7))}
+  .sound svg{width:23px;height:23px}
   .sound.on{color:var(--ink)}
 
-  .toast{position:fixed;left:50%;bottom:130px;transform:translateX(-50%) translateY(16px);
-    background:rgba(20,20,24,.96);border:1px solid var(--border);padding:11px 18px;border-radius:14px;
-    font-family:var(--body);font-size:14px;font-weight:700;z-index:30;opacity:0;transition:.22s;pointer-events:none}
+  /* разворот описания */
+  .expand{position:absolute;inset:0;z-index:12;display:flex;flex-direction:column;justify-content:flex-end;
+    padding:0 20px calc(24px + env(safe-area-inset-bottom));opacity:0;pointer-events:none;transition:opacity .25s;
+    background:linear-gradient(to top,rgba(0,0,0,.93) 0%,rgba(0,0,0,.82) 55%,rgba(0,0,0,.5) 100%)}
+  .card.open .expand{opacity:1;pointer-events:auto}
+  .expand .x{position:absolute;top:60px;right:18px;width:34px;height:34px;border-radius:50%;border:1px solid var(--btn-border);
+    background:var(--btn-bg);color:#fff;font-size:16px;display:grid;place-items:center}
+  .expand h3{font-family:var(--disp);font-weight:900;font-size:21px;margin:0 0 6px}
+  .expand .esub{font-size:13px;color:rgba(255,255,255,.65);margin-bottom:14px}
+  .expand .etext{font-size:15.5px;line-height:1.6;color:rgba(255,255,255,.92);max-height:48dvh;overflow-y:auto;
+    -webkit-overflow-scrolling:touch;white-space:pre-line}
+  .expand .cta-buy{display:inline-block;margin-top:16px;font-family:var(--disp);font-weight:700;font-size:13px;
+    letter-spacing:.06em;text-transform:uppercase;text-decoration:none;padding:13px 24px;border-radius:100px;background:var(--ink);color:#0b0b0d}
+
+  .toast{position:fixed;left:50%;bottom:120px;transform:translateX(-50%) translateY(16px);background:rgba(20,20,24,.96);
+    border:1px solid rgba(255,255,255,.1);padding:11px 18px;border-radius:14px;font-family:var(--body);font-size:14px;
+    font-weight:700;z-index:30;opacity:0;transition:.22s;pointer-events:none}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 <body>
-<div class="top"><a class="logo"><span class="r">riga</span><span class="d">.</span><span class="b">2see</span></a>
-  <a class="toview" id="toview" href="https://riga.2see.live" target="_blank" rel="noopener" title="Открыть афишу списком"><span class="gi"></span>Афиша</a></div>
+<div class="top">
+  <div class="hdr" id="hdr">
+    <a class="logo"><span class="r">riga</span><span class="d">.</span><span class="b">2see</span></a>
+    <div class="tabs" id="tabs"></div>
+  </div>
+  <a class="toview" id="toview" href="https://riga.2see.live" target="_blank" rel="noopener" title="Афиша списком"></a>
+</div>
+<div class="datebar"><span class="datechip" id="datechip"></span></div>
 <button class="sound" id="sound" title="звук"></button>
 <div id="feed"></div>
-<div class="catfan" id="catfan"><div id="catfan-inner"></div><div class="fan-hint">крути дугу · тап — выбрать</div></div>
 <div class="toast" id="toast"></div>
 
 <script>
 const CAT_COLOR={ "Концерты":"#e8ff47","Театр":"#ff6b6b","Выставки":"#a78bfa","Стендап":"#ff9e3d",
   "Детям":"#b9f0a0","Кино":"#34d399","Лекции":"#38bdf8","Фестивали":"#fbbf24","Спорт":"#f97316",
   "Классика":"#6d8cff","Клубы":"#d946ef","Еда":"#fb7185","Другое":"#64748b" };
-// плоские иконки — те же, что в прод-модалках (Feather/contour)
+const RU_MONTH=["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
+const MON_GEN=["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+const WD_PREP=["в воскресенье","в понедельник","во вторник","в среду","в четверг","в пятницу","в субботу"];
 const ICON={
  heart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>',
  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
  share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>',
- info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
  grid:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
  soundOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>',
  soundOn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>' };
-const RU_MONTH=["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
+
 function fmtDate(s){ if(!s) return ""; const d=new Date(s.replace(" ","T")); if(isNaN(d)) return "";
   const wd=["вс","пн","вт","ср","чт","пт","сб"][d.getDay()];
   return `${wd}, ${d.getDate()} ${RU_MONTH[d.getMonth()]} · ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
-
-const fav=new Set(); const hidden=new Set(); let ALL=[]; let VIEW=[]; let SOUND=false; let ACTIVE=-1; let curCat=null;
-function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show");
-  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"),1400); }
+function relDate(s){ if(!s) return ""; const d=new Date(s.replace(" ","T")); if(isNaN(d)) return "";
+  const t=new Date(); t.setHours(0,0,0,0); const e=new Date(d); e.setHours(0,0,0,0);
+  const diff=Math.round((e-t)/864e5);
+  if(diff===0) return "сегодня"; if(diff===1) return "завтра";
+  if(diff>=2 && diff<=6) return WD_PREP[d.getDay()];
+  return d.getDate()+" "+MON_GEN[d.getMonth()]; }
 function firstLine(t){ return (t||"").split(/[\.\n!|]/)[0].trim().slice(0,70); }
 function poster(e){ return e.file.replace("vid/","poster/").replace(".mp4",".jpg"); }
+
+const fav=new Set(); let ALL=[]; let VIEW=[]; let SOUND=false; let ACTIVE=-1; let curCat=null; let TABS=[];
+function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show");
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"),1400); }
 
 function cardHTML(e,i){
   const orient=e.orient==="horiz"?"horiz":"vert";
   const cat=e.cat||""; const col=CAT_COLOR[cat]||"#cfcfd6";
   const priceTxt = e.is_free ? "Бесплатно" : (e.price_from!=null ? `от ${Math.round(e.price_from)} €` : "");
   const title = e.ev_title || firstLine(e.title) || e.page;
-  const pill = `<span class="pill" data-act="cats"><span class="dot" style="background:${col}"></span>${cat||e.page}<span class="cv">▾</span></span>`;
   const place = e.venue || e.page;
-  const dateLine = e.date ? `<b>${fmtDate(e.date)}</b>${place?` · ${place}`:""}` : place;
-  const cta = `<div class="cta"><a class="ghost" data-act="details" href="#">Подробнее →</a></div>`;
+  // чип категории — только когда смотрим ВСЕ категории
+  const chip = (curCat===null && cat) ? `<span class="catchip" data-act="setcat" data-cat="${cat}"><span class="dot" style="background:${col}"></span>${cat}</span>` : "";
   const bgPoster = orient==="horiz" ? `<img class="poster bgp" src="${poster(e)}" alt="">` : "";
   return `<div class="card ${orient}" data-i="${i}">
     <div class="stage">${bgPoster}<img class="poster" src="${poster(e)}" alt=""></div>
     <div class="shade"></div>
-    <div class="stamp like">+ ИНТЕРЕСНО</div><div class="stamp nope">✕ НЕИНТЕРЕСНО</div>
     <div class="rail">
-      <button data-act="fav" class="${fav.has(e.id)?"on":""}" title="В избранное">${ICON.heart}</button>
-      <button data-act="remind" title="Напомнить">${ICON.bell}</button>
-      <button data-act="share" title="Поделиться">${ICON.share}</button>
-      <button class="av" data-act="me" title="Профиль">${ICON.user}</button>
+      <button data-act="fav" class="${fav.has(e.id)?"on":""}">${ICON.heart}</button>
+      <button data-act="remind">${ICON.bell}</button>
+      <button data-act="share">${ICON.share}</button>
+      <button class="av" data-act="me">${ICON.user}</button>
     </div>
     <div class="info">
-      ${pill}
+      ${chip}
       <h1 data-act="details">${title}</h1>
-      <div class="meta">${dateLine}</div>
-      ${priceTxt?`<div class="ptag ${e.is_free?"free":""}">${priceTxt}</div>`:""}
-      ${cta}
+      <div class="meta"><b>${fmtDate(e.date)}</b>${place?` · ${place}`:""}</div>
+      <div class="arow">
+        ${priceTxt?`<span class="ptag ${e.is_free?"free":""}">${priceTxt}</span>`:""}
+        <a class="cta-btn" data-act="details" href="#">Подробнее →</a>
+      </div>
     </div>
     <div class="expand">
       <button class="x" data-act="close">✕</button>
       <h3>${title}</h3>
       <div class="esub">${e.date?fmtDate(e.date):""}${e.venue?" · "+e.venue:(e.page?" · "+e.page:"")}</div>
       <div class="etext">${(e.body||"Описание появится позже.").trim()}</div>
-      ${e.ticket?`<div class="cta"><a class="buy" href="${e.ticket}" target="_blank" rel="noopener">Билеты · ${priceTxt} →</a></div>`:""}
+      ${e.ticket?`<a class="cta-buy" href="${e.ticket}" target="_blank" rel="noopener">Билеты · ${priceTxt} →</a>`:""}
     </div>
   </div>`;
 }
 
-// ── видео: монтируем только активной ±1 (лимит iOS) ──
+// ── видео: монтируем только активной ±1 ──
 function mountVideo(card){
   if(card.querySelector("video.main")) return card.querySelector("video.main");
   const e=VIEW[+card.dataset.i], stage=card.querySelector(".stage");
-  const prep=(vd,cls)=>{ vd.className=cls;vd.src=e.file;vd.loop=true;vd.playsInline=true;
-    vd.muted=true;vd.defaultMuted=true;
-    vd.setAttribute("muted","");vd.setAttribute("playsinline","");vd.setAttribute("webkit-playsinline","");
-    vd.setAttribute("autoplay","");vd.preload="auto"; };
+  const prep=(vd,cls)=>{ vd.className=cls;vd.src=e.file;vd.loop=true;vd.playsInline=true;vd.muted=true;vd.defaultMuted=true;
+    vd.setAttribute("muted","");vd.setAttribute("playsinline","");vd.setAttribute("webkit-playsinline","");vd.setAttribute("autoplay","");vd.preload="auto"; };
   if(e.orient==="horiz"){ const bg=document.createElement("video");prep(bg,"bg");stage.appendChild(bg); }
   const v=document.createElement("video");prep(v,"main");stage.appendChild(v); return v;
 }
@@ -223,47 +216,27 @@ function setActive(i){
       v.addEventListener("playing",()=>c.classList.add("playing"),{once:true});
     } else { c.classList.remove("playing"); v.pause(); const bg=c.querySelector("video.bg"); if(bg) bg.pause(); }
   });
+  const e=VIEW[i]; if(e) document.getElementById("datechip").textContent=relDate(e.date);
 }
 const soundBtn=document.getElementById("sound");
 function renderSound(){ soundBtn.innerHTML=SOUND?ICON.soundOn:ICON.soundOff; soundBtn.classList.toggle("on",SOUND); }
 soundBtn.addEventListener("click",()=>{ SOUND=!SOUND; renderSound();
-  // применяем ко ВСЕМ смонтированным (звук держится, пока не выключат)
-  document.querySelectorAll(".card").forEach(c=>{ const v=c.querySelector("video.main");
-    if(v) v.muted = !(SOUND && +c.dataset.i===ACTIVE); });
-  const av=document.querySelector(`.card[data-i="${ACTIVE}"] video.main`);
-  if(av && SOUND) av.play().catch(()=>{});
+  document.querySelectorAll(".card").forEach(c=>{ const v=c.querySelector("video.main"); if(v) v.muted=!(SOUND && +c.dataset.i===ACTIVE); });
+  const av=document.querySelector(`.card[data-i="${ACTIVE}"] video.main`); if(av && SOUND) av.play().catch(()=>{});
   toast(SOUND?"Звук включён":"Без звука"); });
 renderSound();
 
-function react(card,dir){
-  const e=VIEW[+card.dataset.i];
-  const st=card.querySelector(dir>0?".stamp.like":".stamp.nope"); if(st) st.style.opacity="1"; // держим штамп видимым
-  if(dir>0){ fav.add(e.id); const fb=card.querySelector('[data-act="fav"]'); if(fb) fb.classList.add("on"); toast("+ Интересно · в избранном"); }
-  else { hidden.add(e.id); toast("✕ Неинтересно · скрыто"); }
-  setTimeout(()=>{                                    // дать ~0.7с прочитать штамп
-    if(dir<0){                                        // неинтересно — улетает и убирается из ленты
-      card.style.transition="transform .34s ease, opacity .34s ease";
-      card.style.transform="translate(-120%,0) rotate(-9deg)"; card.style.opacity="0";
-      setTimeout(()=>card.remove(),340);
-    } else {                                          // интересно — сохранили, листаем дальше
-      if(st) st.style.opacity="";
-      document.getElementById("feed").scrollBy({top:window.innerHeight,behavior:"smooth"});
-    }
-  },700);
-}
+// ── жесты: гориз = смена категории, верт = скролл; на последней карточке доскролл вверх = следующая категория ──
 function bindGestures(card){
   let x0=0,y0=0,dx=0,dy=0,horiz=null,drag=false;
-  const stage=card.querySelector(".stage");
-  const like=card.querySelector(".stamp.like"), nope=card.querySelector(".stamp.nope");
   const start=(x,y)=>{ if(card.classList.contains("open"))return; x0=x;y0=y;dx=dy=0;horiz=null;drag=true;};
   const move=(x,y)=>{ if(!drag)return; dx=x-x0;dy=y-y0;
     if(horiz===null && (Math.abs(dx)>10||Math.abs(dy)>10)) horiz=Math.abs(dx)>Math.abs(dy);
-    if(horiz){ stage.style.transform=`translateX(${dx}px) rotate(${dx/24}deg)`;
-      like.style.opacity=dx>0?Math.min(1,dx/90):0; nope.style.opacity=dx<0?Math.min(1,-dx/90):0; } };
+    if(horiz){ document.getElementById("hdr").style.transform=`translateX(${dx*0.4}px)`;
+      document.getElementById("feed").style.transform=`translateX(${dx*0.25}px)`; } };
   const end=()=>{ if(!drag)return; drag=false;
-    if(horiz && Math.abs(dx)>90){ react(card,dx>0?1:-1); }
-    stage.style.transition="transform .2s";stage.style.transform="";setTimeout(()=>stage.style.transition="",200);
-    like.style.opacity=0;nope.style.opacity=0; };
+    document.getElementById("hdr").style.transform=""; document.getElementById("feed").style.transform="";
+    if(horiz && Math.abs(dx)>70){ switchCategory(dx<0?1:-1); } };
   card.addEventListener("touchstart",e=>start(e.touches[0].clientX,e.touches[0].clientY),{passive:true});
   card.addEventListener("touchmove",e=>{ move(e.touches[0].clientX,e.touches[0].clientY); if(horiz) e.preventDefault(); },{passive:false});
   card.addEventListener("touchend",end);
@@ -271,26 +244,22 @@ function bindGestures(card){
   window.addEventListener("mousemove",e=>drag&&move(e.clientX,e.clientY));
   window.addEventListener("mouseup",end);
 }
-// свайп внутри открытого описания: вниз = закрыть/остаться, вверх = закрыть + следующее событие
 function bindExpandSwipe(card){
   const ex=card.querySelector(".expand"), et=ex.querySelector(".etext");
   let y0=0,on=false;
   ex.addEventListener("touchstart",e=>{ y0=e.touches[0].clientY; on=true; },{passive:true});
-  ex.addEventListener("touchend",e=>{ if(!on)return; on=false;
-    const dy=e.changedTouches[0].clientY-y0;
-    if(dy>70 && et.scrollTop<=2){ card.classList.remove("open"); }               // вниз (текст вверху) → остаёмся
-    else if(dy<-70 && et.scrollTop+et.clientHeight>=et.scrollHeight-4){          // вверх (дочитал) → следующее
-      card.classList.remove("open");
-      document.getElementById("feed").scrollBy({top:window.innerHeight,behavior:"smooth"}); }
-  });
+  ex.addEventListener("touchend",e=>{ if(!on)return; on=false; const dy=e.changedTouches[0].clientY-y0;
+    if(dy>70 && et.scrollTop<=2){ card.classList.remove("open"); }
+    else if(dy<-70 && et.scrollTop+et.clientHeight>=et.scrollHeight-4){ card.classList.remove("open");
+      document.getElementById("feed").scrollBy({top:window.innerHeight,behavior:"smooth"}); } });
 }
 function bindActions(card){
   card.querySelectorAll("[data-act]").forEach(el=>{
     el.addEventListener("click",ev=>{ ev.stopPropagation(); if(el.tagName==="A"&&el.dataset.act) ev.preventDefault();
       const act=el.dataset.act, e=VIEW[+card.dataset.i];
-      if(act==="details") card.classList.toggle("open");   // повторный тап по названию — свернуть
+      if(act==="details") card.classList.toggle("open");
       else if(act==="close") card.classList.remove("open");
-      else if(act==="cats"){ openCatFan(); }
+      else if(act==="setcat"){ setCategory(el.dataset.cat,1); }
       else if(act==="me"){ toast("Профиль: настройки, вход, избранное"); }
       else if(act==="fav"){ if(fav.has(e.id)){fav.delete(e.id);el.classList.remove("on");toast("Убрано из избранного");}
         else{fav.add(e.id);el.classList.add("on");toast("В избранном");} }
@@ -302,17 +271,49 @@ function bindActions(card){
   });
 }
 
-// v1-ранжирование: ближайшие по дате первыми; скрытые («неинтересно») и фильтр категории — вон
+// ── категории (вкладки + переключение) ──
 function currentList(){
-  return ALL.filter(e=>!hidden.has(e.id) && (curCat===null || (e.cat||"")===curCat))
+  return ALL.filter(e=>curCat===null || (e.cat||"")===curCat)
             .slice().sort((a,b)=>String(a.date||"9999").localeCompare(String(b.date||"9999")));
 }
+function buildTabs(){
+  const counts={}; ALL.forEach(e=>{ const c=e.cat||""; if(c) counts[c]=(counts[c]||0)+1; });
+  const present=Object.keys(CAT_COLOR).filter(c=>counts[c]);
+  TABS=["", ...present];                                  // "" = Все
+  const el=document.getElementById("tabs");
+  el.innerHTML=TABS.map(c=>`<span class="tab ${((curCat||"")===c)?'on':''}" data-cat="${c}">${c||"Все"}</span>`).join("");
+  el.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>setCategory(t.dataset.cat,0)));
+}
+function updateTabs(){
+  document.querySelectorAll("#tabs .tab").forEach(t=>{
+    const on=(curCat||"")===t.dataset.cat; t.classList.toggle("on",on);
+    if(on) t.scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"});
+  });
+}
+function setCategory(cat, dir){
+  const next = cat===""?null:cat;
+  if(next===curCat){ return; }
+  curCat=next;
+  const feed=document.getElementById("feed");
+  feed.style.transform=`translateX(${dir>0?-36:(dir<0?36:0)}px)`; feed.style.opacity="0";
+  setTimeout(()=>{ buildFeed(currentList());
+    feed.style.transition="none"; feed.style.transform=`translateX(${dir>0?36:(dir<0?-36:0)}px)`;
+    requestAnimationFrame(()=>{ feed.style.transition=""; feed.style.transform="translateX(0)"; feed.style.opacity="1"; });
+    updateTabs();
+    const lbl=curCat||"Все"; toast("Категория: "+lbl);
+  },180);
+}
+function switchCategory(dir){
+  let i=TABS.indexOf(curCat||"");
+  i+=dir; if(i<0) i=TABS.length-1; if(i>=TABS.length) i=0;
+  setCategory(TABS[i], dir);
+}
+
 let _io=null;
 function buildFeed(list){
   VIEW=list; ACTIVE=-1;
   const feed=document.getElementById("feed");
-  feed.innerHTML = VIEW.length ? VIEW.map(cardHTML).join("")
-    : `<div style="height:100dvh;display:grid;place-items:center;text-align:center;padding:0 30px;color:rgba(255,255,255,.6);font-family:var(--disp);font-weight:700">В этой категории пока нет видео.<br><br>Сменить фильтр — тап по пилюле категории.</div>`;
+  feed.innerHTML = VIEW.length ? VIEW.map(cardHTML).join("") : "";
   const cards=[...feed.querySelectorAll(".card")];
   cards.forEach(c=>{bindGestures(c);bindActions(c);bindExpandSwipe(c);});
   if(_io) _io.disconnect();
@@ -321,60 +322,21 @@ function buildFeed(list){
   if(cards.length) setActive(0);
 }
 
-// ── РАДИАЛЬНЫЙ ВЕЕР КАТЕГОРИЙ (дуга от пилюли вверх, крутится перетаскиванием) ──
-const fan={rot:0,chips:[],ox:0,oy:0,R:200,STEP:15,A0:8,min:-120,max:0,drag:false,py:0,moved:false};
-function fanLayout(){
-  // равные вертикальные зазоры (никогда не налезают) + мягкий изгиб вправо + нарастающий наклон
-  const DY=58, XR=118;
-  fan.chips.forEach((ch,i)=>{
-    const k=i+fan.rot;                               // дробный индекс (плавная прокрутка)
-    const x=fan.ox + XR*(1-Math.cos(k*0.32));        // дуга вправо
-    const y=fan.oy - k*DY;                           // ровный шаг вверх
-    const tilt=-k*4.5;                               // мягкий нарастающий наклон
-    const on=(k>-0.6 && k<6.3), edge=(k<0.25||k>5.7);
-    ch.style.transformOrigin="50% 50%";
-    ch.style.transform=`translate(${x}px,${y}px) translate(-50%,-50%) rotate(${tilt}deg)`;
-    ch.style.opacity=on?(edge?0.3:1):0;
-    ch.style.pointerEvents=on?"auto":"none";
-  });
-}
-function openCatFan(){
-  const stage=document.getElementById("catfan-inner");
-  const counts={}; ALL.forEach(e=>{ const c=e.cat||""; if(c) counts[c]=(counts[c]||0)+1; });
-  const items=[{cat:"",label:"Все",n:ALL.length,col:"#ffffff"}]
-    .concat(Object.keys(CAT_COLOR).map(c=>({cat:c,label:c,n:counts[c]||0,col:CAT_COLOR[c]})));
-  stage.innerHTML=items.map(it=>`<button class="fchip ${(curCat||"")===it.cat?'on':''} ${it.n||it.cat===""?'':'empty'}" data-cat="${it.cat}"><span class="ltxt">${it.label}${it.n?` <span style="opacity:.55">${it.n}</span>`:''}</span><span class="dot" style="background:${it.col}"></span></button>`).join("");
-  fan.chips=[...stage.querySelectorAll(".fchip")];
-  const pill=document.querySelector(`.card[data-i="${ACTIVE}"] .pill`);
-  const r=pill?pill.getBoundingClientRect():{left:30,top:innerHeight-200,width:90,height:30};
-  fan.ox=r.left+66; fan.oy=r.top-16;                  // старт дуги над пилюлей, правее (не режется слева)
-  fan.rot=0; fan.max=0.15; fan.min=-(fan.chips.length-1-5.2);   // прокрутка дуги (индекс-единицы)
-  fanLayout();
-  document.getElementById("catfan").classList.add("open");
-}
-(function(){                                          // жесты веера — вешаем один раз
-  const stage=document.getElementById("catfan-inner");
-  const start=y=>{fan.drag=true;fan.py=y;fan.moved=false;};
-  const move=y=>{ if(!fan.drag)return; const d=fan.py-y; if(Math.abs(d)>3)fan.moved=true;
-    fan.rot=Math.max(fan.min,Math.min(fan.max,fan.rot-d*0.012)); fan.py=y; fanLayout(); };
-  const end=()=>{fan.drag=false;};
-  stage.addEventListener("touchstart",e=>start(e.touches[0].clientY),{passive:true});
-  stage.addEventListener("touchmove",e=>{move(e.touches[0].clientY);e.preventDefault();},{passive:false});
-  stage.addEventListener("touchend",end);
-  stage.addEventListener("mousedown",e=>start(e.clientY));
-  window.addEventListener("mousemove",e=>fan.drag&&move(e.clientY));
-  window.addEventListener("mouseup",end);
-  stage.addEventListener("click",ev=>{ const ch=ev.target.closest(".fchip"); if(!ch)return; ev.stopPropagation();
-    if(fan.moved){fan.moved=false;return;}
-    curCat=ch.dataset.cat||null; document.getElementById("catfan").classList.remove("open");
-    buildFeed(currentList()); toast(curCat?("Категория: "+curCat):"Все категории"); });
+// авто-переход на следующую категорию, если домотал текущую до конца
+(function(){
+  const feed=document.getElementById("feed");
+  let sy=0, over=0, atEnd=false;
+  feed.addEventListener("touchstart",e=>{ sy=e.touches[0].clientY; over=0;
+    atEnd = feed.scrollTop+feed.clientHeight >= feed.scrollHeight-2; },{passive:true});
+  feed.addEventListener("touchmove",e=>{ if(atEnd){ const d=sy-e.touches[0].clientY; if(d>0) over=d; } },{passive:true});
+  feed.addEventListener("touchend",()=>{ if(atEnd && over>55 && curCat!==null){ switchCategory(1); } over=0; });
 })();
-document.getElementById("catfan").addEventListener("click",ev=>{ if(ev.target.id==="catfan") ev.currentTarget.classList.remove("open"); });
 
-document.querySelector("#toview .gi").innerHTML=ICON.grid;   // иконка «Афиша»
+document.querySelector("#toview").innerHTML=ICON.grid;
 
 async function boot(){
   ALL=await (await fetch("feed_ads.json",{cache:"no-store"})).json();
+  buildTabs();
   buildFeed(currentList());
   let unlocked=false;
   const unlock=()=>{ if(unlocked)return; unlocked=true;

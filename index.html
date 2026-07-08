@@ -123,6 +123,10 @@
   .sound svg{width:23px;height:23px}
   .sound.on{color:var(--ink)}
 
+  /* превью следующей/прошлой категории — «призрак», въезжает синхронно со свайпом */
+  .ghost{position:fixed;inset:0;z-index:4;display:none;background:#000;overflow:hidden}
+  .ghost.on{display:block}
+  .ghost img{width:100%;height:100%;object-fit:cover}
   .empty{height:100dvh;display:flex;align-items:center;justify-content:center;text-align:center}
   .empty span{display:inline-block;max-width:230px;font-family:var(--disp);font-weight:700;font-size:16px;
     line-height:1.5;color:rgba(255,255,255,.75)}
@@ -180,6 +184,7 @@
 </div>
 <button class="sound" id="sound" title="звук"></button>
 <div id="feed"></div>
+<div class="ghost" id="ghost"><img id="ghostimg" alt=""></div>
 <div class="onboard" id="onboard">
   <div class="ob-ttl">Все культурные события Риги в одном месте</div>
   <div class="ob-row"><span class="ob-arrow">↓</span> смотреть, сначала ближайшие по дате</div>
@@ -388,20 +393,33 @@ function bindGestures(card){
   let x0=0,y0=0,dx=0,dy=0,horiz=null,drag=false,tgt=null;
   const desc=card.querySelector(".desc");
   const stage=card.querySelector(".stage"), info=card.querySelector(".info"), shade=card.querySelector(".shade");   // свайпается только контент ивента (картинка/видео+фон+текст), НЕ борт/шапка/дата
-  const start=(x,y,t)=>{ x0=x;y0=y;dx=dy=0;horiz=null;drag=true;tgt=t;};
+  const ghost=document.getElementById("ghost"), ghostimg=document.getElementById("ghostimg");
+  let ghostDir=0;   // 1 = следующая категория (свайп влево), -1 = предыдущая (свайп вправо)
+  const start=(x,y,t)=>{ x0=x;y0=y;dx=dy=0;horiz=null;drag=true;tgt=t;ghostDir=0;};
   const move=(x,y)=>{ if(!drag)return; dx=x-x0;dy=y-y0;
     if(horiz===null && (Math.abs(dx)>10||Math.abs(dy)>10)) horiz=Math.abs(dx)>Math.abs(dy);
     if(!card.classList.contains("open") && horiz && !favMode){
-      // нативный свайп — вся карточка едет 1:1 с пальцем, не отдельная параллакс-подложка
+      // нативный свайп — вся карточка едет 1:1 с пальцем; навстречу въезжает превью соседней категории
       const fade=Math.max(0, 1-Math.abs(dx)/280);
       document.getElementById("hdr").style.transform=`translateX(${dx}px)`;
       stage.style.transform=`translateX(${dx}px)`; info.style.transform=`translateX(${dx}px)`; shade.style.transform=`translateX(${dx}px)`;
-      stage.style.opacity=fade; info.style.opacity=fade; } };
+      stage.style.opacity=fade; info.style.opacity=fade;
+      const dir=dx<0?1:-1;
+      if(ghostDir!==dir){ ghostDir=dir;
+        let i=TABS.indexOf(curCat||"")+dir; if(i<0)i=TABS.length-1; if(i>=TABS.length)i=0;
+        const item=firstItemFor(TABS[i]===""?null:TABS[i]);
+        ghostimg.src=item?poster(item):""; ghost.classList.add("on"); ghost.style.transition="none"; }
+      const W=window.innerWidth;
+      ghost.style.transform=`translateX(${(dir>0?W:-W)+dx}px)`; } };
   const end=()=>{ if(!drag)return; drag=false;
     document.getElementById("hdr").style.transform="";
     [stage,info,shade].forEach(el=>el.style.transition="transform .2s ease, opacity .2s ease");
     stage.style.transform=""; info.style.transform=""; shade.style.transform=""; stage.style.opacity=""; info.style.opacity="";
     setTimeout(()=>{ [stage,info,shade].forEach(el=>el.style.transition=""); },220);
+    if(ghostDir){ const commit = horiz && Math.abs(dx)>70 && !favMode;
+      ghost.style.transition="transform .2s ease";
+      ghost.style.transform=`translateX(${commit?0:(ghostDir>0?window.innerWidth:-window.innerWidth)}px)`;
+      setTimeout(()=>{ ghost.classList.remove("on"); ghost.style.transition=""; ghost.style.transform=""; }, commit?60:210); }
     if(card.classList.contains("open")){ return; }
     // тап по пустому видео → скрыть/показать интерфейс
     if(Math.abs(dx)<8 && Math.abs(dy)<8 && tgt && tgt.closest(".stage")){ document.body.classList.toggle("clean"); return; }
@@ -460,6 +478,12 @@ function currentList(){
     if(j>0){ const [v]=list.splice(j,1); list.unshift(v); }
   }
   return list;
+}
+// первое событие произвольной категории (для превью-«призрака» во время свайпа)
+function firstItemFor(catKey){
+  const list = ALL.filter(e=>catKey===null || (e.cat||"")===catKey)
+                  .slice().sort((a,b)=>String(a.date||"9999").localeCompare(String(b.date||"9999")));
+  return list[0]||null;
 }
 function buildTabs(){
   const counts={}; ALL.forEach(e=>{ const c=e.cat||""; if(c) counts[c]=(counts[c]||0)+1; });

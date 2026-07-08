@@ -75,7 +75,7 @@
     font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:0 12px;min-height:28px;
     border-radius:100px;border:1px solid var(--btn-border);background:rgba(14,14,17,.82);color:rgba(255,255,255,.85);cursor:pointer}
   .catchip .dot{width:8px;height:8px;border-radius:50%}
-  h1{font-family:var(--disp);font-weight:900;font-size:22px;line-height:1.14;margin:0;letter-spacing:-.01em;
+  h1{font-family:var(--disp);font-weight:900;font-size:18px;line-height:1.2;margin:0;letter-spacing:-.01em;
     text-shadow:0 2px 16px rgba(0,0,0,.85);cursor:pointer}
   /* свёрнутый превью — 3 строки + «ещё…»; видно только пока НЕ open */
   .preview{font-size:15px;line-height:1.5;color:rgba(255,255,255,.92);text-shadow:0 1px 10px rgba(0,0,0,.95);
@@ -362,6 +362,7 @@ function unmountVideo(card){ card.classList.remove("playing");
 function setActive(i){
   if(i===ACTIVE) return;
   const prev=document.querySelector(`.card[data-i="${ACTIVE}"]`); if(prev){ prev.classList.remove("open"); }
+  document.body.classList.remove("clean");   // новое видео — всегда с исходного состояния (заголовки видны)
   ACTIVE=i;
   const cards=[...document.querySelectorAll(".card")];
   cards.forEach(c=>{
@@ -421,8 +422,12 @@ function bindGestures(card){
       ghost.style.transition="transform .2s ease";
       ghost.style.transform=`translateX(${commit?0:(ghostDir>0?window.innerWidth:-window.innerWidth)}px)`;
       setTimeout(()=>{ ghost.classList.remove("on"); ghost.style.transition=""; ghost.style.transform=""; }, commit?60:210); }
-    if(card.classList.contains("open")){ return; }
-    // тап по пустому видео → скрыть/показать интерфейс
+    if(card.classList.contains("open")){
+      // описание развёрнуто — тап по картинке/видео (не по заголовку/тексту) сворачивает его обратно
+      if(Math.abs(dx)<8 && Math.abs(dy)<8 && tgt && tgt.closest(".stage")){ card.classList.remove("open"); }
+      return;
+    }
+    // свёрнуто — тап по видео скрывает/показывает заголовки и кнопки (чтобы прочитать надписи на самом видео)
     if(Math.abs(dx)<8 && Math.abs(dy)<8 && tgt && tgt.closest(".stage")){ document.body.classList.toggle("clean"); return; }
     if(horiz && Math.abs(dx)>70 && !favMode){ switchCategory(dx<0?1:-1); } };
   card.addEventListener("touchstart",e=>start(e.touches[0].clientX,e.touches[0].clientY,e.target),{passive:true});

@@ -47,10 +47,22 @@
   .toview{flex-shrink:0;display:grid;place-items:center;width:34px;height:34px;color:#fff;filter:drop-shadow(0 1px 5px rgba(0,0,0,.6))}
   .toview svg{width:22px;height:22px}
   /* дата-чип под шапкой */
-  .datebar{position:fixed;top:50px;left:16px;z-index:9}
-  .datechip{display:inline-flex;align-items:center;font-family:var(--disp);font-size:11px;font-weight:700;
-    letter-spacing:.05em;text-transform:uppercase;color:#fff;background:rgba(10,10,12,.55);backdrop-filter:blur(6px);
-    border:1px solid var(--btn-border);padding:5px 12px;border-radius:100px}
+  .datebar{position:fixed;top:50px;left:16px;z-index:12}
+  .datechip{display:inline-flex;align-items:center;gap:6px;font-family:var(--disp);font-size:11px;font-weight:700;
+    letter-spacing:.05em;text-transform:uppercase;color:#fff;background:rgba(10,10,12,.6);backdrop-filter:blur(6px);
+    border:1px solid var(--btn-border);padding:6px 12px;border-radius:100px;cursor:pointer}
+  .datechip::after{content:"▾";font-size:9px;opacity:.7}
+  .datemenu{position:absolute;top:38px;left:0;width:210px;max-height:56dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    background:rgba(20,20,24,.97);backdrop-filter:blur(12px);border:1px solid var(--btn-border);border-radius:16px;
+    padding:6px;display:none;box-shadow:0 12px 40px rgba(0,0,0,.6)}
+  .datemenu.open{display:block}
+  .datemenu::-webkit-scrollbar{display:none}
+  .dmi{display:flex;flex-direction:column;gap:1px;width:100%;text-align:left;background:none;border:0;cursor:pointer;
+    padding:9px 12px;border-radius:10px;color:#fff}
+  .dmi:active,.dmi.on{background:var(--btn-bg)}
+  .dmi .drel{font-family:var(--disp);font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+  .dmi.on .drel{color:var(--ink)}
+  .dmi .dabs{font-family:var(--body);font-size:12px;color:rgba(255,255,255,.55)}
 
   /* ── низ: инфо (заголовок ниже, цена + Подробнее в ряд) ── */
   .info{position:relative;z-index:5;padding:12px 84px calc(20px + env(safe-area-inset-bottom)) 20px;
@@ -72,7 +84,7 @@
     color:#fff;backdrop-filter:blur(6px);white-space:nowrap}
 
   /* правый борт */
-  .rail{position:absolute;right:8px;bottom:104px;z-index:6;display:flex;flex-direction:column;gap:22px;align-items:center}
+  .rail{position:absolute;right:8px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:6;display:flex;flex-direction:column;gap:20px;align-items:center}
   .rail button{width:46px;height:46px;border:0;background:none;color:#fff;display:grid;place-items:center;cursor:pointer;
     transition:transform .12s;filter:drop-shadow(0 1px 5px rgba(0,0,0,.55))}
   .rail button:active{transform:scale(.85)}
@@ -109,12 +121,12 @@
 </head>
 <body>
 <div class="top">
-  <div class="hdr" id="hdr">
-    <a class="logo"><span class="r">riga</span><span class="d">.</span><span class="b">2see</span></a>
-    <div class="tabs" id="tabs"></div>
-  </div>
+  <div class="hdr" id="hdr"><div class="tabs" id="tabs"></div></div>
 </div>
-<div class="datebar"><span class="datechip" id="datechip"></span></div>
+<div class="datebar">
+  <button class="datechip" id="datechip"></button>
+  <div class="datemenu" id="datemenu"></div>
+</div>
 <button class="sound" id="sound" title="звук"></button>
 <div id="feed"></div>
 <div class="toast" id="toast"></div>
@@ -172,7 +184,7 @@ function cardHTML(e,i){
     <div class="info">
       ${chip}
       <h1 data-act="details">${title}</h1>
-      <div class="meta"><b>${fmtDate(e.date)}</b>${place?` · ${place}`:""}</div>
+      ${place?`<div class="meta">${place}</div>`:""}
       <div class="arow">
         ${priceTxt?`<span class="ptag ${e.is_free?"free":""}">${priceTxt}</span>`:""}
         <a class="cta-btn" data-act="details" href="#">Подробнее →</a>
@@ -319,7 +331,29 @@ function buildFeed(list){
   _io=new IntersectionObserver(es=>{ es.forEach(en=>{ if(en.isIntersecting&&en.intersectionRatio>0.6) setActive(+en.target.dataset.i); }); },{threshold:[0,.6,1]});
   cards.forEach(c=>_io.observe(c));
   if(cards.length) setActive(0);
+  buildDateMenu();
 }
+
+// ── выпадающий список дат (даты текущей категории, со скроллом) ──
+function buildDateMenu(){
+  const menu=document.getElementById("datemenu");
+  const seen=new Map();                                    // деньYYYY-MM-DD → индекс первого ролика
+  VIEW.forEach((e,i)=>{ if(!e.date) return; const k=e.date.slice(0,10); if(!seen.has(k)) seen.set(k,i); });
+  menu.innerHTML=[...seen.entries()].map(([k,idx])=>{
+    const d=new Date(k+"T00:00:00"); const wd=["вс","пн","вт","ср","чт","пт","сб"][d.getDay()];
+    return `<button class="dmi" data-idx="${idx}"><span class="drel">${relDate(k+" 00:00:00")}</span><span class="dabs">${d.getDate()} ${MON_GEN[d.getMonth()]}, ${wd}</span></button>`;
+  }).join("");
+  menu.querySelectorAll(".dmi").forEach(b=>b.addEventListener("click",()=>{
+    menu.classList.remove("open");
+    const card=document.querySelector(`.card[data-i="${b.dataset.idx}"]`);
+    if(card){ document.getElementById("feed").scrollTo({top:card.offsetTop}); setActive(+b.dataset.idx); }  // мгновенно + сразу активируем
+  }));
+}
+(function(){
+  const chip=document.getElementById("datechip"), menu=document.getElementById("datemenu");
+  chip.addEventListener("click",e=>{ e.stopPropagation(); menu.classList.toggle("open"); });
+  document.addEventListener("click",e=>{ if(!e.target.closest(".datebar")) menu.classList.remove("open"); });
+})();
 
 // авто-переход на следующую категорию, если домотал текущую до конца
 (function(){

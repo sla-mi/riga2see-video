@@ -181,7 +181,10 @@ function relDate(s){ if(!s) return ""; const d=new Date(s.replace(" ","T")); if(
   if(diff>=2 && diff<=6) return WD_PREP[d.getDay()];
   return d.getDate()+" "+MON_GEN[d.getMonth()]; }
 function firstLine(t){ return (t||"").split(/[\.\n!|]/)[0].trim().slice(0,70); }
-function poster(e){ return e.file.replace("vid/","poster/").replace(".mp4",".jpg"); }
+function poster(e){ return e.img || (e.file? e.file.replace("vid/","poster/").replace(".mp4",".jpg") : ""); }
+function vidUrl(e){ return e.video ? e.video.url : (e.file || null); }          // стрим-URL или локальный файл
+function vidOrient(e){ return e.video ? e.video.orient : (e.orient || "vert"); }
+function hasVideo(e){ return !!vidUrl(e); }
 
 const fav=new Set(); const remind=new Map(); let ALL=[]; let VIEW=[]; let SOUND=false; let ACTIVE=-1; let curCat=null; let TABS=[]; let favMode=false;
 // варианты напоминания в зависимости от близости события (как в афише)
@@ -212,15 +215,16 @@ function toast(t){ const el=document.getElementById("toast"); el.textContent=t; 
   clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"),1400); }
 
 function cardHTML(e,i){
-  const orient=e.orient==="horiz"?"horiz":"vert";
+  const orient=(hasVideo(e) && vidOrient(e)==="horiz")?"horiz":"vert";
   const cat=e.cat||""; const col=CAT_COLOR[cat]||"#cfcfd6";
   const priceTxt = e.is_free ? "Бесплатно" : (e.price_from!=null ? `от ${Math.round(e.price_from)} €` : "");
   const title = e.ev_title || firstLine(e.title) || e.page;
   const place = e.venue || e.page;
   const chip = ((favMode||curCat===null) && cat) ? `<span class="catchip" data-act="setcat" data-cat="${cat}"><span class="dot" style="background:${col}"></span>${cat}</span>` : "";
-  const bgPoster = orient==="horiz" ? `<img class="poster bgp" src="${poster(e)}" alt="">` : "";
+  const purl=poster(e);
+  const bgPoster = orient==="horiz" ? `<img class="poster bgp" src="${purl}" alt="" loading="lazy">` : "";
   return `<div class="card ${orient}" data-i="${i}">
-    <div class="stage">${bgPoster}<img class="poster" src="${poster(e)}" alt=""></div>
+    <div class="stage">${bgPoster}<img class="poster" src="${purl}" alt="" loading="lazy"></div>
     <div class="shade"></div>
     <div class="rail">
       <button data-act="fav" class="${fav.has(e.id)?"on":""}">${ICON.bookmark}</button>
@@ -244,10 +248,13 @@ function cardHTML(e,i){
 // видео: монтируем только активной ±1
 function mountVideo(card){
   if(card.querySelector("video.main")) return card.querySelector("video.main");
-  const e=VIEW[+card.dataset.i], stage=card.querySelector(".stage");
-  const prep=(vd,cls)=>{ vd.className=cls;vd.src=e.file;vd.loop=true;vd.playsInline=true;vd.muted=true;vd.defaultMuted=true;
+  const e=VIEW[+card.dataset.i]; const url=vidUrl(e); if(!url) return null;   // статичная карточка (только постер)
+  const stage=card.querySelector(".stage");
+  const pu=poster(e);
+  const prep=(vd,cls)=>{ vd.className=cls;vd.src=url;vd.loop=true;vd.playsInline=true;vd.muted=true;vd.defaultMuted=true;
+    if(cls==="main"&&pu) vd.poster=pu;                    // постер на паузе/буферизации вместо чёрного
     vd.setAttribute("muted","");vd.setAttribute("playsinline","");vd.setAttribute("webkit-playsinline","");vd.setAttribute("autoplay","");vd.preload="auto"; };
-  if(e.orient==="horiz"){ const bg=document.createElement("video");prep(bg,"bg");stage.appendChild(bg); }
+  if(vidOrient(e)==="horiz"){ const bg=document.createElement("video");prep(bg,"bg");stage.appendChild(bg); }
   const v=document.createElement("video");prep(v,"main");stage.appendChild(v); return v;
 }
 function unmountVideo(card){ card.classList.remove("playing");
@@ -261,6 +268,7 @@ function setActive(i){
     const idx=+c.dataset.i, near=Math.abs(idx-i)<=1;
     if(!near){ unmountVideo(c); return; }
     const v=mountVideo(c);
+    if(!v){ c.classList.remove("playing"); return; }        // статичная карточка — только постер
     if(idx===i){ v.muted=!SOUND; const bg=c.querySelector("video.bg");
       const go=()=>{ v.currentTime=0; v.play().catch(()=>{}); if(bg){bg.currentTime=0;bg.muted=true;bg.play().catch(()=>{});} };
       if(v.readyState>=2) go(); else v.addEventListener("loadeddata",go,{once:true});
@@ -436,7 +444,7 @@ function buildDateMenu(){
 })();
 
 async function boot(){
-  ALL=await (await fetch("feed_ads.json",{cache:"no-store"})).json();
+  ALL=await (await fetch("big_feed.json",{cache:"no-store"})).json();
   buildTabs();
   buildFeed(currentList());
   let unlocked=false;

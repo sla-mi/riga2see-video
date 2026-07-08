@@ -323,13 +323,16 @@ function buildFeed(list){
 // ── РАДИАЛЬНЫЙ ВЕЕР КАТЕГОРИЙ (дуга от пилюли вверх, крутится перетаскиванием) ──
 const fan={rot:0,chips:[],ox:0,oy:0,R:200,STEP:15,A0:8,min:-120,max:0,drag:false,py:0,moved:false};
 function fanLayout(){
+  // общий пивот = левый край пилюли; каждый чип повёрнут вокруг него всё сильнее (веер из руки)
   fan.chips.forEach((ch,i)=>{
-    const ang=fan.A0+i*fan.STEP+fan.rot, rad=ang*Math.PI/180;
-    const x=fan.ox+fan.R*Math.cos(rad), y=fan.oy-fan.R*Math.sin(rad);
-    const tilt=(ang-90)*0.42, on=(ang>-2&&ang<104), edge=(ang<8||ang>96);
-    ch.style.transform=`translate(${x}px,${y}px) translate(-50%,-50%) rotate(${tilt}deg)`;
-    ch.style.opacity=on?(edge?0.28:1):0;
+    const ang=fan.A0+i*fan.STEP+fan.rot;           // нарастающий наклон
+    const on=(ang>-9 && ang<96), edge=(ang<1||ang>88);
+    ch.style.transformOrigin="0% 50%";
+    // пивот у левого края + выезд наружу по оси чипа (i*push) → ярлыки не слипаются
+    ch.style.transform=`translate(${fan.ox}px,${fan.oy}px) translateY(-50%) rotate(${-ang}deg) translateX(${i*22}px)`;
+    ch.style.opacity=on?(edge?0.32:1):0;
     ch.style.pointerEvents=on?"auto":"none";
+    ch.style.zIndex=String(10+i);
   });
 }
 function openCatFan(){
@@ -341,11 +344,10 @@ function openCatFan(){
   fan.chips=[...stage.querySelectorAll(".fchip")];
   const pill=document.querySelector(`.card[data-i="${ACTIVE}"] .pill`);
   const r=pill?pill.getBoundingClientRect():{left:30,top:innerHeight-200,width:90,height:30};
-  fan.ox=r.left+r.width/2; fan.oy=r.top+r.height/2;
-  fan.R=Math.min(330, innerHeight*0.44);            // большой радиус → чипы с зазором, без нахлёста
-  fan.STEP=17;
+  fan.ox=r.left+8; fan.oy=r.top+r.height/2;          // пивот = левый край пилюли
+  fan.A0=0; fan.STEP=13;                             // 0° = вровень с пилюлей, дальше +13° каждой
   const span=(fan.chips.length-1)*fan.STEP;
-  fan.rot=0; fan.max=0; fan.min=82-(fan.A0+span);   // прокрутка дуги до последней категории
+  fan.rot=0; fan.max=0; fan.min=80-span;             // прокрутка веера до последней категории
   fanLayout();
   document.getElementById("catfan").classList.add("open");
 }

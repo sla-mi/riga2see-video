@@ -35,10 +35,10 @@
   .card.open .shade{background:linear-gradient(to top,rgba(0,0,0,.95) 0%,rgba(0,0,0,.9) 67%,rgba(0,0,0,.55) 100%)}
 
   /* верх: вкладки категорий / шапка избранного — увеличено х2 */
-  .top{position:fixed;top:0;left:0;right:0;z-index:9;display:flex;align-items:center;gap:18px;padding:30px 16px 18px;
+  .top{position:fixed;top:0;left:0;right:0;z-index:9;display:flex;align-items:center;padding:30px 16px 18px;
     background:linear-gradient(to bottom,rgba(0,0,0,.68),transparent)}
-  /* лого — отдельный, ЗАФИКСИРОВАННЫЙ элемент, не часть скролла вкладок — никогда не обрезается */
-  .hdr{display:flex;align-items:center;min-width:0;flex:1;overflow-x:auto;scrollbar-width:none;transition:transform .2s ease,opacity .2s ease}
+  /* лого скроллится единой связкой с категориями (не отдельно) — но центрирование НЕ применяем для «Все» и соседней, чтобы не выталкивало лого */
+  .hdr{display:flex;align-items:center;gap:18px;min-width:0;flex:1;overflow-x:auto;scrollbar-width:none;transition:transform .2s ease,opacity .2s ease}
   .hdr::-webkit-scrollbar{display:none}
   .logo{font-family:var(--disp);font-weight:900;font-size:21px;letter-spacing:-.02em;display:inline-flex;align-items:baseline;flex-shrink:0}
   .logo .r,.logo .d{color:#fff}
@@ -176,8 +176,7 @@
 </head>
 <body>
 <div class="top">
-  <a class="logo"><span class="r">riga</span><span class="d">.</span><span class="b">2see</span></a>
-  <div class="hdr" id="hdr"><div class="tabs" id="tabs"></div></div>
+  <div class="hdr" id="hdr"><a class="logo"><span class="r">riga</span><span class="d">.</span><span class="b">2see</span></a><div class="tabs" id="tabs"></div></div>
   <div class="favhdr" id="favhdr"><button class="favback" id="favback"></button><span class="favttl">Избранное</span></div>
 </div>
 <div class="datebar">
@@ -505,11 +504,15 @@ function animateScrollTo(el,target,ms){
 }
 function updateTabs(){
   const hdr=document.getElementById("hdr");
-  document.querySelectorAll("#tabs .tab").forEach(t=>{
+  const tabs=[...document.querySelectorAll("#tabs .tab")];
+  tabs.forEach((t,idx)=>{
     const on=(curCat||"")===t.dataset.cat; t.classList.toggle("on",on);
-    // первая вкладка («Все») — скроллим к самому началу, чтобы лого было видно целиком, не центрируем её
-    if(on){ const target = t.dataset.cat==="" ? 0 : t.offsetLeft-(hdr.clientWidth-t.offsetWidth)/2;
-      animateScrollTo(hdr, Math.max(0,target), 220); } });
+    if(!on) return;
+    // «Все» и соседняя с ней категория — лого рядом; НЕ центрируем (выталкивало бы лого за край),
+    // а явно возвращаем скролл к 0 — иначе после возврата с дальней категории лого останется скрытым
+    const target = idx<=1 ? 0 : t.offsetLeft-(hdr.clientWidth-t.offsetWidth)/2;
+    animateScrollTo(hdr, Math.max(0,target), 220);
+  });
 }
 function setCategory(cat, dir){
   const next = cat===""?null:cat; if(next===curCat && !favMode){ return; }

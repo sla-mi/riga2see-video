@@ -35,12 +35,12 @@
   /* верх: вкладки категорий / шапка избранного */
   .top{position:fixed;top:0;left:0;right:0;z-index:9;display:flex;align-items:center;padding:14px 16px 8px;
     background:linear-gradient(to bottom,rgba(0,0,0,.62),transparent)}
-  .hdr{display:flex;align-items:center;gap:14px;min-width:0;flex:1;transition:transform .2s ease,opacity .2s ease}
+  .hdr{display:flex;align-items:center;gap:14px;min-width:0;flex:1;overflow-x:auto;scrollbar-width:none;transition:transform .2s ease,opacity .2s ease}
+  .hdr::-webkit-scrollbar{display:none}
   .logo{font-family:var(--disp);font-weight:900;font-size:15px;letter-spacing:-.02em;display:inline-flex;align-items:baseline;flex-shrink:0}
   .logo .r,.logo .d{color:#fff}
   .logo .b{color:#15151a;background:var(--ink);padding:1px 5px 2px 3px;border-radius:4px 7px 5px 5px;transform:rotate(-1.6deg);display:inline-block}
-  .tabs{display:flex;gap:16px;overflow-x:auto;scrollbar-width:none;min-width:0}
-  .tabs::-webkit-scrollbar{display:none}
+  .tabs{display:flex;gap:16px;flex-shrink:0}
   .tab{font-family:var(--disp);font-size:13px;font-weight:700;color:rgba(255,255,255,.5);white-space:nowrap;
     cursor:pointer;padding:2px 0 6px;position:relative;flex-shrink:0}
   .tab.on{color:#fff}
@@ -118,6 +118,22 @@
   .empty{height:100dvh;display:grid;place-items:center;text-align:center;padding:0 32px;
     font-family:var(--disp);font-weight:700;font-size:17px;line-height:1.5;color:rgba(255,255,255,.75)}
   .empty b{color:var(--ink)}
+  /* тап по видео скрывает интерфейс */
+  .top,.datebar,.sound,.rail,.info{transition:opacity .2s ease}
+  body.clean .top,body.clean .datebar,body.clean .sound,body.clean .rail,body.clean .info{opacity:0;pointer-events:none}
+  /* нижний лист напоминаний */
+  .sheet{position:fixed;inset:0;z-index:24;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .2s}
+  .sheet.open{opacity:1;pointer-events:auto}
+  .sheetcard{position:absolute;left:16px;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));
+    background:rgba(20,20,24,.98);backdrop-filter:blur(14px);border:1px solid var(--btn-border);border-radius:18px;
+    padding:14px;transform:translateY(16px);transition:transform .25s;display:flex;flex-direction:column;gap:8px}
+  .sheet.open .sheetcard{transform:translateY(0)}
+  .sheet-ttl{font-family:var(--disp);font-weight:800;font-size:12px;letter-spacing:.04em;text-transform:uppercase;
+    color:rgba(255,255,255,.55);padding:2px 4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ropt{font-family:var(--disp);font-weight:700;font-size:14px;text-align:left;background:var(--btn-bg);
+    border:1px solid var(--btn-border);color:#fff;padding:14px 16px;border-radius:12px;cursor:pointer}
+  .ropt.on{background:var(--ink);color:#0b0b0d;border-color:var(--ink)}
+  .ropt.off{color:#ff8a8a;background:rgba(255,80,80,.08);border-color:rgba(255,80,80,.3)}
   .toast{position:fixed;left:50%;bottom:120px;transform:translateX(-50%) translateY(16px);background:rgba(20,20,24,.96);
     border:1px solid rgba(255,255,255,.1);padding:11px 18px;border-radius:14px;font-family:var(--body);font-size:14px;
     font-weight:700;z-index:30;opacity:0;transition:.22s;pointer-events:none}
@@ -135,6 +151,7 @@
 </div>
 <button class="sound" id="sound" title="звук"></button>
 <div id="feed"></div>
+<div class="sheet" id="remindsheet"><div class="sheetcard" id="remindcard"></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -166,7 +183,31 @@ function relDate(s){ if(!s) return ""; const d=new Date(s.replace(" ","T")); if(
 function firstLine(t){ return (t||"").split(/[\.\n!|]/)[0].trim().slice(0,70); }
 function poster(e){ return e.file.replace("vid/","poster/").replace(".mp4",".jpg"); }
 
-const fav=new Set(); let ALL=[]; let VIEW=[]; let SOUND=false; let ACTIVE=-1; let curCat=null; let TABS=[]; let favMode=false;
+const fav=new Set(); const remind=new Map(); let ALL=[]; let VIEW=[]; let SOUND=false; let ACTIVE=-1; let curCat=null; let TABS=[]; let favMode=false;
+// варианты напоминания в зависимости от близости события (как в афише)
+function reminderOpts(s){
+  const d=new Date((s||"").replace(" ","T")); const t=new Date(); t.setHours(0,0,0,0);
+  const e=new Date(d); e.setHours(0,0,0,0); const diff=Math.round((e-t)/864e5);
+  if(isNaN(diff)) return ["За день","За 2 часа"];
+  if(diff<=0) return ["За 2 часа","За 1 час"];
+  if(diff===1) return ["Сегодня вечером","Завтра утром","За 2 часа"];
+  if(diff<=7) return ["За день","Утром в день события","За 2 часа"];
+  return ["За неделю","За 3 дня","За день","За 2 часа"];
+}
+function openRemindMenu(e, btnEl){
+  const card=document.getElementById("remindcard"); const cur=remind.get(e.id);
+  let html=`<div class="sheet-ttl">Напомнить · ${e.ev_title||e.page}</div>`;
+  if(cur!==undefined) html+=`<button class="ropt off" data-v="__off">✕ Убрать напоминание</button>`;
+  reminderOpts(e.date).forEach(o=>html+=`<button class="ropt ${cur===o?'on':''}" data-v="${o}">${o}</button>`);
+  card.innerHTML=html;
+  card.querySelectorAll(".ropt").forEach(b=>b.onclick=()=>{
+    if(b.dataset.v==="__off"){ remind.delete(e.id); if(btnEl) btnEl.classList.remove("on"); toast("Напоминание убрано"); }
+    else { remind.set(e.id,b.dataset.v); if(btnEl) btnEl.classList.add("on"); toast("🔔 Напомним · "+b.dataset.v.toLowerCase()); }
+    document.getElementById("remindsheet").classList.remove("open");
+  });
+  document.getElementById("remindsheet").classList.add("open");
+}
+document.getElementById("remindsheet").addEventListener("click",e=>{ if(e.target.id==="remindsheet") e.currentTarget.classList.remove("open"); });
 function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show");
   clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"),1400); }
 
@@ -183,7 +224,7 @@ function cardHTML(e,i){
     <div class="shade"></div>
     <div class="rail">
       <button data-act="fav" class="${fav.has(e.id)?"on":""}">${ICON.bookmark}</button>
-      <button data-act="remind">${ICON.bell}</button>
+      <button data-act="remind" class="${remind.has(e.id)?"on":""}">${ICON.bell}</button>
       <button data-act="share">${ICON.forward}</button>
       <button class="av" data-act="me">${ICON.user}<span class="favbadge" style="${fav.size?'':'display:none'}">${fav.size||""}</span></button>
     </div>
@@ -238,9 +279,9 @@ renderSound();
 
 // жесты: открыто → свайп вниз закрывает; закрыто → гориз = смена категории
 function bindGestures(card){
-  let x0=0,y0=0,dx=0,dy=0,horiz=null,drag=false;
+  let x0=0,y0=0,dx=0,dy=0,horiz=null,drag=false,tgt=null;
   const desc=card.querySelector(".desc");
-  const start=(x,y)=>{ x0=x;y0=y;dx=dy=0;horiz=null;drag=true;};
+  const start=(x,y,t)=>{ x0=x;y0=y;dx=dy=0;horiz=null;drag=true;tgt=t;};
   const move=(x,y)=>{ if(!drag)return; dx=x-x0;dy=y-y0;
     if(horiz===null && (Math.abs(dx)>10||Math.abs(dy)>10)) horiz=Math.abs(dx)>Math.abs(dy);
     if(!card.classList.contains("open") && horiz && !favMode){
@@ -249,12 +290,14 @@ function bindGestures(card){
   const end=()=>{ if(!drag)return; drag=false;
     document.getElementById("hdr").style.transform=""; document.getElementById("feed").style.transform="";
     if(card.classList.contains("open")){ if(dy>60 && desc.scrollTop<=2){ card.classList.remove("open"); updateDetailsBtn(card); } return; }
+    // тап по пустому видео → скрыть/показать интерфейс
+    if(Math.abs(dx)<8 && Math.abs(dy)<8 && tgt && tgt.closest(".stage")){ document.body.classList.toggle("clean"); return; }
     if(horiz && Math.abs(dx)>70 && !favMode){ switchCategory(dx<0?1:-1); } };
-  card.addEventListener("touchstart",e=>start(e.touches[0].clientX,e.touches[0].clientY),{passive:true});
+  card.addEventListener("touchstart",e=>start(e.touches[0].clientX,e.touches[0].clientY,e.target),{passive:true});
   card.addEventListener("touchmove",e=>{ move(e.touches[0].clientX,e.touches[0].clientY);
     if(horiz && !card.classList.contains("open")) e.preventDefault(); },{passive:false});
   card.addEventListener("touchend",end);
-  card.addEventListener("mousedown",e=>start(e.clientX,e.clientY));
+  card.addEventListener("mousedown",e=>start(e.clientX,e.clientY,e.target));
   window.addEventListener("mousemove",e=>drag&&move(e.clientX,e.clientY));
   window.addEventListener("mouseup",end);
 }
@@ -286,7 +329,7 @@ function bindActions(card){
       else if(act==="me"){ enterFav(); }
       else if(act==="fav"){ if(fav.has(e.id)){fav.delete(e.id);el.classList.remove("on");updateFavBadges();toast("Убрано из «хочу пойти»");}
         else{fav.add(e.id);el.classList.add("on");flyToAvatar(el);toast("Добавлено — хочу пойти");} }
-      else if(act==="remind"){ el.classList.add("on"); toast("🔔 Напомним за 2 часа до события"); }
+      else if(act==="remind"){ openRemindMenu(e, el); }
       else if(act==="share"){ const u=e.ticket||e.lib;
         if(navigator.share) navigator.share({title:e.ev_title||e.page,url:u}).catch(()=>{});
         else{ navigator.clipboard?.writeText(u); toast("Ссылка скопирована"); } }

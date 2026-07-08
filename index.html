@@ -22,13 +22,13 @@
   .nocover{position:absolute;inset:0}
   .poster{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);object-fit:cover;transition:opacity .4s}
   /* нет видео — афиша целиком, без обрезки; горизонт-видео — тоже целиком, прижато к верху */
-  .card.horiz .poster,.card.photo .poster{object-fit:contain;object-position:50% 0%}
+  .card.horiz .poster,.card.photo .poster{object-fit:contain;object-position:50% 30%}
   .card.horiz .poster.bgp,.card.photo .poster.bgp{object-fit:cover;filter:blur(28px) brightness(.5);transform:scale(1.25);object-position:50% 50%}
-  video{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);opacity:0;transition:opacity .4s}
+  video,iframe.main{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);opacity:0;transition:opacity .4s;border:0}
   .card.vert  video.main{object-fit:cover}
-  .card.horiz video.main{object-fit:contain;object-position:50% 0%}
+  .card.horiz video.main{object-fit:contain;object-position:50% 30%}
   video.bg{object-fit:cover;filter:blur(28px) brightness(.5);transform:scale(1.2)}
-  .card.playing video.main,.card.playing video.bg{opacity:1}
+  .card.playing video.main,.card.playing video.bg,.card.playing iframe.main{opacity:1}
   .card.playing .poster:not(.bgp){opacity:0}
   .shade{position:absolute;inset:0;pointer-events:none;transition:background .3s;
     background:linear-gradient(to top,rgba(0,0,0,.94) 0%,rgba(0,0,0,.2) 34%,transparent 55%,rgba(0,0,0,.34) 100%)}
@@ -157,8 +157,6 @@
   .ob-row{font-size:13.5px;color:rgba(255,255,255,.8);line-height:1.6;display:flex;align-items:center;gap:8px}
   .ob-arrow{display:inline-flex;width:22px;height:22px;border-radius:6px;background:rgba(232,255,71,.15);
     color:var(--ink);align-items:center;justify-content:center;font-weight:800;flex-shrink:0}
-  .ob-close{margin-top:12px;width:100%;font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.05em;
-    text-transform:uppercase;padding:10px;border-radius:100px;background:var(--ink);color:#0b0b0d;border:0;cursor:pointer}
   .toast{position:fixed;left:50%;bottom:120px;transform:translateX(-50%) translateY(16px);background:rgba(20,20,24,.96);
     border:1px solid rgba(255,255,255,.1);padding:11px 18px;border-radius:14px;font-family:var(--body);font-size:14px;
     font-weight:700;z-index:30;opacity:0;transition:.22s;pointer-events:none}
@@ -180,7 +178,6 @@
   <div class="ob-ttl">Все культурные события Риги в одном месте</div>
   <div class="ob-row"><span class="ob-arrow">↓</span> смотреть, сначала ближайшие по дате</div>
   <div class="ob-row"><span class="ob-arrow">→</span> переключить категорию</div>
-  <button class="ob-close" id="obclose">Понятно</button>
 </div>
 <div class="sheet" id="remindsheet"><div class="sheetcard" id="remindcard"></div></div>
 <div class="toast" id="toast"></div>
@@ -325,10 +322,17 @@ function cardHTML(e,i){
 }
 
 // видео: монтируем только активной ±1
+function ytEmbedSrc(url){ const id=(url.match(/embed\/([A-Za-z0-9_-]{6,})/)||[])[1];
+  return id ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=0&modestbranding=1&rel=0&playsinline=1` : url; }
 function mountVideo(card){
-  if(card.querySelector("video.main")) return card.querySelector("video.main");
+  if(card.querySelector(".main")) return card.querySelector(".main");
   const e=VIEW[+card.dataset.i]; const url=vidUrl(e); if(!url) return null;   // статичная карточка (только постер)
   const stage=card.querySelector(".stage");
+  if(e.video && e.video.type==="embed"){                  // эмбед из билетки (YouTube) — не mp4, отдельный путь
+    const f=document.createElement("iframe"); f.className="main embed"; f.src=ytEmbedSrc(url);
+    f.setAttribute("allow","autoplay; encrypted-media"); f.setAttribute("frameborder","0");
+    stage.appendChild(f); f.dataset.embed="1"; return f;
+  }
   const pu=poster(e);
   const prep=(vd,cls)=>{ vd.className=cls;vd.src=url;vd.loop=true;vd.playsInline=true;vd.muted=true;vd.defaultMuted=true;
     if(cls==="main"&&pu) vd.poster=pu;                    // постер на паузе/буферизации вместо чёрного
@@ -337,7 +341,7 @@ function mountVideo(card){
   const v=document.createElement("video");prep(v,"main");stage.appendChild(v); return v;
 }
 function unmountVideo(card){ card.classList.remove("playing");
-  card.querySelectorAll("video").forEach(v=>{ v.pause(); v.removeAttribute("src"); v.load(); v.remove(); }); }
+  card.querySelectorAll("video, iframe.main").forEach(v=>{ if(v.tagName==="VIDEO"){v.pause();v.removeAttribute("src");v.load();} v.remove(); }); }
 function setActive(i){
   if(i===ACTIVE) return;
   const prev=document.querySelector(`.card[data-i="${ACTIVE}"]`); if(prev){ prev.classList.remove("open"); updateDetailsBtn(prev); }
@@ -348,6 +352,9 @@ function setActive(i){
     if(!near){ unmountVideo(c); return; }
     const v=mountVideo(c);
     if(!v){ c.classList.remove("playing"); return; }        // статичная карточка — только постер
+    if(v.tagName==="IFRAME"){ if(idx===i) c.classList.add("playing"); else c.classList.remove("playing");
+      if(idx===i && c.classList.contains("horiz") && !c.classList.contains("open")){ c.classList.add("open"); updateDetailsBtn(c); }
+      return; }
     if(idx===i){ v.muted=!SOUND; const bg=c.querySelector("video.bg");
       const go=()=>{ v.currentTime=0; v.play().catch(()=>{}); if(bg){bg.currentTime=0;bg.muted=true;bg.play().catch(()=>{});} };
       if(v.readyState>=2) go(); else v.addEventListener("loadeddata",go,{once:true});
@@ -482,17 +489,31 @@ function exitFav(){
 document.getElementById("favback").innerHTML=ICON.back;
 document.getElementById("favback").addEventListener("click",exitFav);
 
-let _io=null;
-function buildFeed(list){
-  VIEW=list; ACTIVE=-1;
+// ── виртуализация: рендерим окно карточек, а не всю ленту разом (862 карточки разом валят iPhone) ──
+let _io=null; const PAGE=10; let rendered=0;
+function bindCard(c){ bindGestures(c); bindActions(c); if(_io) _io.observe(c); }
+function appendBatch(){
   const feed=document.getElementById("feed");
-  feed.innerHTML = VIEW.length ? VIEW.map(cardHTML).join("")
-    : `<div class="empty"><span>Пока пусто — жми <b>закладку</b> на видео, чтобы добавить сюда</span></div>`;
-  const cards=[...feed.querySelectorAll(".card")];
-  cards.forEach(c=>{bindGestures(c);bindActions(c);});
+  const slice=VIEW.slice(rendered, rendered+PAGE);
+  if(!slice.length) return;
+  const div=document.createElement("div");
+  div.innerHTML=slice.map((e,k)=>cardHTML(e, rendered+k)).join("");
+  [...div.children].forEach(c=>{ feed.appendChild(c); bindCard(c); });
+  rendered+=slice.length;
+}
+function ensureRendered(idx){ while(rendered<=idx && rendered<VIEW.length) appendBatch(); }
+function buildFeed(list){
+  VIEW=list; ACTIVE=-1; rendered=0;
+  const feed=document.getElementById("feed");
+  feed.innerHTML="";
   if(_io) _io.disconnect();
   _io=new IntersectionObserver(es=>{ es.forEach(en=>{ if(en.isIntersecting&&en.intersectionRatio>0.6) setActive(+en.target.dataset.i); }); },{threshold:[0,.6,1]});
-  cards.forEach(c=>_io.observe(c));
+  if(!VIEW.length){
+    feed.innerHTML=`<div class="empty"><span>Пока пусто — жми <b>закладку</b> на видео, чтобы добавить сюда</span></div>`;
+  } else {
+    appendBatch();                                   // первые 10 карточек — дальше догружаем по скроллу
+  }
+  const cards=[...feed.querySelectorAll(".card")];
   document.querySelector(".datebar").style.display = cards.length ? "" : "none";
   if(cards.length) setActive(0);
   buildDateMenu(); updateFavBadges();
@@ -512,8 +533,10 @@ function buildDateMenu(){
   }).join("");
   menu.querySelectorAll(".dmi").forEach(b=>b.addEventListener("click",()=>{
     menu.classList.remove("open");
-    const card=document.querySelector(`.card[data-i="${b.dataset.idx}"]`);
-    if(card){ document.getElementById("feed").scrollTo({top:card.offsetTop}); setActive(+b.dataset.idx); }
+    const idx=+b.dataset.idx;
+    ensureRendered(idx);                              // догрузить карточки вплоть до выбранной даты
+    const card=document.querySelector(`.card[data-i="${idx}"]`);
+    if(card){ document.getElementById("feed").scrollTo({top:card.offsetTop}); setActive(idx); }
   }));
 }
 (function(){
@@ -521,6 +544,12 @@ function buildDateMenu(){
   chip.addEventListener("click",e=>{ e.stopPropagation(); menu.classList.toggle("open"); });
   document.addEventListener("click",e=>{ if(!e.target.closest(".datebar")) menu.classList.remove("open"); });
 })();
+
+// догрузка следующих карточек, когда пользователь приближается к концу отрендеренного окна
+document.getElementById("feed").addEventListener("scroll",()=>{
+  const feed=document.getElementById("feed");
+  if(rendered<VIEW.length && feed.scrollTop+feed.clientHeight*2 > feed.scrollHeight) appendBatch();
+},{passive:true});
 
 // авто-переход на следующую категорию в конце (не в избранном)
 (function(){
@@ -532,14 +561,14 @@ function buildDateMenu(){
   feed.addEventListener("touchend",()=>{ if(atEnd && over>55 && curCat!==null && !favMode){ switchCategory(1); } over=0; });
 })();
 
-// онбординг — показываем один раз за сессию, прячем по кнопке или по первому жесту в ленте
+// онбординг — показываем один раз за сессию, без кнопки; исчезает сама по первому свайпу ВВЕРХ по ленте
 (function(){
   const ob=document.getElementById("onboard");
   if(sessionStorage.getItem("onboarded")){ ob.remove(); return; }
-  const hide=()=>{ ob.classList.add("hide"); sessionStorage.setItem("onboarded","1");
-    setTimeout(()=>ob.remove(),350); };
-  document.getElementById("obclose").addEventListener("click",hide);
-  document.getElementById("feed").addEventListener("touchstart",hide,{once:true,passive:true});
+  const hide=()=>{ ob.classList.add("hide"); sessionStorage.setItem("onboarded","1"); setTimeout(()=>ob.remove(),350); };
+  const feed=document.getElementById("feed"); let y0=0;
+  feed.addEventListener("touchstart",e=>{ y0=e.touches[0].clientY; },{passive:true});
+  feed.addEventListener("touchmove",e=>{ if(y0-e.touches[0].clientY>30) hide(); },{passive:true});
 })();
 
 async function boot(){

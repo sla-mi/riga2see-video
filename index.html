@@ -51,6 +51,9 @@
     text-shadow:0 2px 16px rgba(0,0,0,.85);cursor:pointer}
   .meta{font-size:14px;color:rgba(255,255,255,.9);line-height:1.5;text-shadow:0 1px 10px rgba(0,0,0,.9)}
   .meta b{color:#fff;font-weight:700}
+  .ptag{align-self:flex-start;font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.03em;
+    color:var(--ink);border:1px solid rgba(232,255,71,.5);background:rgba(232,255,71,.08);padding:4px 11px;border-radius:100px}
+  .ptag.free{color:#0b0b0d;background:var(--ink);border-color:var(--ink)}
   .cta{margin-top:4px;align-self:flex-start}
   .cta a{display:inline-block;font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.08em;
     text-transform:uppercase;text-decoration:none;padding:13px 26px;border-radius:100px}
@@ -158,6 +161,7 @@ function cardHTML(e,i){
       ${pill}
       <h1 data-act="details">${title}</h1>
       <div class="meta">${dateLine}</div>
+      ${priceTxt?`<div class="ptag ${e.is_free?"free":""}">${priceTxt}</div>`:""}
       ${cta}
     </div>
     <div class="expand">

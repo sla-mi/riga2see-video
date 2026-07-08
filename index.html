@@ -389,7 +389,7 @@ renderSound();
 function bindGestures(card){
   let x0=0,y0=0,dx=0,dy=0,horiz=null,drag=false,tgt=null;
   const desc=card.querySelector(".desc");
-  const stage=card.querySelector(".stage"), info=card.querySelector(".info");   // свайпается только контент ивента, НЕ борт/шапка/дата
+  const stage=card.querySelector(".stage"), info=card.querySelector(".info"), shade=card.querySelector(".shade");   // свайпается только контент ивента (картинка/видео+фон+текст), НЕ борт/шапка/дата
   const start=(x,y,t)=>{ x0=x;y0=y;dx=dy=0;horiz=null;drag=true;tgt=t;};
   const move=(x,y)=>{ if(!drag)return; dx=x-x0;dy=y-y0;
     if(horiz===null && (Math.abs(dx)>10||Math.abs(dy)>10)) horiz=Math.abs(dx)>Math.abs(dy);
@@ -397,13 +397,13 @@ function bindGestures(card){
       // нативный свайп — вся карточка едет 1:1 с пальцем, не отдельная параллакс-подложка
       const fade=Math.max(0, 1-Math.abs(dx)/280);
       document.getElementById("hdr").style.transform=`translateX(${dx*0.6}px)`;
-      stage.style.transform=`translateX(${dx}px)`; info.style.transform=`translateX(${dx}px)`;
+      stage.style.transform=`translateX(${dx}px)`; info.style.transform=`translateX(${dx}px)`; shade.style.transform=`translateX(${dx}px)`;
       stage.style.opacity=fade; info.style.opacity=fade; } };
   const end=()=>{ if(!drag)return; drag=false;
     document.getElementById("hdr").style.transform="";
-    stage.style.transition="transform .2s ease, opacity .2s ease"; info.style.transition="transform .2s ease, opacity .2s ease";
-    stage.style.transform=""; info.style.transform=""; stage.style.opacity=""; info.style.opacity="";
-    setTimeout(()=>{ stage.style.transition=""; info.style.transition=""; },220);
+    [stage,info,shade].forEach(el=>el.style.transition="transform .2s ease, opacity .2s ease");
+    stage.style.transform=""; info.style.transform=""; shade.style.transform=""; stage.style.opacity=""; info.style.opacity="";
+    setTimeout(()=>{ [stage,info,shade].forEach(el=>el.style.transition=""); },220);
     if(card.classList.contains("open")){ return; }
     // тап по пустому видео → скрыть/показать интерфейс
     if(Math.abs(dx)<8 && Math.abs(dy)<8 && tgt && tgt.closest(".stage")){ document.body.classList.toggle("clean"); return; }

@@ -92,7 +92,7 @@
   .desc .buy{display:inline-block;margin:12px 0 4px;font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.06em;
     text-transform:uppercase;text-decoration:none;padding:12px 22px;border-radius:100px;background:rgba(255,255,255,.12);
     border:1px solid var(--btn-border);color:#fff}
-  .meta{font-size:17px;font-weight:800;color:#fff;line-height:1.3;text-shadow:0 1px 10px rgba(0,0,0,.9);font-family:var(--disp)}
+  .meta{font-size:16px;font-weight:800;color:#fff;line-height:1.35;text-shadow:0 1px 10px rgba(0,0,0,.9);font-family:var(--body)}
   .dtext a,.preview a{color:var(--ink);font-weight:700;text-decoration:underline}
   .arow{display:flex;align-items:center;gap:12px;margin-top:2px}
   .ptag{font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.03em;color:var(--ink);
@@ -324,7 +324,7 @@ function cardHTML(e,i){
       <h1 data-act="open">${title}</h1>
       ${place?`<div class="meta">${place}</div>`:""}
       <div class="preview" data-act="open">${linkify(bodyText)}<span class="more">  ещё…</span></div>
-      <div class="desc"><div class="grab" data-act="close"></div><div class="dtext">${linkify(bodyText)}<span class="collapse" data-act="close">  свернуть</span></div>${e.ticket?`<a class="buy" href="${e.ticket}" target="_blank" rel="noopener">Билеты · ${priceTxt} →</a>`:""}</div>
+      <div class="desc"><div class="grab" data-act="close"></div><div class="dtext">${linkify(bodyText)}<span class="collapse" data-act="close">  свернуть</span></div></div>
       <div class="arow">
         ${priceTxt?`<span class="ptag ${e.is_free?"free":""}">${priceTxt}</span>`:""}
         ${e.ticket?`<a class="cta-btn" href="${e.ticket}" target="_blank" rel="noopener">Билеты →</a>`:""}
@@ -404,7 +404,7 @@ function bindGestures(card){
     stage.style.transition="transform .2s ease, opacity .2s ease"; info.style.transition="transform .2s ease, opacity .2s ease";
     stage.style.transform=""; info.style.transform=""; stage.style.opacity=""; info.style.opacity="";
     setTimeout(()=>{ stage.style.transition=""; info.style.transition=""; },220);
-    if(card.classList.contains("open")){ if(dy>60 && desc.scrollTop<=2){ card.classList.remove("open"); } return; }
+    if(card.classList.contains("open")){ return; }
     // тап по пустому видео → скрыть/показать интерфейс
     if(Math.abs(dx)<8 && Math.abs(dy)<8 && tgt && tgt.closest(".stage")){ document.body.classList.toggle("clean"); return; }
     if(horiz && Math.abs(dx)>70 && !favMode){ switchCategory(dx<0?1:-1); } };

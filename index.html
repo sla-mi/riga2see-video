@@ -35,9 +35,10 @@
   .card.open .shade{background:linear-gradient(to top,rgba(0,0,0,.95) 0%,rgba(0,0,0,.9) 67%,rgba(0,0,0,.55) 100%)}
 
   /* верх: вкладки категорий / шапка избранного — увеличено х2 */
-  .top{position:fixed;top:0;left:0;right:0;z-index:9;display:flex;align-items:center;padding:30px 16px 18px;
+  .top{position:fixed;top:0;left:0;right:0;z-index:9;display:flex;align-items:center;gap:18px;padding:30px 16px 18px;
     background:linear-gradient(to bottom,rgba(0,0,0,.68),transparent)}
-  .hdr{display:flex;align-items:center;gap:18px;min-width:0;flex:1;overflow-x:auto;scrollbar-width:none;transition:transform .2s ease,opacity .2s ease}
+  /* лого — отдельный, ЗАФИКСИРОВАННЫЙ элемент, не часть скролла вкладок — никогда не обрезается */
+  .hdr{display:flex;align-items:center;min-width:0;flex:1;overflow-x:auto;scrollbar-width:none;transition:transform .2s ease,opacity .2s ease}
   .hdr::-webkit-scrollbar{display:none}
   .logo{font-family:var(--disp);font-weight:900;font-size:21px;letter-spacing:-.02em;display:inline-flex;align-items:baseline;flex-shrink:0}
   .logo .r,.logo .d{color:#fff}
@@ -175,7 +176,8 @@
 </head>
 <body>
 <div class="top">
-  <div class="hdr" id="hdr"><a class="logo"><span class="r">riga</span><span class="d">.</span><span class="b">2see</span></a><div class="tabs" id="tabs"></div></div>
+  <a class="logo"><span class="r">riga</span><span class="d">.</span><span class="b">2see</span></a>
+  <div class="hdr" id="hdr"><div class="tabs" id="tabs"></div></div>
   <div class="favhdr" id="favhdr"><button class="favback" id="favback"></button><span class="favttl">Избранное</span></div>
 </div>
 <div class="datebar">
@@ -522,7 +524,8 @@ function setCategory(cat, dir){
   },180);
 }
 function switchCategory(dir){ if(favMode) return;
-  let i=TABS.indexOf(curCat||""); i+=dir; if(i<0) i=TABS.length-1; if(i>=TABS.length) i=0;
+  let i=TABS.indexOf(curCat||"")+dir;
+  if(i<0 || i>=TABS.length) return;   // границы — тупик, без перескока на другой конец
   setCategory(TABS[i], dir); toast("Категория: "+(TABS[i]||"Все")); }
 
 function enterFav(){

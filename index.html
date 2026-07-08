@@ -32,28 +32,28 @@
   .card.playing .poster:not(.bgp){opacity:0}
   .shade{position:absolute;inset:0;pointer-events:none;transition:background .3s;
     background:linear-gradient(to top,rgba(0,0,0,.94) 0%,rgba(0,0,0,.2) 34%,transparent 55%,rgba(0,0,0,.34) 100%)}
-  .card.open .shade{background:linear-gradient(to top,rgba(0,0,0,.95) 0%,rgba(0,0,0,.78) 52%,rgba(0,0,0,.45) 100%)}
+  .card.open .shade{background:linear-gradient(to top,rgba(0,0,0,.95) 0%,rgba(0,0,0,.9) 67%,rgba(0,0,0,.55) 100%)}
 
-  /* верх: вкладки категорий / шапка избранного */
-  .top{position:fixed;top:0;left:0;right:0;z-index:9;display:flex;align-items:center;padding:14px 16px 8px;
-    background:linear-gradient(to bottom,rgba(0,0,0,.62),transparent)}
-  .hdr{display:flex;align-items:center;gap:14px;min-width:0;flex:1;overflow-x:auto;scrollbar-width:none;transition:transform .2s ease,opacity .2s ease}
+  /* верх: вкладки категорий / шапка избранного — увеличено х2 */
+  .top{position:fixed;top:0;left:0;right:0;z-index:9;display:flex;align-items:center;padding:30px 16px 18px;
+    background:linear-gradient(to bottom,rgba(0,0,0,.68),transparent)}
+  .hdr{display:flex;align-items:center;gap:18px;min-width:0;flex:1;overflow-x:auto;scrollbar-width:none;transition:transform .2s ease,opacity .2s ease}
   .hdr::-webkit-scrollbar{display:none}
-  .logo{font-family:var(--disp);font-weight:900;font-size:15px;letter-spacing:-.02em;display:inline-flex;align-items:baseline;flex-shrink:0}
+  .logo{font-family:var(--disp);font-weight:900;font-size:21px;letter-spacing:-.02em;display:inline-flex;align-items:baseline;flex-shrink:0}
   .logo .r,.logo .d{color:#fff}
-  .logo .b{color:#15151a;background:var(--ink);padding:1px 5px 2px 3px;border-radius:4px 7px 5px 5px;transform:rotate(-1.6deg);display:inline-block}
-  .tabs{display:flex;gap:16px;flex-shrink:0}
-  .tab{font-family:var(--disp);font-size:13px;font-weight:700;color:rgba(255,255,255,.5);white-space:nowrap;
-    cursor:pointer;padding:2px 0 6px;position:relative;flex-shrink:0}
+  .logo .b{color:#15151a;background:var(--ink);padding:2px 7px 3px 4px;border-radius:5px 9px 7px 6px;transform:rotate(-1.6deg);display:inline-block}
+  .tabs{display:flex;gap:20px;flex-shrink:0}
+  .tab{font-family:var(--disp);font-size:20px;font-weight:700;color:rgba(255,255,255,.5);white-space:nowrap;
+    cursor:pointer;padding:2px 0 8px;position:relative;flex-shrink:0}
   .tab.on{color:#fff}
   .tab.on::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;border-radius:2px;background:var(--ink)}
-  .favhdr{display:none;align-items:center;gap:10px}
+  .favhdr{display:none;align-items:center;gap:12px}
   .favhdr.on{display:flex}
   .favback{width:34px;height:34px;border:0;background:none;color:#fff;cursor:pointer;display:grid;place-items:center;filter:drop-shadow(0 1px 5px rgba(0,0,0,.6))}
   .favback svg{width:24px;height:24px}
-  .favttl{font-family:var(--disp);font-weight:900;font-size:16px;color:#fff}
+  .favttl{font-family:var(--disp);font-weight:900;font-size:22px;color:#fff}
 
-  .datebar{position:fixed;top:50px;left:16px;z-index:12}
+  .datebar{position:fixed;top:96px;left:16px;z-index:12}
   .datechip{display:inline-flex;align-items:center;gap:6px;font-family:var(--disp);font-size:11px;font-weight:700;
     letter-spacing:.05em;text-transform:uppercase;color:#fff;background:rgba(14,14,17,.88);
     border:1px solid var(--btn-border);padding:6px 12px;border-radius:100px;cursor:pointer}
@@ -76,6 +76,11 @@
   .catchip .dot{width:8px;height:8px;border-radius:50%}
   h1{font-family:var(--disp);font-weight:900;font-size:22px;line-height:1.14;margin:0;letter-spacing:-.01em;
     text-shadow:0 2px 16px rgba(0,0,0,.85);cursor:pointer}
+  /* свёрнутый превью — 3 строки + «ещё…»; видно только пока НЕ open */
+  .preview{font-size:15px;line-height:1.5;color:rgba(255,255,255,.92);text-shadow:0 1px 10px rgba(0,0,0,.95);
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+  .card.open .preview{display:none}
+  .preview .more{color:var(--ink);font-weight:800;white-space:nowrap}
   /* инлайн-описание над заголовком: раскрывается на сколько нужно, скроллится */
   .desc{max-height:0;overflow:hidden;transition:max-height .3s ease}
   .card.open .desc{max-height:46dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
@@ -83,8 +88,10 @@
   .grab{position:sticky;top:0;width:38px;height:5px;border-radius:3px;background:rgba(255,255,255,.45);
     margin:0 auto 12px;cursor:grab}
   .dtext{font-size:15px;line-height:1.55;color:#fff;white-space:pre-line;text-shadow:0 1px 10px rgba(0,0,0,.95);padding:2px 0}
+  .dtext .collapse{color:var(--ink);font-weight:800;cursor:pointer;white-space:nowrap}
   .desc .buy{display:inline-block;margin:12px 0 4px;font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.06em;
-    text-transform:uppercase;text-decoration:none;padding:12px 22px;border-radius:100px;background:var(--ink);color:#0b0b0d}
+    text-transform:uppercase;text-decoration:none;padding:12px 22px;border-radius:100px;background:rgba(255,255,255,.12);
+    border:1px solid var(--btn-border);color:#fff}
   .meta{font-size:14px;color:rgba(255,255,255,.9);line-height:1.45;text-shadow:0 1px 10px rgba(0,0,0,.9)}
   .arow{display:flex;align-items:center;gap:12px;margin-top:2px}
   .ptag{font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.03em;color:var(--ink);
@@ -112,7 +119,7 @@
     transition:transform .5s cubic-bezier(.4,0,.2,1),opacity .5s ease}
   .flybadge svg{width:26px;height:26px;fill:var(--ink);stroke:var(--ink)}
 
-  .sound{position:fixed;top:52px;right:16px;z-index:9;width:38px;height:38px;border:0;background:none;color:#fff;
+  .sound{position:fixed;top:98px;right:16px;z-index:9;width:38px;height:38px;border:0;background:none;color:#fff;
     cursor:pointer;display:grid;place-items:center;filter:drop-shadow(0 1px 6px rgba(0,0,0,.7))}
   .sound svg{width:23px;height:23px}
   .sound.on{color:var(--ink)}
@@ -310,12 +317,13 @@ function cardHTML(e,i){
     </div>
     <div class="info">
       ${chip}
-      <h1 data-act="details">${title}</h1>
-      <div class="desc"><div class="grab" data-act="details"></div><div class="dtext">${(e.body||"Описание появится позже.").trim()}</div>${e.ticket?`<a class="buy" href="${e.ticket}" target="_blank" rel="noopener">Билеты · ${priceTxt} →</a>`:""}</div>
+      <h1 data-act="open">${title}</h1>
+      <div class="preview" data-act="open">${(e.body||"Описание появится позже.").trim()}<span class="more">  ещё…</span></div>
+      <div class="desc"><div class="grab" data-act="close"></div><div class="dtext">${(e.body||"Описание появится позже.").trim()}<span class="collapse" data-act="close">  свернуть</span></div>${e.ticket?`<a class="buy" href="${e.ticket}" target="_blank" rel="noopener">Билеты · ${priceTxt} →</a>`:""}</div>
       ${place?`<div class="meta">${place}</div>`:""}
       <div class="arow">
         ${priceTxt?`<span class="ptag ${e.is_free?"free":""}">${priceTxt}</span>`:""}
-        <a class="cta-btn" data-act="details" href="#">Подробнее →</a>
+        ${e.ticket?`<a class="cta-btn" href="${e.ticket}" target="_blank" rel="noopener">Билеты →</a>`:""}
       </div>
     </div>
   </div>`;
@@ -344,7 +352,7 @@ function unmountVideo(card){ card.classList.remove("playing");
   card.querySelectorAll("video, iframe.main").forEach(v=>{ if(v.tagName==="VIDEO"){v.pause();v.removeAttribute("src");v.load();} v.remove(); }); }
 function setActive(i){
   if(i===ACTIVE) return;
-  const prev=document.querySelector(`.card[data-i="${ACTIVE}"]`); if(prev){ prev.classList.remove("open"); updateDetailsBtn(prev); }
+  const prev=document.querySelector(`.card[data-i="${ACTIVE}"]`); if(prev){ prev.classList.remove("open"); }
   ACTIVE=i;
   const cards=[...document.querySelectorAll(".card")];
   cards.forEach(c=>{
@@ -353,14 +361,14 @@ function setActive(i){
     const v=mountVideo(c);
     if(!v){ c.classList.remove("playing"); return; }        // статичная карточка — только постер
     if(v.tagName==="IFRAME"){ if(idx===i) c.classList.add("playing"); else c.classList.remove("playing");
-      if(idx===i && c.classList.contains("horiz") && !c.classList.contains("open")){ c.classList.add("open"); updateDetailsBtn(c); }
+      if(idx===i && c.classList.contains("horiz") && !c.classList.contains("open")){ c.classList.add("open"); }
       return; }
     if(idx===i){ v.muted=!SOUND; const bg=c.querySelector("video.bg");
       const go=()=>{ v.currentTime=0; v.play().catch(()=>{}); if(bg){bg.currentTime=0;bg.muted=true;bg.play().catch(()=>{});} };
       if(v.readyState>=2) go(); else v.addEventListener("loadeddata",go,{once:true});
       v.addEventListener("playing",()=>c.classList.add("playing"),{once:true});
       // горизонт-видео занимает мало места сверху — сразу раскрываем описание, раз есть свободное место
-      if(c.classList.contains("horiz") && !c.classList.contains("open")){ c.classList.add("open"); updateDetailsBtn(c); }
+      if(c.classList.contains("horiz") && !c.classList.contains("open")){ c.classList.add("open"); }
     } else { c.classList.remove("playing"); v.pause(); const bg=c.querySelector("video.bg"); if(bg) bg.pause(); }
   });
   const e=VIEW[i]; if(e) document.getElementById("datechip").textContent=relDate(e.date);
@@ -386,7 +394,7 @@ function bindGestures(card){
       stage.style.transform=`translateX(${dx*0.25}px)`; info.style.transform=`translateX(${dx*0.25}px)`; } };
   const end=()=>{ if(!drag)return; drag=false;
     document.getElementById("hdr").style.transform=""; stage.style.transform=""; info.style.transform="";
-    if(card.classList.contains("open")){ if(dy>60 && desc.scrollTop<=2){ card.classList.remove("open"); updateDetailsBtn(card); } return; }
+    if(card.classList.contains("open")){ if(dy>60 && desc.scrollTop<=2){ card.classList.remove("open"); } return; }
     // тап по пустому видео → скрыть/показать интерфейс
     if(Math.abs(dx)<8 && Math.abs(dy)<8 && tgt && tgt.closest(".stage")){ document.body.classList.toggle("clean"); return; }
     if(horiz && Math.abs(dx)>70 && !favMode){ switchCategory(dx<0?1:-1); } };
@@ -415,13 +423,12 @@ function flyToAvatar(fromEl){
   requestAnimationFrame(()=>{ fly.style.transform=`translate(${dx}px,${dy}px) scale(.35)`; fly.style.opacity="0"; });
   setTimeout(()=>{ fly.remove(); updateFavBadges(true); }, 500);
 }
-function updateDetailsBtn(card){ const b=card&&card.querySelector(".cta-btn");
-  if(b) b.textContent = card.classList.contains("open") ? "Свернуть ↓" : "Подробнее →"; }
 function bindActions(card){
   card.querySelectorAll("[data-act]").forEach(el=>{
     el.addEventListener("click",ev=>{ ev.stopPropagation(); if(el.tagName==="A"&&el.dataset.act) ev.preventDefault();
       const act=el.dataset.act, e=VIEW[+card.dataset.i];
-      if(act==="details"){ card.classList.toggle("open"); updateDetailsBtn(card); }
+      if(act==="open"){ card.classList.add("open"); }
+      else if(act==="close"){ card.classList.remove("open"); }
       else if(act==="setcat"){ if(!favMode) setCategory(el.dataset.cat,1); }
       else if(act==="me"){ enterFav(); }
       else if(act==="fav"){ if(fav.has(e.id)){fav.delete(e.id);el.classList.remove("on");updateFavBadges();toast("Убрано из «хочу пойти»");}

@@ -134,6 +134,17 @@
     border:1px solid var(--btn-border);color:#fff;padding:14px 16px;border-radius:12px;cursor:pointer}
   .ropt.on{background:var(--ink);color:#0b0b0d;border-color:var(--ink)}
   .ropt.off{color:#ff8a8a;background:rgba(255,80,80,.08);border-color:rgba(255,80,80,.3)}
+  .chan-sub{font-size:13px;color:rgba(255,255,255,.55);padding:0 4px 8px;line-height:1.4}
+  .chan-btn{display:flex;align-items:center;gap:12px;font-family:var(--disp);font-weight:700;font-size:14px;
+    text-align:left;padding:14px 16px;border-radius:12px;cursor:pointer;border:1px solid var(--btn-border)}
+  .chan-btn .ico{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;flex-shrink:0}
+  .chan-btn .sub{font-family:var(--body);font-weight:400;font-size:12px;color:rgba(255,255,255,.55);margin-top:1px}
+  .chan-btn.tg{background:rgba(232,255,71,.1);border-color:rgba(232,255,71,.4)}
+  .chan-btn.tg .ico{background:var(--ink);color:#0b0b0d}
+  .chan-btn.push{background:var(--btn-bg);color:#fff}
+  .chan-btn.push .ico{background:rgba(255,255,255,.12);color:#fff}
+  .chan-rec{margin-left:auto;font-family:var(--disp);font-size:9px;font-weight:800;letter-spacing:.06em;
+    text-transform:uppercase;color:#0b0b0d;background:var(--ink);padding:3px 8px;border-radius:100px}
   .toast{position:fixed;left:50%;bottom:120px;transform:translateX(-50%) translateY(16px);background:rgba(20,20,24,.96);
     border:1px solid rgba(255,255,255,.1);padding:11px 18px;border-radius:14px;font-family:var(--body);font-size:14px;
     font-weight:700;z-index:30;opacity:0;transition:.22s;pointer-events:none}
@@ -168,6 +179,8 @@ const ICON={
  forward:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg>',
  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>',
+ tg:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.3 18.6 20c-.25 1.1-.9 1.4-1.85.85l-5.1-3.75-2.45 2.35c-.27.27-.5.5-1 .5l.35-5.1L18.2 6.5c.45-.4-.1-.6-.7-.2L6.6 13.2l-5-1.55c-1.1-.35-1.1-1.1.25-1.6L20.5 3.15c.9-.35 1.7.2 1.4 1.15Z"/></svg>',
+ push:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
  soundOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>',
  soundOn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>' };
 
@@ -204,13 +217,42 @@ function openRemindMenu(e, btnEl){
   reminderOpts(e.date).forEach(o=>html+=`<button class="ropt ${cur===o?'on':''}" data-v="${o}">${o}</button>`);
   card.innerHTML=html;
   card.querySelectorAll(".ropt").forEach(b=>b.onclick=()=>{
-    if(b.dataset.v==="__off"){ remind.delete(e.id); if(btnEl) btnEl.classList.remove("on"); toast("Напоминание убрано"); }
-    else { remind.set(e.id,b.dataset.v); if(btnEl) btnEl.classList.add("on"); toast("🔔 Напомним · "+b.dataset.v.toLowerCase()); }
-    document.getElementById("remindsheet").classList.remove("open");
+    if(b.dataset.v==="__off"){ remind.delete(e.id); if(btnEl) btnEl.classList.remove("on"); toast("Напоминание убрано");
+      document.getElementById("remindsheet").classList.remove("open"); return; }
+    remind.set(e.id,b.dataset.v); if(btnEl) btnEl.classList.add("on");
+    if(!notifyChannel){                                    // канал ещё не выбран — спрашиваем один раз
+      openChannelSheet(`«${e.ev_title||e.page}» — ${b.dataset.v.toLowerCase()}`);
+    } else {
+      toast("🔔 Напомним · "+b.dataset.v.toLowerCase()+(notifyChannel==="tg"?" · Telegram":" · Push"));
+      document.getElementById("remindsheet").classList.remove("open");
+    }
   });
   document.getElementById("remindsheet").classList.add("open");
 }
 document.getElementById("remindsheet").addEventListener("click",e=>{ if(e.target.id==="remindsheet") e.currentTarget.classList.remove("open"); });
+
+// канал доставки напоминаний — спрашиваем один раз, при первом включённом напоминании
+let notifyChannel=null; // null | "tg" | "push"
+function openChannelSheet(afterText){
+  const card=document.getElementById("remindcard");
+  card.innerHTML=`
+    <div class="sheet-ttl">Куда прислать напоминание?</div>
+    <div class="chan-sub">${afterText}</div>
+    <button class="chan-btn tg" data-c="tg"><span class="ico">${ICON.tg}</span><span><div>Telegram</div><div class="sub">1 тап — бот сам напишет вовремя</div></span><span class="chan-rec">лучше</span></button>
+    <button class="chan-btn push" data-c="push"><span class="ico">${ICON.push}</span><span><div>Push-уведомления</div><div class="sub">на iPhone нужно добавить сайт «на экран Домой»</div></span></button>`;
+  card.querySelectorAll(".chan-btn").forEach(b=>b.onclick=()=>{
+    notifyChannel=b.dataset.c;
+    document.getElementById("remindsheet").classList.remove("open");
+    if(b.dataset.c==="push" && "Notification" in window){
+      Notification.requestPermission().then(p=>{
+        toast(p==="granted" ? "Push включены" : "Push не разрешены — переключим на Telegram");
+      });
+    } else {
+      toast("Готово — бот пришлёт напоминание в Telegram");
+    }
+  });
+  document.getElementById("remindsheet").classList.add("open");
+}
 function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show");
   clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"),1400); }
 

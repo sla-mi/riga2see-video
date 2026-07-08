@@ -113,7 +113,6 @@
     <a class="logo"><span class="r">riga</span><span class="d">.</span><span class="b">2see</span></a>
     <div class="tabs" id="tabs"></div>
   </div>
-  <a class="toview" id="toview" href="https://riga.2see.live" target="_blank" rel="noopener" title="Афиша списком"></a>
 </div>
 <div class="datebar"><span class="datechip" id="datechip"></span></div>
 <button class="sound" id="sound" title="звук"></button>
@@ -332,7 +331,7 @@ function buildFeed(list){
   feed.addEventListener("touchend",()=>{ if(atEnd && over>55 && curCat!==null){ switchCategory(1); } over=0; });
 })();
 
-document.querySelector("#toview").innerHTML=ICON.grid;
+// «Афиша» (переключалка на сайт) спрятана — при желании вернём в настройки под аватаром (data-act="me")
 
 async function boot(){
   ALL=await (await fetch("feed_ads.json",{cache:"no-store"})).json();

@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
 <title>riga.2see — лента</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230e0e10'/%3E%3Crect x='6' y='11' width='9' height='7' rx='3.5' fill='none' stroke='%23e8ff47' stroke-width='2'/%3E%3Crect x='17' y='11' width='9' height='7' rx='3.5' fill='none' stroke='%23e8ff47' stroke-width='2'/%3E%3Cpath d='M15 14h2M26 13c2 0 3 1 3 2' stroke='%23e8ff47' stroke-width='2' fill='none'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -92,8 +93,29 @@
   .logo .r{color:#fff}.logo .d{color:#fff}
   .logo .b{color:#15151a;background:var(--ink);padding:1px 5px 2px 3px;border-radius:4px 7px 5px 5px;transform:rotate(-1.6deg);display:inline-block}
   .logo .f{color:rgba(255,255,255,.3);font-size:13px;font-weight:700;margin-left:2px}
-  .top .tag{margin-left:auto;font-family:var(--disp);font-size:9px;font-weight:700;letter-spacing:.06em;
-    text-transform:uppercase;color:rgba(255,255,255,.45)}
+  .toview{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-family:var(--disp);font-size:11px;font-weight:700;
+    letter-spacing:.06em;text-transform:uppercase;color:#fff;text-decoration:none;padding:7px 13px;border-radius:100px;
+    border:1px solid var(--btn-border);background:rgba(10,10,12,.5);backdrop-filter:blur(6px)}
+  .toview .gi svg{width:15px;height:15px;display:block}
+  /* аватар зрителя (мой профиль) — внизу */
+  .me{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom));z-index:9;
+    width:40px;height:40px;border-radius:50%;border:2px solid rgba(255,255,255,.85);background:var(--card);
+    display:grid;place-items:center;cursor:pointer;filter:drop-shadow(0 1px 6px rgba(0,0,0,.6))}
+  .me svg{width:22px;height:22px;color:rgba(255,255,255,.9)}
+  .pill .cv{font-size:9px;opacity:.7;margin-left:2px}
+  /* веер категорий */
+  .catfan{position:fixed;inset:0;z-index:22;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .2s}
+  .catfan.open{opacity:1;pointer-events:auto}
+  .catfan-inner{position:absolute;left:16px;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));
+    display:flex;flex-wrap:wrap;gap:9px;transform:translateY(14px);transition:transform .22s;justify-content:center}
+  .catfan.open .catfan-inner{transform:translateY(0)}
+  .catfan-inner button{font-family:var(--disp);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    padding:9px 15px;border-radius:100px;border:1px solid var(--btn-border);background:rgba(20,20,24,.92);color:#fff;
+    display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+  .catfan-inner button .dot{width:8px;height:8px;border-radius:50%}
+  .catfan-inner button.on{background:var(--ink);color:#0b0b0d;border-color:var(--ink)}
+  .catfan-inner button.empty{opacity:.32}
+  .catfan-inner .n{opacity:.5;font-size:9px}
   .sound{position:fixed;top:56px;right:16px;z-index:9;width:40px;height:40px;border-radius:50%;
     border:0;background:none;color:#fff;cursor:pointer;display:grid;place-items:center;filter:drop-shadow(0 1px 6px rgba(0,0,0,.7))}
   .sound svg{width:24px;height:24px}
@@ -107,9 +129,11 @@
 </head>
 <body>
 <div class="top"><a class="logo"><span class="r">riga</span><span class="d">.</span><span class="b">2see</span><span class="f">.live</span></a>
-  <span class="tag">лента · β</span></div>
+  <a class="toview" id="toview" href="https://riga.2see.live" target="_blank" rel="noopener" title="Открыть афишу списком"><span class="gi"></span>Афиша</a></div>
 <button class="sound" id="sound" title="звук"></button>
 <div id="feed"></div>
+<button class="me" id="me" title="Мой профиль"></button>
+<div class="catfan" id="catfan"><div class="catfan-inner" id="catfan-inner"></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -123,6 +147,7 @@ const ICON={
  share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>',
  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+ grid:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
  soundOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>',
  soundOn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>' };
 const RU_MONTH=["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
@@ -130,7 +155,7 @@ function fmtDate(s){ if(!s) return ""; const d=new Date(s.replace(" ","T")); if(
   const wd=["вс","пн","вт","ср","чт","пт","сб"][d.getDay()];
   return `${wd}, ${d.getDate()} ${RU_MONTH[d.getMonth()]} · ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
 
-const fav=new Set(); let DATA=[]; let SOUND=false; let ACTIVE=-1;
+const fav=new Set(); const hidden=new Set(); let ALL=[]; let VIEW=[]; let SOUND=false; let ACTIVE=-1; let curCat=null;
 function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show");
   clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"),1400); }
 function firstLine(t){ return (t||"").split(/[\.\n!|]/)[0].trim().slice(0,70); }
@@ -141,8 +166,7 @@ function cardHTML(e,i){
   const cat=e.cat||""; const col=CAT_COLOR[cat]||"#cfcfd6";
   const priceTxt = e.is_free ? "Бесплатно" : (e.price_from!=null ? `от ${Math.round(e.price_from)} €` : "");
   const title = e.ev_title || firstLine(e.title) || e.page;
-  const pill = e.cat ? `<span class="pill"><span class="dot" style="background:${col}"></span>${cat}</span>`
-                     : `<span class="pill"><span class="dot" style="background:${col}"></span>${e.page}</span>`;
+  const pill = `<span class="pill" data-act="cats"><span class="dot" style="background:${col}"></span>${cat||e.page}<span class="cv">▾</span></span>`;
   const place = e.venue || e.page;
   const dateLine = e.date ? `<b>${fmtDate(e.date)}</b>${place?` · ${place}`:""}` : place;
   const cta = `<div class="cta"><a class="ghost" data-act="details" href="#">Подробнее →</a></div>`;
@@ -150,7 +174,7 @@ function cardHTML(e,i){
   return `<div class="card ${orient}" data-i="${i}">
     <div class="stage">${bgPoster}<img class="poster" src="${poster(e)}" alt=""></div>
     <div class="shade"></div>
-    <div class="stamp like">❤ В ИЗБРАННОЕ</div><div class="stamp nope">ПРОПУСК</div>
+    <div class="stamp like">+ ИНТЕРЕСНО</div><div class="stamp nope">✕ НЕИНТЕРЕСНО</div>
     <div class="rail">
       <button class="av" data-act="profile" title="Организатор">${ICON.user}</button>
       <button data-act="fav" class="${fav.has(e.id)?"on":""}" title="В избранное">${ICON.heart}</button>
@@ -177,7 +201,7 @@ function cardHTML(e,i){
 // ── видео: монтируем только активной ±1 (лимит iOS) ──
 function mountVideo(card){
   if(card.querySelector("video.main")) return card.querySelector("video.main");
-  const e=DATA[+card.dataset.i], stage=card.querySelector(".stage");
+  const e=VIEW[+card.dataset.i], stage=card.querySelector(".stage");
   const prep=(vd,cls)=>{ vd.className=cls;vd.src=e.file;vd.loop=true;vd.playsInline=true;
     vd.muted=true;vd.defaultMuted=true;
     vd.setAttribute("muted","");vd.setAttribute("playsinline","");vd.setAttribute("webkit-playsinline","");
@@ -216,12 +240,20 @@ soundBtn.addEventListener("click",()=>{ SOUND=!SOUND; renderSound();
 renderSound();
 
 function react(card,dir){
-  const e=DATA[+card.dataset.i];
-  if(dir>0){ fav.add(e.id); toast("❤ В избранном"); } else toast("Пропущено");
-  card.style.transition="transform .32s ease, opacity .32s ease";
-  card.style.transform=`translate(${dir>0?120:-120}%,0) rotate(${dir>0?9:-9}deg)`; card.style.opacity="0";
-  setTimeout(()=>{ document.getElementById("feed").scrollBy({top:window.innerHeight,behavior:"smooth"});
-    card.style.transition="";card.style.transform="";card.style.opacity=""; },330);
+  const e=VIEW[+card.dataset.i];
+  const st=card.querySelector(dir>0?".stamp.like":".stamp.nope"); if(st) st.style.opacity="1"; // держим штамп видимым
+  if(dir>0){ fav.add(e.id); const fb=card.querySelector('[data-act="fav"]'); if(fb) fb.classList.add("on"); toast("+ Интересно · в избранном"); }
+  else { hidden.add(e.id); toast("✕ Неинтересно · скрыто"); }
+  setTimeout(()=>{                                    // дать ~0.7с прочитать штамп
+    if(dir<0){                                        // неинтересно — улетает и убирается из ленты
+      card.style.transition="transform .34s ease, opacity .34s ease";
+      card.style.transform="translate(-120%,0) rotate(-9deg)"; card.style.opacity="0";
+      setTimeout(()=>card.remove(),340);
+    } else {                                          // интересно — сохранили, листаем дальше
+      if(st) st.style.opacity="";
+      document.getElementById("feed").scrollBy({top:window.innerHeight,behavior:"smooth"});
+    }
+  },700);
 }
 function bindGestures(card){
   let x0=0,y0=0,dx=0,dy=0,horiz=null,drag=false;
@@ -246,9 +278,10 @@ function bindGestures(card){
 function bindActions(card){
   card.querySelectorAll("[data-act]").forEach(el=>{
     el.addEventListener("click",ev=>{ ev.stopPropagation(); if(el.tagName==="A"&&el.dataset.act) ev.preventDefault();
-      const act=el.dataset.act, e=DATA[+card.dataset.i];
+      const act=el.dataset.act, e=VIEW[+card.dataset.i];
       if(act==="details") card.classList.toggle("open");   // повторный тап по названию — свернуть
       else if(act==="close") card.classList.remove("open");
+      else if(act==="cats"){ openCatFan(); }
       else if(act==="profile"){ toast("Профиль организатора: "+e.page); }
       else if(act==="fav"){ if(fav.has(e.id)){fav.delete(e.id);el.classList.remove("on");toast("Убрано из избранного");}
         else{fav.add(e.id);el.classList.add("on");toast("В избранном");} }
@@ -260,16 +293,48 @@ function bindActions(card){
   });
 }
 
-async function boot(){
-  DATA=await (await fetch("feed_ads.json",{cache:"no-store"})).json();
+// v1-ранжирование: ближайшие по дате первыми; скрытые («неинтересно») и фильтр категории — вон
+function currentList(){
+  return ALL.filter(e=>!hidden.has(e.id) && (curCat===null || (e.cat||"")===curCat))
+            .slice().sort((a,b)=>String(a.date||"9999").localeCompare(String(b.date||"9999")));
+}
+let _io=null;
+function buildFeed(list){
+  VIEW=list; ACTIVE=-1;
   const feed=document.getElementById("feed");
-  feed.innerHTML=DATA.map(cardHTML).join("");
+  feed.innerHTML = VIEW.length ? VIEW.map(cardHTML).join("")
+    : `<div style="height:100dvh;display:grid;place-items:center;text-align:center;padding:0 30px;color:rgba(255,255,255,.6);font-family:var(--disp);font-weight:700">В этой категории пока нет видео.<br><br>Сменить фильтр — тап по пилюле категории.</div>`;
   const cards=[...feed.querySelectorAll(".card")];
   cards.forEach(c=>{bindGestures(c);bindActions(c);});
-  const io=new IntersectionObserver(es=>{ es.forEach(en=>{ if(en.isIntersecting&&en.intersectionRatio>0.6) setActive(+en.target.dataset.i); }); },{threshold:[0,.6,1]});
-  cards.forEach(c=>io.observe(c));
-  setActive(0);
-  // разблокировка автозапуска на первом касании (страховка для iOS/энергосбережения)
+  if(_io) _io.disconnect();
+  _io=new IntersectionObserver(es=>{ es.forEach(en=>{ if(en.isIntersecting&&en.intersectionRatio>0.6) setActive(+en.target.dataset.i); }); },{threshold:[0,.6,1]});
+  cards.forEach(c=>_io.observe(c));
+  if(cards.length) setActive(0);
+}
+
+// веер категорий
+function openCatFan(){
+  const inner=document.getElementById("catfan-inner");
+  const counts={}; ALL.forEach(e=>{ const c=e.cat||""; if(c) counts[c]=(counts[c]||0)+1; });
+  let html=`<button data-cat="" class="${curCat===null?'on':''}">Все <span class="n">${ALL.length}</span></button>`;
+  Object.keys(CAT_COLOR).forEach(c=>{ const n=counts[c]||0;
+    html+=`<button data-cat="${c}" class="${curCat===c?'on':''} ${n?'':'empty'}"><span class="dot" style="background:${CAT_COLOR[c]}"></span>${c}${n?` <span class="n">${n}</span>`:''}</button>`; });
+  inner.innerHTML=html;
+  inner.querySelectorAll("button").forEach(b=>b.addEventListener("click",ev=>{ ev.stopPropagation();
+    curCat=b.dataset.cat||null; document.getElementById("catfan").classList.remove("open");
+    buildFeed(currentList()); toast(curCat?("Категория: "+curCat):"Все категории"); }));
+  document.getElementById("catfan").classList.add("open");
+}
+document.getElementById("catfan").addEventListener("click",ev=>{ if(ev.target.id==="catfan") ev.currentTarget.classList.remove("open"); });
+
+// иконки: аватар зрителя (низ) + переключатель на афишу
+document.querySelector("#toview .gi").innerHTML=ICON.grid;
+const meBtn=document.getElementById("me"); meBtn.innerHTML=ICON.user;
+meBtn.addEventListener("click",()=>toast("Твой профиль: избранное, напоминания, билеты"));
+
+async function boot(){
+  ALL=await (await fetch("feed_ads.json",{cache:"no-store"})).json();
+  buildFeed(currentList());
   let unlocked=false;
   const unlock=()=>{ if(unlocked)return; unlocked=true;
     const v=document.querySelector(`.card[data-i="${ACTIVE}"] video.main`); if(v){ v.muted=!SOUND; v.play().catch(()=>{}); } };

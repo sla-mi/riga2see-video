@@ -98,24 +98,20 @@
     border:1px solid var(--btn-border);background:rgba(10,10,12,.5);backdrop-filter:blur(6px)}
   .toview .gi svg{width:15px;height:15px;display:block}
   /* аватар зрителя (мой профиль) — внизу */
-  .me{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom));z-index:9;
-    width:40px;height:40px;border-radius:50%;border:2px solid rgba(255,255,255,.85);background:var(--card);
-    display:grid;place-items:center;cursor:pointer;filter:drop-shadow(0 1px 6px rgba(0,0,0,.6))}
-  .me svg{width:22px;height:22px;color:rgba(255,255,255,.9)}
   .pill .cv{font-size:9px;opacity:.7;margin-left:2px}
-  /* веер категорий */
-  .catfan{position:fixed;inset:0;z-index:22;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .2s}
+  /* РАДИАЛЬНЫЙ ВЕЕР категорий — чипы по дуге от пилюли вверх, дуга крутится */
+  .catfan{position:fixed;inset:0;z-index:22;background:rgba(0,0,0,.66);opacity:0;pointer-events:none;transition:opacity .22s}
   .catfan.open{opacity:1;pointer-events:auto}
-  .catfan-inner{position:absolute;left:16px;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));
-    display:flex;flex-wrap:wrap;gap:9px;transform:translateY(14px);transition:transform .22s;justify-content:center}
-  .catfan.open .catfan-inner{transform:translateY(0)}
-  .catfan-inner button{font-family:var(--disp);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
-    padding:9px 15px;border-radius:100px;border:1px solid var(--btn-border);background:rgba(20,20,24,.92);color:#fff;
-    display:inline-flex;align-items:center;gap:7px;cursor:pointer}
-  .catfan-inner button .dot{width:8px;height:8px;border-radius:50%}
-  .catfan-inner button.on{background:var(--ink);color:#0b0b0d;border-color:var(--ink)}
-  .catfan-inner button.empty{opacity:.32}
-  .catfan-inner .n{opacity:.5;font-size:9px}
+  #catfan-inner{position:absolute;inset:0;touch-action:none}
+  .fchip{position:absolute;left:0;top:0;transform-origin:center;font-family:var(--disp);font-size:12px;font-weight:700;
+    letter-spacing:.04em;text-transform:uppercase;padding:9px 15px;border-radius:100px;border:1px solid var(--btn-border);
+    background:rgba(22,22,27,.96);color:#fff;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;cursor:pointer;
+    will-change:transform,opacity;box-shadow:0 4px 18px rgba(0,0,0,.5)}
+  .fchip .dot{width:9px;height:9px;border-radius:50%}
+  .fchip.on{background:var(--ink);color:#0b0b0d;border-color:var(--ink)}
+  .fchip.empty{filter:grayscale(1)}
+  .fan-hint{position:absolute;left:0;right:0;bottom:calc(22px + env(safe-area-inset-bottom));text-align:center;
+    font-family:var(--disp);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5)}
   .sound{position:fixed;top:56px;right:16px;z-index:9;width:40px;height:40px;border-radius:50%;
     border:0;background:none;color:#fff;cursor:pointer;display:grid;place-items:center;filter:drop-shadow(0 1px 6px rgba(0,0,0,.7))}
   .sound svg{width:24px;height:24px}
@@ -132,8 +128,7 @@
   <a class="toview" id="toview" href="https://riga.2see.live" target="_blank" rel="noopener" title="Открыть афишу списком"><span class="gi"></span>Афиша</a></div>
 <button class="sound" id="sound" title="звук"></button>
 <div id="feed"></div>
-<button class="me" id="me" title="Мой профиль"></button>
-<div class="catfan" id="catfan"><div class="catfan-inner" id="catfan-inner"></div></div>
+<div class="catfan" id="catfan"><div id="catfan-inner"></div><div class="fan-hint">крути дугу · тап — выбрать</div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -176,10 +171,10 @@ function cardHTML(e,i){
     <div class="shade"></div>
     <div class="stamp like">+ ИНТЕРЕСНО</div><div class="stamp nope">✕ НЕИНТЕРЕСНО</div>
     <div class="rail">
-      <button class="av" data-act="profile" title="Организатор">${ICON.user}</button>
       <button data-act="fav" class="${fav.has(e.id)?"on":""}" title="В избранное">${ICON.heart}</button>
       <button data-act="remind" title="Напомнить">${ICON.bell}</button>
       <button data-act="share" title="Поделиться">${ICON.share}</button>
+      <button class="av" data-act="me" title="Профиль">${ICON.user}</button>
     </div>
     <div class="info">
       ${pill}
@@ -282,7 +277,7 @@ function bindActions(card){
       if(act==="details") card.classList.toggle("open");   // повторный тап по названию — свернуть
       else if(act==="close") card.classList.remove("open");
       else if(act==="cats"){ openCatFan(); }
-      else if(act==="profile"){ toast("Профиль организатора: "+e.page); }
+      else if(act==="me"){ toast("Профиль: настройки, вход, избранное"); }
       else if(act==="fav"){ if(fav.has(e.id)){fav.delete(e.id);el.classList.remove("on");toast("Убрано из избранного");}
         else{fav.add(e.id);el.classList.add("on");toast("В избранном");} }
       else if(act==="remind"){ el.classList.add("on"); toast("🔔 Напомним за 2 часа до события"); }
@@ -312,25 +307,54 @@ function buildFeed(list){
   if(cards.length) setActive(0);
 }
 
-// веер категорий
+// ── РАДИАЛЬНЫЙ ВЕЕР КАТЕГОРИЙ (дуга от пилюли вверх, крутится перетаскиванием) ──
+const fan={rot:0,chips:[],ox:0,oy:0,R:200,STEP:15,A0:8,min:-120,max:0,drag:false,py:0,moved:false};
+function fanLayout(){
+  fan.chips.forEach((ch,i)=>{
+    const ang=fan.A0+i*fan.STEP+fan.rot, rad=ang*Math.PI/180;
+    const x=fan.ox+fan.R*Math.cos(rad), y=fan.oy-fan.R*Math.sin(rad);
+    const tilt=(ang-90)*0.4, on=(ang>-4&&ang<102), edge=(ang<7||ang>94);
+    ch.style.transform=`translate(${x}px,${y}px) translate(-50%,-50%) rotate(${tilt}deg)`;
+    ch.style.opacity=on?(edge?0.28:1):0;
+    ch.style.pointerEvents=on?"auto":"none";
+  });
+}
 function openCatFan(){
-  const inner=document.getElementById("catfan-inner");
+  const stage=document.getElementById("catfan-inner");
   const counts={}; ALL.forEach(e=>{ const c=e.cat||""; if(c) counts[c]=(counts[c]||0)+1; });
-  let html=`<button data-cat="" class="${curCat===null?'on':''}">Все <span class="n">${ALL.length}</span></button>`;
-  Object.keys(CAT_COLOR).forEach(c=>{ const n=counts[c]||0;
-    html+=`<button data-cat="${c}" class="${curCat===c?'on':''} ${n?'':'empty'}"><span class="dot" style="background:${CAT_COLOR[c]}"></span>${c}${n?` <span class="n">${n}</span>`:''}</button>`; });
-  inner.innerHTML=html;
-  inner.querySelectorAll("button").forEach(b=>b.addEventListener("click",ev=>{ ev.stopPropagation();
-    curCat=b.dataset.cat||null; document.getElementById("catfan").classList.remove("open");
-    buildFeed(currentList()); toast(curCat?("Категория: "+curCat):"Все категории"); }));
+  const items=[{cat:"",label:"Все",n:ALL.length,col:"#ffffff"}]
+    .concat(Object.keys(CAT_COLOR).map(c=>({cat:c,label:c,n:counts[c]||0,col:CAT_COLOR[c]})));
+  stage.innerHTML=items.map(it=>`<button class="fchip ${(curCat||"")===it.cat?'on':''} ${it.n||it.cat===""?'':'empty'}" data-cat="${it.cat}"><span class="dot" style="background:${it.col}"></span>${it.label}${it.n?` <span style="opacity:.55;margin-left:1px">${it.n}</span>`:''}</button>`).join("");
+  fan.chips=[...stage.querySelectorAll(".fchip")];
+  const pill=document.querySelector(`.card[data-i="${ACTIVE}"] .pill`);
+  const r=pill?pill.getBoundingClientRect():{left:30,top:innerHeight-200,width:90,height:30};
+  fan.ox=r.left+r.width/2; fan.oy=r.top+r.height/2;
+  fan.R=Math.min(220, innerHeight*0.30);
+  const span=(fan.chips.length-1)*fan.STEP;
+  fan.rot=0; fan.max=0; fan.min=85-(fan.A0+span);   // прокрутка дуги до последней категории
+  fanLayout();
   document.getElementById("catfan").classList.add("open");
 }
+(function(){                                          // жесты веера — вешаем один раз
+  const stage=document.getElementById("catfan-inner");
+  const start=y=>{fan.drag=true;fan.py=y;fan.moved=false;};
+  const move=y=>{ if(!fan.drag)return; const d=fan.py-y; if(Math.abs(d)>3)fan.moved=true;
+    fan.rot=Math.max(fan.min,Math.min(fan.max,fan.rot+d*0.25)); fan.py=y; fanLayout(); };
+  const end=()=>{fan.drag=false;};
+  stage.addEventListener("touchstart",e=>start(e.touches[0].clientY),{passive:true});
+  stage.addEventListener("touchmove",e=>{move(e.touches[0].clientY);e.preventDefault();},{passive:false});
+  stage.addEventListener("touchend",end);
+  stage.addEventListener("mousedown",e=>start(e.clientY));
+  window.addEventListener("mousemove",e=>fan.drag&&move(e.clientY));
+  window.addEventListener("mouseup",end);
+  stage.addEventListener("click",ev=>{ const ch=ev.target.closest(".fchip"); if(!ch)return; ev.stopPropagation();
+    if(fan.moved){fan.moved=false;return;}
+    curCat=ch.dataset.cat||null; document.getElementById("catfan").classList.remove("open");
+    buildFeed(currentList()); toast(curCat?("Категория: "+curCat):"Все категории"); });
+})();
 document.getElementById("catfan").addEventListener("click",ev=>{ if(ev.target.id==="catfan") ev.currentTarget.classList.remove("open"); });
 
-// иконки: аватар зрителя (низ) + переключатель на афишу
-document.querySelector("#toview .gi").innerHTML=ICON.grid;
-const meBtn=document.getElementById("me"); meBtn.innerHTML=ICON.user;
-meBtn.addEventListener("click",()=>toast("Твой профиль: избранное, напоминания, билеты"));
+document.querySelector("#toview .gi").innerHTML=ICON.grid;   // иконка «Афиша»
 
 async function boot(){
   ALL=await (await fetch("feed_ads.json",{cache:"no-store"})).json();

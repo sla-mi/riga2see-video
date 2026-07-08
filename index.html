@@ -76,8 +76,10 @@
     text-shadow:0 2px 16px rgba(0,0,0,.85);cursor:pointer}
   /* инлайн-описание над заголовком: раскрывается на сколько нужно, скроллится */
   .desc{max-height:0;overflow:hidden;transition:max-height .3s ease}
-  .card.open .desc{max-height:44dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .card.open .desc{max-height:46dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
   .desc::-webkit-scrollbar{display:none}
+  .grab{position:sticky;top:0;width:38px;height:5px;border-radius:3px;background:rgba(255,255,255,.45);
+    margin:0 auto 12px;cursor:grab}
   .dtext{font-size:15px;line-height:1.55;color:#fff;white-space:pre-line;text-shadow:0 1px 10px rgba(0,0,0,.95);padding:2px 0}
   .desc .buy{display:inline-block;margin:12px 0 4px;font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.06em;
     text-transform:uppercase;text-decoration:none;padding:12px 22px;border-radius:100px;background:var(--ink);color:#0b0b0d}
@@ -188,7 +190,7 @@ function cardHTML(e,i){
     <div class="info">
       ${chip}
       <h1 data-act="details">${title}</h1>
-      <div class="desc"><div class="dtext">${(e.body||"Описание появится позже.").trim()}</div>${e.ticket?`<a class="buy" href="${e.ticket}" target="_blank" rel="noopener">Билеты · ${priceTxt} →</a>`:""}</div>
+      <div class="desc"><div class="grab" data-act="details"></div><div class="dtext">${(e.body||"Описание появится позже.").trim()}</div>${e.ticket?`<a class="buy" href="${e.ticket}" target="_blank" rel="noopener">Билеты · ${priceTxt} →</a>`:""}</div>
       ${place?`<div class="meta">${place}</div>`:""}
       <div class="arow">
         ${priceTxt?`<span class="ptag ${e.is_free?"free":""}">${priceTxt}</span>`:""}
@@ -211,7 +213,7 @@ function unmountVideo(card){ card.classList.remove("playing");
   card.querySelectorAll("video").forEach(v=>{ v.pause(); v.removeAttribute("src"); v.load(); v.remove(); }); }
 function setActive(i){
   if(i===ACTIVE) return;
-  const prev=document.querySelector(`.card[data-i="${ACTIVE}"]`); if(prev) prev.classList.remove("open");
+  const prev=document.querySelector(`.card[data-i="${ACTIVE}"]`); if(prev){ prev.classList.remove("open"); updateDetailsBtn(prev); }
   ACTIVE=i;
   const cards=[...document.querySelectorAll(".card")];
   cards.forEach(c=>{
@@ -246,7 +248,7 @@ function bindGestures(card){
       document.getElementById("feed").style.transform=`translateX(${dx*0.25}px)`; } };
   const end=()=>{ if(!drag)return; drag=false;
     document.getElementById("hdr").style.transform=""; document.getElementById("feed").style.transform="";
-    if(card.classList.contains("open")){ if(dy>60 && desc.scrollTop<=2) card.classList.remove("open"); return; }
+    if(card.classList.contains("open")){ if(dy>60 && desc.scrollTop<=2){ card.classList.remove("open"); updateDetailsBtn(card); } return; }
     if(horiz && Math.abs(dx)>70 && !favMode){ switchCategory(dx<0?1:-1); } };
   card.addEventListener("touchstart",e=>start(e.touches[0].clientX,e.touches[0].clientY),{passive:true});
   card.addEventListener("touchmove",e=>{ move(e.touches[0].clientX,e.touches[0].clientY);
@@ -273,11 +275,13 @@ function flyToAvatar(fromEl){
   requestAnimationFrame(()=>{ fly.style.transform=`translate(${dx}px,${dy}px) scale(.35)`; fly.style.opacity="0"; });
   setTimeout(()=>{ fly.remove(); updateFavBadges(true); }, 500);
 }
+function updateDetailsBtn(card){ const b=card&&card.querySelector(".cta-btn");
+  if(b) b.textContent = card.classList.contains("open") ? "Свернуть ↓" : "Подробнее →"; }
 function bindActions(card){
   card.querySelectorAll("[data-act]").forEach(el=>{
     el.addEventListener("click",ev=>{ ev.stopPropagation(); if(el.tagName==="A"&&el.dataset.act) ev.preventDefault();
       const act=el.dataset.act, e=VIEW[+card.dataset.i];
-      if(act==="details") card.classList.toggle("open");
+      if(act==="details"){ card.classList.toggle("open"); updateDetailsBtn(card); }
       else if(act==="setcat"){ if(!favMode) setCategory(el.dataset.cat,1); }
       else if(act==="me"){ enterFav(); }
       else if(act==="fav"){ if(fav.has(e.id)){fav.delete(e.id);el.classList.remove("on");updateFavBadges();toast("Убрано из «хочу пойти»");}
@@ -362,7 +366,7 @@ function buildDateMenu(){
   const t=new Date(); t.setHours(0,0,0,0);
   menu.innerHTML=[...seen.entries()].map(([k,idx])=>{
     const d=new Date(k+"T00:00:00"); const diff=Math.round((d-t)/864e5);
-    const word = diff===0?"сегодня":diff===1?"завтра":WD_FULL[d.getDay()];
+    const word = diff===0?"сегодня":diff===1?"завтра":["вс","пн","вт","ср","чт","пт","сб"][d.getDay()];
     const dm=`${d.getDate()}.${String(d.getMonth()+1).padStart(2,"0")}`;
     return `<button class="dmi" data-idx="${idx}">${word} · ${dm}</button>`;
   }).join("");

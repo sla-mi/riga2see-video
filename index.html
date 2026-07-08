@@ -270,6 +270,19 @@ function bindGestures(card){
   window.addEventListener("mousemove",e=>drag&&move(e.clientX,e.clientY));
   window.addEventListener("mouseup",end);
 }
+// свайп внутри открытого описания: вниз = закрыть/остаться, вверх = закрыть + следующее событие
+function bindExpandSwipe(card){
+  const ex=card.querySelector(".expand"), et=ex.querySelector(".etext");
+  let y0=0,on=false;
+  ex.addEventListener("touchstart",e=>{ y0=e.touches[0].clientY; on=true; },{passive:true});
+  ex.addEventListener("touchend",e=>{ if(!on)return; on=false;
+    const dy=e.changedTouches[0].clientY-y0;
+    if(dy>70 && et.scrollTop<=2){ card.classList.remove("open"); }               // вниз (текст вверху) → остаёмся
+    else if(dy<-70 && et.scrollTop+et.clientHeight>=et.scrollHeight-4){          // вверх (дочитал) → следующее
+      card.classList.remove("open");
+      document.getElementById("feed").scrollBy({top:window.innerHeight,behavior:"smooth"}); }
+  });
+}
 function bindActions(card){
   card.querySelectorAll("[data-act]").forEach(el=>{
     el.addEventListener("click",ev=>{ ev.stopPropagation(); if(el.tagName==="A"&&el.dataset.act) ev.preventDefault();
@@ -300,7 +313,7 @@ function buildFeed(list){
   feed.innerHTML = VIEW.length ? VIEW.map(cardHTML).join("")
     : `<div style="height:100dvh;display:grid;place-items:center;text-align:center;padding:0 30px;color:rgba(255,255,255,.6);font-family:var(--disp);font-weight:700">В этой категории пока нет видео.<br><br>Сменить фильтр — тап по пилюле категории.</div>`;
   const cards=[...feed.querySelectorAll(".card")];
-  cards.forEach(c=>{bindGestures(c);bindActions(c);});
+  cards.forEach(c=>{bindGestures(c);bindActions(c);bindExpandSwipe(c);});
   if(_io) _io.disconnect();
   _io=new IntersectionObserver(es=>{ es.forEach(en=>{ if(en.isIntersecting&&en.intersectionRatio>0.6) setActive(+en.target.dataset.i); }); },{threshold:[0,.6,1]});
   cards.forEach(c=>_io.observe(c));
@@ -313,7 +326,7 @@ function fanLayout(){
   fan.chips.forEach((ch,i)=>{
     const ang=fan.A0+i*fan.STEP+fan.rot, rad=ang*Math.PI/180;
     const x=fan.ox+fan.R*Math.cos(rad), y=fan.oy-fan.R*Math.sin(rad);
-    const tilt=(ang-90)*0.4, on=(ang>-4&&ang<102), edge=(ang<7||ang>94);
+    const tilt=(ang-90)*0.42, on=(ang>-2&&ang<104), edge=(ang<8||ang>96);
     ch.style.transform=`translate(${x}px,${y}px) translate(-50%,-50%) rotate(${tilt}deg)`;
     ch.style.opacity=on?(edge?0.28:1):0;
     ch.style.pointerEvents=on?"auto":"none";
@@ -329,9 +342,10 @@ function openCatFan(){
   const pill=document.querySelector(`.card[data-i="${ACTIVE}"] .pill`);
   const r=pill?pill.getBoundingClientRect():{left:30,top:innerHeight-200,width:90,height:30};
   fan.ox=r.left+r.width/2; fan.oy=r.top+r.height/2;
-  fan.R=Math.min(220, innerHeight*0.30);
+  fan.R=Math.min(330, innerHeight*0.44);            // большой радиус → чипы с зазором, без нахлёста
+  fan.STEP=17;
   const span=(fan.chips.length-1)*fan.STEP;
-  fan.rot=0; fan.max=0; fan.min=85-(fan.A0+span);   // прокрутка дуги до последней категории
+  fan.rot=0; fan.max=0; fan.min=82-(fan.A0+span);   // прокрутка дуги до последней категории
   fanLayout();
   document.getElementById("catfan").classList.add("open");
 }

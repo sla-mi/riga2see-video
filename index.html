@@ -301,7 +301,8 @@ function toast(t){ const el=document.getElementById("toast"); el.textContent=t; 
 
 function cardHTML(e,i){
   // без видео — показываем афишу целиком (contain), никогда не обрезаем; с видео — по его ориентации
-  const orient=!hasVideo(e) ? "photo" : (vidOrient(e)==="horiz"?"horiz":"vert");
+  // квадратные видео тоже не заполняют портретный экран целиком — та же обработка (contain + верхняя треть), что у горизонтальных
+  const orient=!hasVideo(e) ? "photo" : ((vidOrient(e)==="horiz"||vidOrient(e)==="sq")?"horiz":"vert");
   const cat=e.cat||""; const col=CAT_COLOR[cat]||"#cfcfd6";
   const priceTxt = e.is_free ? "Бесплатно" : (e.price_from!=null ? `от ${Math.round(e.price_from)} €` : "");
   const title = e.ev_title || firstLine(e.title) || e.page;
@@ -504,7 +505,8 @@ function updateTabs(){
   const hdr=document.getElementById("hdr");
   document.querySelectorAll("#tabs .tab").forEach(t=>{
     const on=(curCat||"")===t.dataset.cat; t.classList.toggle("on",on);
-    if(on){ const target=t.offsetLeft-(hdr.clientWidth-t.offsetWidth)/2;
+    // первая вкладка («Все») — скроллим к самому началу, чтобы лого было видно целиком, не центрируем её
+    if(on){ const target = t.dataset.cat==="" ? 0 : t.offsetLeft-(hdr.clientWidth-t.offsetWidth)/2;
       animateScrollTo(hdr, Math.max(0,target), 220); } });
 }
 function setCategory(cat, dir){

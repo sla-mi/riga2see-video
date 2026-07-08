@@ -103,11 +103,12 @@
   .catfan{position:fixed;inset:0;z-index:22;background:rgba(0,0,0,.66);opacity:0;pointer-events:none;transition:opacity .22s}
   .catfan.open{opacity:1;pointer-events:auto}
   #catfan-inner{position:absolute;inset:0;touch-action:none}
-  .fchip{position:absolute;left:0;top:0;transform-origin:center;font-family:var(--disp);font-size:12px;font-weight:700;
-    letter-spacing:.04em;text-transform:uppercase;padding:9px 15px;border-radius:100px;border:1px solid var(--btn-border);
-    background:rgba(22,22,27,.96);color:#fff;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;cursor:pointer;
-    will-change:transform,opacity;box-shadow:0 4px 18px rgba(0,0,0,.5)}
-  .fchip .dot{width:9px;height:9px;border-radius:50%}
+  .fchip{position:absolute;left:0;top:0;transform-origin:center;font-family:var(--disp);font-size:11.5px;font-weight:700;
+    letter-spacing:.03em;text-transform:uppercase;padding:9px 14px;border-radius:100px;border:1px solid var(--btn-border);
+    background:rgba(22,22,27,.96);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:8px;
+    width:150px;white-space:nowrap;cursor:pointer;will-change:transform,opacity;box-shadow:0 4px 18px rgba(0,0,0,.5)}
+  .fchip .ltxt{overflow:hidden;text-overflow:ellipsis}
+  .fchip .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
   .fchip.on{background:var(--ink);color:#0b0b0d;border-color:var(--ink)}
   .fchip.empty{filter:grayscale(1)}
   .fan-hint{position:absolute;left:0;right:0;bottom:calc(22px + env(safe-area-inset-bottom));text-align:center;
@@ -124,7 +125,7 @@
 </style>
 </head>
 <body>
-<div class="top"><a class="logo"><span class="r">riga</span><span class="d">.</span><span class="b">2see</span><span class="f">.live</span></a>
+<div class="top"><a class="logo"><span class="r">riga</span><span class="d">.</span><span class="b">2see</span></a>
   <a class="toview" id="toview" href="https://riga.2see.live" target="_blank" rel="noopener" title="Открыть афишу списком"><span class="gi"></span>Афиша</a></div>
 <button class="sound" id="sound" title="звук"></button>
 <div id="feed"></div>
@@ -323,16 +324,18 @@ function buildFeed(list){
 // ── РАДИАЛЬНЫЙ ВЕЕР КАТЕГОРИЙ (дуга от пилюли вверх, крутится перетаскиванием) ──
 const fan={rot:0,chips:[],ox:0,oy:0,R:200,STEP:15,A0:8,min:-120,max:0,drag:false,py:0,moved:false};
 function fanLayout(){
-  // общий пивот = левый край пилюли; каждый чип повёрнут вокруг него всё сильнее (веер из руки)
+  // равные вертикальные зазоры (никогда не налезают) + мягкий изгиб вправо + нарастающий наклон
+  const DY=58, XR=118;
   fan.chips.forEach((ch,i)=>{
-    const ang=fan.A0+i*fan.STEP+fan.rot;           // нарастающий наклон
-    const on=(ang>-9 && ang<96), edge=(ang<1||ang>88);
-    ch.style.transformOrigin="0% 50%";
-    // пивот у левого края + выезд наружу по оси чипа (i*push) → ярлыки не слипаются
-    ch.style.transform=`translate(${fan.ox}px,${fan.oy}px) translateY(-50%) rotate(${-ang}deg) translateX(${i*22}px)`;
-    ch.style.opacity=on?(edge?0.32:1):0;
+    const k=i+fan.rot;                               // дробный индекс (плавная прокрутка)
+    const x=fan.ox + XR*(1-Math.cos(k*0.32));        // дуга вправо
+    const y=fan.oy - k*DY;                           // ровный шаг вверх
+    const tilt=-k*4.5;                               // мягкий нарастающий наклон
+    const on=(k>-0.6 && k<6.3), edge=(k<0.25||k>5.7);
+    ch.style.transformOrigin="50% 50%";
+    ch.style.transform=`translate(${x}px,${y}px) translate(-50%,-50%) rotate(${tilt}deg)`;
+    ch.style.opacity=on?(edge?0.3:1):0;
     ch.style.pointerEvents=on?"auto":"none";
-    ch.style.zIndex=String(10+i);
   });
 }
 function openCatFan(){
@@ -340,14 +343,12 @@ function openCatFan(){
   const counts={}; ALL.forEach(e=>{ const c=e.cat||""; if(c) counts[c]=(counts[c]||0)+1; });
   const items=[{cat:"",label:"Все",n:ALL.length,col:"#ffffff"}]
     .concat(Object.keys(CAT_COLOR).map(c=>({cat:c,label:c,n:counts[c]||0,col:CAT_COLOR[c]})));
-  stage.innerHTML=items.map(it=>`<button class="fchip ${(curCat||"")===it.cat?'on':''} ${it.n||it.cat===""?'':'empty'}" data-cat="${it.cat}"><span class="dot" style="background:${it.col}"></span>${it.label}${it.n?` <span style="opacity:.55;margin-left:1px">${it.n}</span>`:''}</button>`).join("");
+  stage.innerHTML=items.map(it=>`<button class="fchip ${(curCat||"")===it.cat?'on':''} ${it.n||it.cat===""?'':'empty'}" data-cat="${it.cat}"><span class="ltxt">${it.label}${it.n?` <span style="opacity:.55">${it.n}</span>`:''}</span><span class="dot" style="background:${it.col}"></span></button>`).join("");
   fan.chips=[...stage.querySelectorAll(".fchip")];
   const pill=document.querySelector(`.card[data-i="${ACTIVE}"] .pill`);
   const r=pill?pill.getBoundingClientRect():{left:30,top:innerHeight-200,width:90,height:30};
-  fan.ox=r.left+8; fan.oy=r.top+r.height/2;          // пивот = левый край пилюли
-  fan.A0=0; fan.STEP=13;                             // 0° = вровень с пилюлей, дальше +13° каждой
-  const span=(fan.chips.length-1)*fan.STEP;
-  fan.rot=0; fan.max=0; fan.min=80-span;             // прокрутка веера до последней категории
+  fan.ox=r.left+66; fan.oy=r.top-16;                  // старт дуги над пилюлей, правее (не режется слева)
+  fan.rot=0; fan.max=0.15; fan.min=-(fan.chips.length-1-5.2);   // прокрутка дуги (индекс-единицы)
   fanLayout();
   document.getElementById("catfan").classList.add("open");
 }
@@ -355,7 +356,7 @@ function openCatFan(){
   const stage=document.getElementById("catfan-inner");
   const start=y=>{fan.drag=true;fan.py=y;fan.moved=false;};
   const move=y=>{ if(!fan.drag)return; const d=fan.py-y; if(Math.abs(d)>3)fan.moved=true;
-    fan.rot=Math.max(fan.min,Math.min(fan.max,fan.rot+d*0.25)); fan.py=y; fanLayout(); };
+    fan.rot=Math.max(fan.min,Math.min(fan.max,fan.rot-d*0.012)); fan.py=y; fanLayout(); };
   const end=()=>{fan.drag=false;};
   stage.addEventListener("touchstart",e=>start(e.touches[0].clientY),{passive:true});
   stage.addEventListener("touchmove",e=>{move(e.touches[0].clientY);e.preventDefault();},{passive:false});

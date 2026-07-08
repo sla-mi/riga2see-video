@@ -85,8 +85,6 @@
   .desc{max-height:0;overflow:hidden;transition:max-height .3s ease}
   .card.open .desc{max-height:46dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
   .desc::-webkit-scrollbar{display:none}
-  .grab{position:sticky;top:0;width:38px;height:5px;border-radius:3px;background:rgba(255,255,255,.45);
-    margin:0 auto 12px;cursor:grab}
   .dtext{font-size:15px;line-height:1.55;color:#fff;white-space:pre-line;text-shadow:0 1px 10px rgba(0,0,0,.95);padding:2px 0}
   .dtext .collapse{color:var(--ink);font-weight:800;cursor:pointer;white-space:nowrap}
   .desc .buy{display:inline-block;margin:12px 0 4px;font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.06em;
@@ -324,7 +322,7 @@ function cardHTML(e,i){
       <h1 data-act="open">${title}</h1>
       ${place?`<div class="meta">${place}</div>`:""}
       <div class="preview" data-act="open">${linkify(bodyText)}<span class="more">  ещё…</span></div>
-      <div class="desc"><div class="grab" data-act="close"></div><div class="dtext">${linkify(bodyText)}<span class="collapse" data-act="close">  свернуть</span></div></div>
+      <div class="desc"><div class="dtext">${linkify(bodyText)}<span class="collapse" data-act="close">  свернуть</span></div></div>
       <div class="arow">
         ${priceTxt?`<span class="ptag ${e.is_free?"free":""}">${priceTxt}</span>`:""}
         ${e.ticket?`<a class="cta-btn" href="${e.ticket}" target="_blank" rel="noopener">Билеты →</a>`:""}

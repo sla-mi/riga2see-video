@@ -394,7 +394,7 @@ function bindGestures(card){
     if(!card.classList.contains("open") && horiz && !favMode){
       // нативный свайп — вся карточка едет 1:1 с пальцем, не отдельная параллакс-подложка
       const fade=Math.max(0, 1-Math.abs(dx)/280);
-      document.getElementById("hdr").style.transform=`translateX(${dx*0.6}px)`;
+      document.getElementById("hdr").style.transform=`translateX(${dx}px)`;
       stage.style.transform=`translateX(${dx}px)`; info.style.transform=`translateX(${dx}px)`; shade.style.transform=`translateX(${dx}px)`;
       stage.style.opacity=fade; info.style.opacity=fade; } };
   const end=()=>{ if(!drag)return; drag=false;

@@ -89,10 +89,14 @@
   h1{font-family:var(--disp);font-weight:900;font-size:18px;line-height:1.2;margin:0;letter-spacing:-.01em;
     text-shadow:0 2px 16px rgba(0,0,0,.85);cursor:pointer}
   .dateschip{align-self:flex-start;display:inline-flex;font-family:var(--body);font-weight:700;font-size:13px;
-    color:var(--ink);cursor:pointer;text-shadow:0 1px 10px rgba(0,0,0,.95)}
-  .datesfull{max-height:0;overflow:hidden;transition:max-height .3s ease;display:flex;flex-wrap:wrap;gap:6px}
-  .card.datesopen .datesfull{max-height:30dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-top:2px}
-  .datesfull .di{font-size:12px;font-weight:700;color:#fff;background:rgba(255,255,255,.1);border:1px solid var(--btn-border);
+    color:var(--ink);cursor:pointer;padding:5px 12px;border-radius:100px;
+    background:rgba(30,30,34,.45);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:1px solid rgba(255,255,255,.14)}
+  .datesfull{align-self:flex-start;max-width:100%;max-height:0;overflow:hidden;transition:max-height .3s ease;
+    display:flex;flex-wrap:wrap;gap:6px;border-radius:16px}
+  .card.datesopen .datesfull{max-height:30dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-top:6px;
+    padding:8px;background:rgba(30,30,34,.45);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  .datesfull .di{font-size:12px;font-weight:700;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);
     border-radius:100px;padding:5px 11px;white-space:nowrap}
   /* свёрнутый превью — 3 строки + «ещё…»; видно только пока НЕ open */
   .preview{font-size:15px;line-height:1.5;color:rgba(255,255,255,.92);text-shadow:0 1px 10px rgba(0,0,0,.95);

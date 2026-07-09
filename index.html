@@ -32,7 +32,7 @@
   .card.horiz .poster,.card.photo .poster{object-fit:contain;object-position:50% 30%}
   .card.horiz .poster.bgp,.card.photo .poster.bgp{object-fit:cover;filter:blur(28px) brightness(.5);transform:scale(1.25);object-position:50% 50%}
   video,iframe.main{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);opacity:0;transition:opacity .4s;border:0}
-  .card.vert  video.main{object-fit:cover}
+  .card.vert  video.main{object-fit:contain}
   .card.horiz video.main{object-fit:contain;object-position:50% 30%}
   video.bg{object-fit:cover;filter:blur(28px) brightness(.5);transform:scale(1.2)}
   .card.playing video.main,.card.playing video.bg,.card.playing iframe.main{opacity:1}
@@ -365,7 +365,7 @@ function mountVideo(card){
   const prep=(vd,cls)=>{ vd.className=cls;vd.src=url;vd.loop=true;vd.playsInline=true;vd.muted=true;vd.defaultMuted=true;
     if(cls==="main"&&pu) vd.poster=pu;                    // постер на паузе/буферизации вместо чёрного
     vd.setAttribute("muted","");vd.setAttribute("playsinline","");vd.setAttribute("webkit-playsinline","");vd.setAttribute("autoplay","");vd.preload="auto"; };
-  if(vidOrient(e)==="horiz"){ const bg=document.createElement("video");prep(bg,"bg");stage.appendChild(bg); }
+  { const bg=document.createElement("video");prep(bg,"bg");stage.appendChild(bg); }
   const v=document.createElement("video");prep(v,"main");stage.appendChild(v); return v;
 }
 function unmountVideo(card){ card.classList.remove("playing");

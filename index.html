@@ -503,13 +503,11 @@ function bindActions(card){
 function currentList(){
   const base = favMode ? ALL.filter(e=>fav.has(e.id))
                        : ALL.filter(e=>curCat===null || (e.cat||"")===curCat);
-  const list = base.slice().sort((a,b)=>String(a.date||"9999").localeCompare(String(b.date||"9999")));
-  // первая карточка ленты «Все» обязана быть с видео (для онбординга) — порядок дальше не трогаем
-  if(curCat===null && !favMode && list.length && !hasVideo(list[0])){
-    const j=list.findIndex(hasVideo);
-    if(j>0){ const [v]=list.splice(j,1); list.unshift(v); }
-  }
-  return list;
+  const byDate=(a,b)=>String(a.date||"9999").localeCompare(String(b.date||"9999"));
+  // приоритет видео: сначала все события с видео (по дате), затем все без видео (по дате)
+  const withVideo = base.filter(hasVideo).sort(byDate);
+  const withoutVideo = base.filter(e=>!hasVideo(e)).sort(byDate);
+  return [...withVideo, ...withoutVideo];
 }
 // первое событие произвольной категории (для превью-«призрака» во время свайпа)
 function firstItemFor(catKey){

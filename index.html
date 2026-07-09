@@ -80,7 +80,7 @@
   .info{position:relative;z-index:5;padding:12px 84px calc(20px + env(safe-area-inset-bottom)) 20px;
     display:flex;flex-direction:column;gap:8px}
   .catchip{align-self:flex-start;display:inline-flex;align-items:center;gap:7px;font-family:var(--disp);
-    font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:0 12px;min-height:28px;
+    font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:0 12px;min-height:28px;margin-left:-27px;
     border-radius:100px;border:1px solid var(--btn-border);background:rgba(14,14,17,.82);color:rgba(255,255,255,.85);cursor:pointer}
   .catchip .dot{width:8px;height:8px;border-radius:50%}
   h1{font-family:var(--disp);font-weight:900;font-size:18px;line-height:1.2;margin:0;letter-spacing:-.01em;
@@ -101,7 +101,7 @@
     border:1px solid var(--btn-border);color:#fff}
   .meta{font-size:16px;font-weight:800;color:#fff;line-height:1.35;text-shadow:0 1px 10px rgba(0,0,0,.9);font-family:var(--body)}
   .dtext a,.preview a{color:var(--ink);font-weight:700;text-decoration:underline}
-  .arow{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:2px;margin-right:-64px}
+  .arow{display:flex;align-items:center;justify-content:flex-start;gap:12px;margin-top:2px}
   .ptag{font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.03em;color:var(--ink);
     border:1px solid rgba(232,255,71,.5);background:rgba(232,255,71,.08);padding:7px 13px;border-radius:100px;white-space:nowrap}
   .ptag.free{color:#0b0b0d;background:var(--ink);border-color:var(--ink)}
@@ -109,11 +109,11 @@
     text-decoration:none;padding:9px 18px;border-radius:100px;background:rgba(255,255,255,.1);border:1px solid var(--btn-border);
     color:#fff;white-space:nowrap}
 
-  .rail{position:absolute;right:8px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:6;display:flex;flex-direction:column;gap:20px;align-items:center}
-  .rail button{width:46px;height:46px;border:0;background:none;color:#fff;display:grid;place-items:center;cursor:pointer;
-    transition:transform .12s;filter:drop-shadow(0 1px 5px rgba(0,0,0,.55))}
-  .rail button:active{transform:scale(.85)}
-  .rail button svg{width:32px;height:32px;stroke-width:1.8}
+  .rail{position:fixed;right:8px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:20;display:flex;flex-direction:column;gap:20px;align-items:center}
+  .rail button,.rail a{width:46px;height:46px;border:0;background:none;color:#fff;display:grid;place-items:center;cursor:pointer;
+    transition:transform .12s;filter:drop-shadow(0 1px 5px rgba(0,0,0,.55));text-decoration:none}
+  .rail button:active,.rail a:active{transform:scale(.85)}
+  .rail button svg,.rail a svg{width:32px;height:32px;stroke-width:1.8}
   .rail button.on{color:var(--ink)}
   .rail button.on svg{fill:currentColor}
   .rail button.av{position:relative;width:44px;height:44px;border-radius:50%;background:var(--card);border:2px solid #fff;overflow:visible}
@@ -193,6 +193,7 @@
 </div>
 <button class="sound" id="sound" title="звук"></button>
 <div id="feed"></div>
+<div class="rail" id="rail"></div>
 <div class="ghost" id="ghost"><img id="ghostimg" alt=""></div>
 <div class="onboard" id="onboard">
   <div class="ob-ttl">Все культурные события Риги в одном месте</div>
@@ -215,6 +216,7 @@ const ICON={
  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
  forward:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg>',
  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+ ticket:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"/><line x1="13" y1="6" x2="13" y2="18" stroke-dasharray="2 2"/></svg>',
  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>',
  tg:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.3 18.6 20c-.25 1.1-.9 1.4-1.85.85l-5.1-3.75-2.45 2.35c-.27.27-.5.5-1 .5l.35-5.1L18.2 6.5c.45-.4-.1-.6-.7-.2L6.6 13.2l-5-1.55c-1.1-.35-1.1-1.1.25-1.6L20.5 3.15c.9-.35 1.7.2 1.4 1.15Z"/></svg>',
  push:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
@@ -329,12 +331,6 @@ function cardHTML(e,i){
   return `<div class="card ${orient}" data-i="${i}">
     <div class="stage">${stageInner}</div>
     <div class="shade"></div>
-    <div class="rail">
-      <button data-act="fav" class="${fav.has(e.id)?"on":""}">${ICON.bookmark}</button>
-      <button data-act="remind" class="${remind.has(e.id)?"on":""}">${ICON.bell}</button>
-      <button data-act="share">${ICON.forward}</button>
-      <button class="av" data-act="me">${ICON.user}<span class="favbadge" style="${fav.size?'':'display:none'}">${fav.size||""}</span></button>
-    </div>
     <div class="info">
       ${chip}
       <h1 data-act="open">${title}</h1>
@@ -343,7 +339,6 @@ function cardHTML(e,i){
       <div class="desc"><div class="dtext">${linkify(bodyText)}<span class="collapse" data-act="close">  свернуть</span></div></div>
       <div class="arow">
         ${priceTxt?`<span class="ptag ${e.is_free?"free":""}">${priceTxt}</span>`:""}
-        ${e.ticket?`<a class="cta-btn" href="${e.ticket}" target="_blank" rel="noopener">Билеты →</a>`:""}
       </div>
     </div>
   </div>`;
@@ -388,8 +383,33 @@ function setActive(i){
       v.addEventListener("playing",()=>c.classList.add("playing"),{once:true});
     } else { c.classList.remove("playing"); v.pause(); const bg=c.querySelector("video.bg"); if(bg) bg.pause(); }
   });
-  const e=VIEW[i]; if(e) document.getElementById("datechip").textContent=relDate(e.date);
+  const e=VIEW[i]; if(e){ document.getElementById("datechip").textContent=relDate(e.date); renderRail(e); }
 }
+const railEl=document.getElementById("rail");
+railEl.innerHTML=`
+  <button data-act="fav">${ICON.bookmark}</button>
+  <button data-act="remind">${ICON.bell}</button>
+  <button data-act="share">${ICON.forward}</button>
+  <a class="ticket" data-act="ticket" target="_blank" rel="noopener">${ICON.ticket}</a>
+  <button class="av" data-act="me">${ICON.user}<span class="favbadge" style="display:none"></span></button>`;
+function renderRail(e){
+  railEl.querySelector('[data-act="fav"]').classList.toggle("on",fav.has(e.id));
+  railEl.querySelector('[data-act="remind"]').classList.toggle("on",remind.has(e.id));
+  const t=railEl.querySelector('[data-act="ticket"]');
+  if(e.ticket){ t.href=e.ticket; t.style.display=""; } else { t.style.display="none"; }
+}
+railEl.addEventListener("click",ev=>{
+  const el=ev.target.closest("[data-act]"); if(!el) return;
+  ev.stopPropagation(); const act=el.dataset.act, e=VIEW[ACTIVE]; if(!e) return;
+  if(act==="ticket") return;   // обычная ссылка, переход сам сработает
+  if(act==="me"){ enterFav(); }
+  else if(act==="fav"){ if(fav.has(e.id)){fav.delete(e.id);el.classList.remove("on");updateFavBadges();toast("Убрано из «хочу пойти»");}
+    else{fav.add(e.id);el.classList.add("on");flyToAvatar(el);toast("Добавлено — хочу пойти");} }
+  else if(act==="remind"){ openRemindMenu(e, el); }
+  else if(act==="share"){ const u=e.ticket||e.lib;
+    if(navigator.share) navigator.share({title:e.ev_title||e.page,url:u}).catch(()=>{});
+    else{ navigator.clipboard?.writeText(u); toast("Ссылка скопирована"); } }
+});
 const soundBtn=document.getElementById("sound");
 function renderSound(){ soundBtn.innerHTML=SOUND?ICON.soundOn:ICON.soundOff; soundBtn.classList.toggle("on",SOUND); }
 soundBtn.addEventListener("click",()=>{ SOUND=!SOUND; renderSound();
@@ -452,7 +472,7 @@ function updateFavBadges(bump){
     if(bump){ b.classList.remove("bump"); void b.offsetWidth; b.classList.add("bump"); } });
 }
 function flyToAvatar(fromEl){
-  const card=fromEl.closest(".card"), av=card&&card.querySelector(".av");
+  const av=document.querySelector("#rail .av");
   if(!av){ updateFavBadges(true); return; }
   const a=fromEl.getBoundingClientRect(), b=av.getBoundingClientRect();
   const fly=document.createElement("div"); fly.className="flybadge"; fly.innerHTML=ICON.bookmark;
@@ -469,13 +489,6 @@ function bindActions(card){
       if(act==="open"){ card.classList.add("open"); }
       else if(act==="close"){ card.classList.remove("open"); }
       else if(act==="setcat"){ if(!favMode) setCategory(el.dataset.cat,1); }
-      else if(act==="me"){ enterFav(); }
-      else if(act==="fav"){ if(fav.has(e.id)){fav.delete(e.id);el.classList.remove("on");updateFavBadges();toast("Убрано из «хочу пойти»");}
-        else{fav.add(e.id);el.classList.add("on");flyToAvatar(el);toast("Добавлено — хочу пойти");} }
-      else if(act==="remind"){ openRemindMenu(e, el); }
-      else if(act==="share"){ const u=e.ticket||e.lib;
-        if(navigator.share) navigator.share({title:e.ev_title||e.page,url:u}).catch(()=>{});
-        else{ navigator.clipboard?.writeText(u); toast("Ссылка скопирована"); } }
     });
   });
 }

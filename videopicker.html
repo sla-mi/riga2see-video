@@ -16,10 +16,10 @@ html,body{margin:0;height:100%;background:#000;color:#fff;font-family:-apple-sys
 .evmeta{font-size:12px;color:#bbb;margin-top:2px}
 .soundbtn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:50%;width:34px;height:34px;
   display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff}
-.tagpill{position:absolute;top:64px;left:16px;z-index:5;background:rgba(30,30,34,.6);backdrop-filter:blur(10px);
-  border:1px solid rgba(255,255,255,.18);border-radius:100px;padding:7px 14px;font-size:12.5px;font-weight:700;color:#e8ff47;
-  max-width:78%;line-height:1.3}
-.tagn{color:#999;font-weight:400;margin-left:6px}
+.tagpill{background:rgba(30,30,34,.6);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:10px 14px;font-size:18px;font-weight:800;color:#e8ff47;
+  line-height:1.3;margin-bottom:10px}
+.tagn{color:#999;font-weight:400;margin-left:8px;font-size:14px}
 .candn{position:absolute;top:64px;right:16px;z-index:5;background:rgba(30,30,34,.6);border:1px solid rgba(255,255,255,.18);
   border-radius:100px;padding:7px 12px;font-size:12px;color:#bbb}
 .controls{position:absolute;left:0;right:0;bottom:0;z-index:6;padding:10px 16px calc(10px + env(safe-area-inset-bottom));
@@ -61,12 +61,12 @@ html,body{margin:0;height:100%;background:#000;color:#fff;font-family:-apple-sys
     </div>
     <div class="soundbtn" id="soundBtn">&#128264;</div>
   </div>
-  <div class="tagpill" id="tagpill"></div>
   <div class="candn" id="candn"></div>
   <div class="stage" id="stage"><video id="vid" playsinline loop muted></video></div>
   <div class="swipehint">свайп — событие</div>
   <div class="toast" id="toast"></div>
   <div class="controls">
+    <div class="tagpill" id="tagpill"></div>
     <div class="transport">
       <div class="tbtn" data-act="prevtag">|&#9664;</div>
       <div class="tbtn" data-act="prevcand">&#9664;&#9664;</div>

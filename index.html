@@ -33,6 +33,7 @@
   .card.vert .poster{object-fit:contain}
   .card.horiz .poster.bgp,.card.photo .poster.bgp{object-fit:cover;filter:blur(28px) brightness(.5);transform:scale(1.25);object-position:50% 50%}
   video,iframe.main{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);opacity:0;transition:opacity .4s;border:0}
+  .tapcatch{position:absolute;inset:0;background:transparent}
   .card.vert  video.main{object-fit:contain}
   .card.horiz video.main{object-fit:contain;object-position:50% 30%}
   video.bg{object-fit:cover;filter:blur(28px) brightness(.5);transform:scale(1.2)}
@@ -386,7 +387,10 @@ function mountVideo(card){
   if(e.video && e.video.type==="embed"){                  // эмбед из билетки (YouTube) — не mp4, отдельный путь
     const f=document.createElement("iframe"); f.className="main embed"; f.src=ytEmbedSrc(url);
     f.setAttribute("allow","autoplay; encrypted-media"); f.setAttribute("frameborder","0");
-    stage.appendChild(f); f.dataset.embed="1"; return f;
+    f.style.pointerEvents="none";                          // без этого тап по видео уходит внутрь iframe и не доходит до нашего кода
+    stage.appendChild(f);
+    const tapcatch=document.createElement("div"); tapcatch.className="tapcatch"; stage.appendChild(tapcatch);
+    f.dataset.embed="1"; return f;
   }
   const pu=poster(e);
   const prep=(vd,cls)=>{ vd.className=cls;vd.src=url;vd.loop=true;vd.playsInline=true;vd.muted=true;vd.defaultMuted=true;

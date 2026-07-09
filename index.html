@@ -30,6 +30,7 @@
   .poster{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);object-fit:cover;transition:opacity .4s}
   /* нет видео — афиша целиком, без обрезки; горизонт-видео — тоже целиком, прижато к верху */
   .card.horiz .poster,.card.photo .poster{object-fit:contain;object-position:50% 30%}
+  .card.vert .poster{object-fit:contain}
   .card.horiz .poster.bgp,.card.photo .poster.bgp{object-fit:cover;filter:blur(28px) brightness(.5);transform:scale(1.25);object-position:50% 50%}
   video,iframe.main{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);opacity:0;transition:opacity .4s;border:0}
   .card.vert  video.main{object-fit:contain}

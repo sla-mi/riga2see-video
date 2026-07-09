@@ -101,7 +101,7 @@
     border:1px solid var(--btn-border);color:#fff}
   .meta{font-size:16px;font-weight:800;color:#fff;line-height:1.35;text-shadow:0 1px 10px rgba(0,0,0,.9);font-family:var(--body)}
   .dtext a,.preview a{color:var(--ink);font-weight:700;text-decoration:underline}
-  .arow{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:2px}
+  .arow{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:2px;margin-right:-64px}
   .ptag{font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.03em;color:var(--ink);
     border:1px solid rgba(232,255,71,.5);background:rgba(232,255,71,.08);padding:7px 13px;border-radius:100px;white-space:nowrap}
   .ptag.free{color:#0b0b0d;background:var(--ink);border-color:var(--ink)}
@@ -323,9 +323,9 @@ function cardHTML(e,i){
   const bgPoster = purl && (orient==="horiz"||orient==="photo") ? `<img class="poster bgp" src="${purl}" alt="" loading="lazy" onerror="this.remove()">` : "";
   // нет вообще никакой картинки (редко, ~0.6%) — заливка цветом категории вместо сломанного img
   // если картинка не грузится (сломанная ссылка у источника) — цветная заглушка вместо «битой иконки»
-  const onerr=`this.replaceWith(Object.assign(document.createElement('div'),{className:'nocover',style:'background:${col}22'}))`;
+  const onerr=`this.replaceWith(Object.assign(document.createElement('div'),{className:'nocover',style:'background:${col}55'}))`;
   const stageInner = purl ? `${bgPoster}<img class="poster" src="${purl}" alt="" loading="lazy" onerror="${onerr}">`
-                           : `<div class="nocover" style="background:${col}22"></div>`;
+                           : `<div class="nocover" style="background:${col}55"></div>`;
   return `<div class="card ${orient}" data-i="${i}">
     <div class="stage">${stageInner}</div>
     <div class="shade"></div>

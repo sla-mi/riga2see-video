@@ -127,9 +127,9 @@
   .rail button.on svg{fill:currentColor}
   .rail button.av{position:relative;width:44px;height:44px;border-radius:50%;background:var(--card);border:2px solid #fff;overflow:visible}
   .rail a.ticket{position:relative;color:var(--ink)}
-  .ticket-hint{position:absolute;right:56px;top:50%;transform:translateY(-50%);white-space:nowrap;
-    font-family:var(--disp);font-weight:700;font-size:11px;letter-spacing:.03em;text-transform:uppercase;
-    color:#fff;background:rgba(14,14,17,.88);border:1px solid var(--btn-border);border-radius:100px;padding:6px 12px;
+  .ticket-hint{position:absolute;left:50%;top:100%;transform:translateX(-50%);white-space:nowrap;margin-top:2px;
+    font-family:var(--disp);font-weight:700;font-size:9px;letter-spacing:.03em;text-transform:uppercase;
+    color:rgba(255,255,255,.85);text-shadow:0 1px 4px rgba(0,0,0,.8);
     pointer-events:none;transition:opacity .3s ease}
   .ticket-hint.hide{opacity:0}
   .rail button.av svg{width:24px;height:24px;color:rgba(255,255,255,.85)}
@@ -692,16 +692,12 @@ function hideOnboard(){
   feed.addEventListener("scroll",()=>{ if(feed.scrollTop>20) hideOnboard(); },{passive:true});
 })();
 
-// подпись «Билеты» под иконкой билета — только при первом визите, потом никогда
+// подпись «Билеты» под иконкой билета — видна только до первого нажатия на сам значок
 (function(){
   const hint=document.getElementById("ticketHint");
   if(localStorage.getItem("ticketHintSeen")){ hint.remove(); return; }
   const dismiss=()=>{ hint.classList.add("hide"); localStorage.setItem("ticketHintSeen","1"); setTimeout(()=>hint.remove(),350); };
-  const feed=document.getElementById("feed"); let y0=0;
-  feed.addEventListener("touchstart",e=>{ y0=e.touches[0].clientY; },{passive:true});
-  feed.addEventListener("touchmove",e=>{ if(Math.abs(y0-e.touches[0].clientY)>30) dismiss(); },{passive:true});
-  feed.addEventListener("scroll",()=>{ if(feed.scrollTop>20) dismiss(); },{passive:true});
-  setTimeout(dismiss,6000);
+  railEl.querySelector('[data-act="ticket"]').addEventListener("click",dismiss,{once:true});
 })();
 
 // демо-датасет собран один раз и не обновляется живым пайплайном — даты в нём стареют.

@@ -670,8 +670,26 @@ function hideOnboard(){
   feed.addEventListener("scroll",()=>{ if(feed.scrollTop>20) hideOnboard(); },{passive:true});
 })();
 
+// демо-датасет собран один раз и не обновляется живым пайплайном — даты в нём стареют.
+// вместо ручной правки дат при каждом показе сдвигаем их на лету: якорь = самая ранняя дата в файле,
+// разница между якорем и реальным "сегодня" применяется ко всем датам при каждой загрузке страницы.
+function shiftDatesToToday(list){
+  let anchor=null;
+  for(const e of list){ if(!e.date) continue; const d=new Date(e.date.replace(" ","T"));
+    if(!isNaN(d) && (anchor===null || d<anchor)) anchor=d; }
+  if(!anchor) return;
+  anchor.setHours(0,0,0,0);
+  const today=new Date(); today.setHours(0,0,0,0);
+  const diffDays=Math.round((today-anchor)/864e5);
+  if(!diffDays) return;
+  for(const e of list){ if(!e.date) continue; const d=new Date(e.date.replace(" ","T")); if(isNaN(d)) continue;
+    d.setDate(d.getDate()+diffDays);
+    const pad=n=>String(n).padStart(2,"0");
+    e.date=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
+}
 async function boot(){
   ALL=await (await fetch("big_feed.json",{cache:"no-store"})).json();
+  shiftDatesToToday(ALL);
   buildTabs();
   buildFeed(currentList());
   let unlocked=false;

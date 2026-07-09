@@ -372,6 +372,7 @@ function unmountVideo(card){ card.classList.remove("playing");
   card.querySelectorAll("video, iframe.main").forEach(v=>{ if(v.tagName==="VIDEO"){v.pause();v.removeAttribute("src");v.load();} v.remove(); }); }
 function setActive(i){
   if(i===ACTIVE) return;
+  if(i>0) hideOnboard();
   const prev=document.querySelector(`.card[data-i="${ACTIVE}"]`); if(prev){ prev.classList.remove("open"); }
   document.body.classList.remove("clean");   // новое видео — всегда с исходного состояния (заголовки видны)
   ACTIVE=i;
@@ -655,14 +656,18 @@ document.getElementById("feed").addEventListener("scroll",()=>{
   feed.addEventListener("touchend",()=>{ if(atEnd && over>55 && curCat!==null && !favMode){ switchCategory(1); } over=0; });
 })();
 
-// онбординг — показываем один раз за сессию, без кнопки; исчезает сама по первому свайпу ВВЕРХ по ленте
+// онбординг — показываем один раз за сессию, без кнопки; исчезает по первому свайпу/скроллу ленты или смене карточки
+function hideOnboard(){
+  const ob=document.getElementById("onboard"); if(!ob) return;
+  ob.classList.add("hide"); sessionStorage.setItem("onboarded","1"); setTimeout(()=>ob.remove(),350);
+}
 (function(){
   const ob=document.getElementById("onboard");
   if(sessionStorage.getItem("onboarded")){ ob.remove(); return; }
-  const hide=()=>{ ob.classList.add("hide"); sessionStorage.setItem("onboarded","1"); setTimeout(()=>ob.remove(),350); };
   const feed=document.getElementById("feed"); let y0=0;
   feed.addEventListener("touchstart",e=>{ y0=e.touches[0].clientY; },{passive:true});
-  feed.addEventListener("touchmove",e=>{ if(y0-e.touches[0].clientY>30) hide(); },{passive:true});
+  feed.addEventListener("touchmove",e=>{ if(y0-e.touches[0].clientY>30) hideOnboard(); },{passive:true});
+  feed.addEventListener("scroll",()=>{ if(feed.scrollTop>20) hideOnboard(); },{passive:true});
 })();
 
 async function boot(){

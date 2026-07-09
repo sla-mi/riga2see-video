@@ -273,7 +273,7 @@ function vidOrient(e){ return e.video ? e.video.orient : (e.orient || "vert"); }
 function hasVideo(e){ return !!vidUrl(e); }
 
 const fav=new Set(JSON.parse(localStorage.getItem("fav")||"[]"));
-const remind=new Map(); let ALL=[]; let VIEW=[]; let SOUND=false; let ACTIVE=-1; let curCat=null; let TABS=[]; let favMode=false;
+const remind=new Map(); let ALL=[]; let VIEW=[]; let SOUND=false; let ACTIVE=-1; let curCat=null; let TABS=[]; let favMode=false; let lastActiveDate=null;
 function saveFav(){ localStorage.setItem("fav", JSON.stringify([...fav])); }
 // варианты напоминания в зависимости от близости события (как в афише)
 function reminderOpts(s){
@@ -578,6 +578,7 @@ function updateTabs(){
 }
 function setCategory(cat, dir){
   const next = cat===""?null:cat; if(next===curCat && !favMode){ return; }
+  const curEv=VIEW[ACTIVE]; if(curEv && curEv.date) lastActiveDate=curEv.date;   // запоминаем дату, на которой были, чтобы новая категория открылась рядом с ней, а не с начала
   favMode=false; curCat=next;
   document.getElementById("favhdr").classList.remove("on"); document.getElementById("hdr").style.display="";
   const feed=document.getElementById("feed");
@@ -641,7 +642,19 @@ function buildFeed(list){
   }
   const cards=[...feed.querySelectorAll(".card")];
   document.querySelector(".datebar").style.display = cards.length ? "" : "none";
-  if(cards.length) setActive(0);
+  if(cards.length){
+    let startIdx=0;
+    if(lastActiveDate){                                    // ищем в новой категории событие с ближайшей датой к той, на которой были
+      const target=new Date(lastActiveDate.replace(" ","T")).getTime();
+      let best=Infinity;
+      VIEW.forEach((e,idx)=>{ if(!e.date) return; const d=new Date(e.date.replace(" ","T")).getTime();
+        const diff=Math.abs(d-target); if(diff<best){ best=diff; startIdx=idx; } });
+    }
+    ensureRendered(startIdx);
+    const target=feed.querySelector(`.card[data-i="${startIdx}"]`);
+    if(target) target.scrollIntoView();
+    setActive(startIdx);
+  }
   buildDateMenu(); updateFavBadges();
 }
 

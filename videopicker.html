@@ -153,6 +153,7 @@ vid.addEventListener('timeupdate', ()=>{
 });
 
 function render(){
+  localStorage.setItem('videopicker_pos', ci);          // запоминаем категорию, чтобы после обновления не начинать с 1/76
   const cat=curCat(); const cand=curCand();
   document.getElementById('cattitle').textContent = 'Склад категорий';
   document.getElementById('catsource').textContent = 'источник примера: '+cat.source;
@@ -252,6 +253,15 @@ document.getElementById('app').addEventListener('wheel', e=>{
 });
 
 if(new URLSearchParams(location.search).get('view')==='mobile') document.body.classList.add('mobileview');
+// восстановить позицию после обновления + перескочить на первую категорию, где ещё есть НЕоценённые
+(function resumePosition(){
+  let start = parseInt(localStorage.getItem('videopicker_pos')||'0',10);
+  if(isNaN(start) || start<0 || start>=CATEGORIES.length) start=0;
+  ci = start; vi = 0;
+  // если текущая категория уже пройдена (0 живых) — ищем ближайшую вперёд с живыми
+  let scanned=0;
+  while(liveCandidates(CATEGORIES[ci]).length===0 && scanned<CATEGORIES.length){ ci=(ci+1)%CATEGORIES.length; scanned++; }
+})();
 render();
 </script>
 </body>

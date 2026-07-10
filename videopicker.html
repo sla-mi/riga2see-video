@@ -102,10 +102,10 @@ SEEDED_LIKES.forEach(([q,pid])=>{ const k=q+'|'+pid; if(!ratings[k]) ratings[k]=
 function saveRatings(){ localStorage.setItem(RATE_KEY, JSON.stringify(ratings)); }
 function curCat(){ return CATEGORIES[ci]; }
 function rkey(cand){ const c=cand||curCand(); return curCat().q+'|'+(c?c.pexels_id:'none'); }
-function liveCandidates(cat){                         // прячем то, что уже дизлайкнули под этой категорией — даже если позже перезалили новую выдачу с тем же id
+function liveCandidates(cat){                         // показываем только НЕоценённое: всё, что уже лайкнули ИЛИ дизлайкнули — из очереди убираем, повторно не даём
   return (cat.candidates||[]).filter(c=>{
     const r = ratings[cat.q+'|'+c.pexels_id];
-    return !(r && r.like===false);
+    return !(r && (r.like===false || r.like===true));
   });
 }
 function curCand(){ return liveCandidates(curCat())[vi]; }

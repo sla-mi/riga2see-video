@@ -41,6 +41,10 @@ body.mobileview #app{position:relative;width:390px;height:844px;max-height:96vh;
 .commentbox.show{display:block}
 .commentbox textarea{width:100%;min-height:52px;border-radius:10px;border:1px solid rgba(255,255,255,.25);
   background:rgba(255,255,255,.08);color:#fff;padding:8px 10px;font-size:13px;font-family:inherit}
+.commentbox textarea.saved{border-color:#2a7;background:rgba(42,170,119,.15)}
+.csave{margin-top:6px;width:100%;padding:9px;border-radius:10px;border:1px solid rgba(255,255,255,.25);
+  background:rgba(255,255,255,.1);color:#fff;font-size:13px;font-weight:700}
+.csave.done{background:#2a7;border-color:#2a7}
 .savebar{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:6;display:flex;gap:8px}
 .savebtn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:100px;
   padding:6px 14px;font-size:11px}
@@ -83,7 +87,8 @@ body.mobileview #app{position:relative;width:390px;height:844px;max-height:96vh;
       <div class="ratebtn dislike" id="dislikeBtn">&#128078; Не нравится</div>
     </div>
     <div class="commentbox" id="commentBox">
-      <textarea id="commentText" placeholder="Комментарий к этому варианту (необязательно) — куда ещё годится, что не так"></textarea>
+      <textarea id="commentText" placeholder="Комментарий к этому варианту — куда ещё годится, что не так. Enter = сохранить (Shift+Enter — новая строка)"></textarea>
+      <button id="commentSave" class="csave">Сохранить комментарий (Enter)</button>
     </div>
   </div>
   <div class="savebar"><button class="savebtn" id="saveBtn">Скачать мои оценки</button></div>
@@ -198,11 +203,21 @@ function setLike(v){
 }
 document.getElementById('likeBtn').addEventListener('click', ()=>setLike(true));
 document.getElementById('dislikeBtn').addEventListener('click', ()=>setLike(false));
-document.getElementById('commentText').addEventListener('input', e=>{
-  const cand=commentCand||curCand();               // комментарий держится за ЗАМОРОЖЕННЫЙ клип (тот, что был на паузе), не пересчитывается на каждую букву
+function saveComment(){
+  const ta=document.getElementById('commentText');
+  const cand=commentCand||curCand();               // держится за ЗАМОРОЖЕННЫЙ клип (тот, что был на паузе)
   const k=rkey(cand); const prev=ratings[k]||{category:curCat().category, query:curCat().q, candidate:cand};
-  ratings[k]=Object.assign({}, prev, {comment:e.target.value});
+  ratings[k]=Object.assign({}, prev, {comment:ta.value});
   saveRatings();
+  // видимая реакция: зелёная кнопка + рамка + тост
+  const btn=document.getElementById('commentSave');
+  btn.textContent='✓ Сохранено'; btn.classList.add('done'); ta.classList.add('saved');
+  toast('Комментарий сохранён за клипом');
+  setTimeout(()=>{ btn.textContent='Сохранить комментарий (Enter)'; btn.classList.remove('done'); ta.classList.remove('saved'); }, 1400);
+}
+document.getElementById('commentSave').addEventListener('click', saveComment);
+document.getElementById('commentText').addEventListener('keydown', e=>{
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); saveComment(); }   // Enter — сохранить; Shift+Enter — перенос строки
 });
 
 document.getElementById('soundBtn').addEventListener('click', ()=>{

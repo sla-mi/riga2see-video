@@ -108,9 +108,12 @@ SEEDED_DISLIKES.forEach(pid=>{ const k="seed|"+pid; if(!ratings[k]) ratings[k]={
 
 
 function saveRatings(){ localStorage.setItem(RATE_KEY, JSON.stringify(ratings)); }
-function ratedPids(){                                  // pexels_id с РЕШЕНИЕМ (лайк/дизлайк) в любой категории. Один комментарий БЕЗ оценки клип НЕ прячет (иначе он выпадал из очереди на первой букве)
+function ratedPids(){                                  // pexels_id, с которым вы уже «разобрались»: есть лайк/дизлайк ИЛИ сохранённый комментарий. Комментарий сохраняется явно по Enter, поэтому прятать по нему теперь безопасно
   const s=new Set();
-  for(const k in ratings){ const r=ratings[k]; if(r && (r.like===true||r.like===false)){ const pid=k.slice(k.lastIndexOf('|')+1); if(pid) s.add(pid); } }
+  for(const k in ratings){ const r=ratings[k];
+    if(r && (r.like===true||r.like===false || (typeof r.comment==='string' && r.comment.trim()))){
+      const pid=k.slice(k.lastIndexOf('|')+1); if(pid) s.add(pid);
+    } }
   return s;
 }
 function curCat(){ return CATEGORIES[ci]; }

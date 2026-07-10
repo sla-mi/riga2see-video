@@ -95,7 +95,14 @@ let ratings = JSON.parse(localStorage.getItem(RATE_KEY) || '{}');
 function saveRatings(){ localStorage.setItem(RATE_KEY, JSON.stringify(ratings)); }
 function rkey(){ const t=curTag(); const c=curCand(); return EVENTS[ei].id+'|'+t.q+'|'+(c?c.pexels_id:'none'); }
 function curTag(){ return EVENTS[ei].tags[ti]; }
-function curCand(){ const t=curTag(); return (t.candidates||[])[ci]; }
+function liveCandidates(tag){                        // прячем то, что уже дизлайкнули под этим тегом — даже если позже перезалили новую выдачу с тем же id
+  return (tag.candidates||[]).filter(c=>{
+    const k = EVENTS[ei].id+'|'+tag.q+'|'+c.pexels_id;
+    const r = ratings[k];
+    return !(r && r.like===false);
+  });
+}
+function curCand(){ const t=curTag(); return liveCandidates(t)[ci]; }
 
 function buildProgress(){
   const el=document.getElementById('progress'); el.innerHTML='';
@@ -127,7 +134,7 @@ function render(){
   document.getElementById('evtitle').textContent = ev.title;
   document.getElementById('evmeta').textContent = ev.venue + ' · ' + ev.category;
   document.getElementById('tagpill').innerHTML = tag.ru + '<span class="tagn">'+(ti+1)+'/'+ev.tags.length+'</span>';
-  const cands = tag.candidates || [];
+  const cands = liveCandidates(tag);
   document.getElementById('candn').textContent = cands.length ? (ci+1)+'/'+cands.length : 'нет вариантов';
   buildProgress(); updateProgressState();
   if(cand){
@@ -147,9 +154,9 @@ function toast(t){ const el=document.getElementById('toast'); el.textContent=t; 
 
 function goPrevTag(){ if(ti>0){ ti--; ci=0; render(); } }
 function goNextTag(){ const ev=EVENTS[ei]; if(ti<ev.tags.length-1){ ti++; ci=0; render(); } else toast('это последний тег'); }
-function goPrevCand(){ const n=(curTag().candidates||[]).length; if(n){ ci=(ci-1+n)%n; render(); } }
+function goPrevCand(){ const n=liveCandidates(curTag()).length; if(n){ ci=(ci-1+n)%n; render(); } }
 function goNextCand(){
-  const ev=EVENTS[ei]; const n=(curTag().candidates||[]).length;
+  const ev=EVENTS[ei]; const n=liveCandidates(curTag()).length;
   if(ci<n-1){ ci++; render(); }
   else if(ti<ev.tags.length-1){ ti++; ci=0; render(); }        // последний вариант тега — едем дальше к следующему тегу
   else toast('это последний тег');

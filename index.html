@@ -38,6 +38,8 @@
   .card.horiz video.main{object-fit:contain;object-position:50% 30%}
   .card.af video.main{object-fit:cover}   /* автофон-клипы заполняют кадр */
   .card.af .poster{object-fit:cover;object-position:top center}
+  .card .stage video.afbuf{opacity:0;transition:opacity .35s ease}   /* автофон: два буфера, кроссфейд встык */
+  .card .stage video.afbuf.afon{opacity:1}
   video.bg{object-fit:cover;filter:blur(28px) brightness(.5);transform:scale(1.2)}
   .card.playing video.main,.card.playing video.bg,.card.playing iframe.main{opacity:1}
   .card.playing .poster:not(.bgp){opacity:0}
@@ -423,34 +425,45 @@ function mountVideo(card){
 }
 // ── АВТОФОН: плейлист из кирпичиков. Каждый клип 1.5с из середины → следующий; в конце постер 3с; луп ──
 function mountAutofon(card, e){
-  const stage=card.querySelector(".stage"); const pu=poster(e);
-  const mk=cls=>{ const v=document.createElement("video"); v.className=cls; v.muted=true; v.defaultMuted=true; v.playsInline=true;
+  const stage=card.querySelector(".stage");
+  // два видео-буфера: пока играет один, во второй уже грузится следующий клип → переходы встык, без чёрных провалов
+  const mk=()=>{ const v=document.createElement("video"); v.className="main afbuf"; v.muted=true; v.defaultMuted=true; v.playsInline=true;
+    v.dataset.autofon="1";
     v.setAttribute("muted","");v.setAttribute("playsinline","");v.setAttribute("webkit-playsinline","");v.preload="auto"; return v; };
-  const bg=mk("bg"); stage.appendChild(bg);
-  const v=mk("main"); if(pu) v.poster=pu; v.dataset.autofon="1"; stage.appendChild(v);
-  card._af={ list:e.autofon, v, bg, timers:[], running:false };
-  return v;
+  const a=mk(), b=mk(); stage.appendChild(a); stage.appendChild(b);
+  card._af={ list:e.autofon, bufs:[a,b], timers:[], running:false };
+  return a;
 }
 function startAutofon(card){
   const af=card._af; if(!af || af.running) return; af.running=true;
-  const CLIP=1500, HOLD=3000;
-  const step=(pi)=>{
+  const CLIP=1600, HOLD=2500, N=af.list.length;
+  const seekMid=v=>{ try{ v.currentTime=(v.duration||3)*0.4; }catch(_){} };
+  // src в буфер + перемотка в середину клипа; резолвится, когда клип готов играть без задержки
+  const prep=(v,url)=>new Promise(res=>{ if(v._url===url && v.readyState>=1){ res(); return; }
+    v._url=url; v.src=url;
+    const d=()=>{ seekMid(v); res(); };
+    if(v.readyState>=1) d(); else v.addEventListener("loadedmetadata",d,{once:true}); });
+  let idx=0, slot=0, preloaded=false;
+  const tick=async()=>{
     if(!af.running) return;
-    if(pi>=af.list.length){ card.classList.remove("playing");        // конец плейлиста → постер держим 3с
-      af.timers.push(setTimeout(()=>step(0), HOLD)); return; }
-    const url=af.list[pi].url, v=af.v, bg=af.bg;
-    v.src=url; bg.src=url;
-    // видео-слой показываем ТОЛЬКО когда клип реально пошёл; иначе остаётся постер (не застывший кадр)
-    v.addEventListener("playing",()=>{ if(af.running) card.classList.add("playing"); },{once:true});
-    const play=()=>{ const mid=(v.duration||3)*0.4; try{v.currentTime=mid;}catch(_){}
-      v.play().catch(()=>{}); try{bg.currentTime=mid;}catch(_){} bg.play().catch(()=>{});
-      af.timers.push(setTimeout(()=>{ card.classList.remove("playing"); step(pi+1); }, CLIP)); };  // перед след. клипом убираем playing, чтобы не мигнул старый кадр
-    if(v.readyState>=1) play(); else v.addEventListener("loadedmetadata",play,{once:true});
+    if(idx>=N){                                            // весь плейлист отыгран → короткая пауза на постере, потом заново по кругу
+      af.bufs.forEach(v=>{ v.classList.remove("afon"); try{v.pause();}catch(_){} });
+      idx=0; slot=0; preloaded=false;
+      af.timers.push(setTimeout(tick, HOLD)); return; }
+    const cur=af.bufs[slot];
+    if(!preloaded) await prep(cur, af.list[idx].url);       // первый клип грузим здесь; дальше буфер уже предзагружен
+    if(!af.running) return;
+    seekMid(cur); cur.play().catch(()=>{});
+    cur.classList.add("afon"); af.bufs[slot^1].classList.remove("afon");   // кроссфейд на текущий буфер
+    if(idx+1<N){ preloaded=true; prep(af.bufs[slot^1], af.list[idx+1].url); } else preloaded=false;  // пока играет — тянем следующий клип
+    idx++; slot^=1;
+    af.timers.push(setTimeout(tick, CLIP));
   };
-  step(0);
+  tick();
 }
 function stopAutofon(card){ const af=card._af; if(!af) return; af.running=false;
-  af.timers.forEach(clearTimeout); af.timers=[]; try{af.v.pause();af.bg.pause();}catch(_){} }
+  af.timers.forEach(clearTimeout); af.timers=[];
+  if(af.bufs) af.bufs.forEach(v=>{ try{v.pause();}catch(_){} v.classList.remove("afon"); }); }
 function unmountVideo(card){ card.classList.remove("playing"); stopAutofon(card); card._af=null;
   card.querySelectorAll("video, iframe.main").forEach(v=>{ if(v.tagName==="VIDEO"){v.pause();v.removeAttribute("src");v.load();} v.remove(); }); }
 function setActive(i){
@@ -548,13 +561,14 @@ function bindGestures(card){
     // свёрнуто — тап по видео скрывает/показывает заголовки и кнопки (чтобы прочитать надписи на самом видео)
     if(Math.abs(dx)<8 && Math.abs(dy)<8 && tgt && tgt.closest(".stage")){ document.body.classList.toggle("clean"); return; }
     if(horiz && Math.abs(dx)>70 && !favMode){ switchCategory(dx<0?1:-1); } };
-  card.addEventListener("touchstart",e=>start(e.touches[0].clientX,e.touches[0].clientY,e.target),{passive:true});
+  let touchAt=0;   // тач-устройства после touchend шлют синтетический mouseup — иначе clean включался и тут же выключался
+  card.addEventListener("touchstart",e=>{ touchAt=Date.now(); start(e.touches[0].clientX,e.touches[0].clientY,e.target); },{passive:true});
   card.addEventListener("touchmove",e=>{ move(e.touches[0].clientX,e.touches[0].clientY);
     if(horiz && !card.classList.contains("open")) e.preventDefault(); },{passive:false});
-  card.addEventListener("touchend",end);
-  card.addEventListener("mousedown",e=>start(e.clientX,e.clientY,e.target));
+  card.addEventListener("touchend",e=>{ touchAt=Date.now(); end(); });
+  card.addEventListener("mousedown",e=>{ if(Date.now()-touchAt<800) return; start(e.clientX,e.clientY,e.target); });
   window.addEventListener("mousemove",e=>drag&&move(e.clientX,e.clientY));
-  window.addEventListener("mouseup",end);
+  window.addEventListener("mouseup",e=>{ if(Date.now()-touchAt<800) return; end(); });
 }
 // счётчик избранного на аватарке + летящий бейджик
 function updateFavBadges(bump){

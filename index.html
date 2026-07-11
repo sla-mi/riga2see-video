@@ -487,7 +487,7 @@ function setActive(i){
       v.addEventListener("playing",()=>c.classList.add("playing"),{once:true});
     } else { c.classList.remove("playing"); v.pause(); const bg=c.querySelector("video.bg"); if(bg) bg.pause(); }
   });
-  const e=VIEW[i]; if(e){ document.getElementById("datechip").textContent=relDate(nearDate(e)); renderRail(e); }
+  const e=VIEW[i]; if(e){ document.getElementById("datechip").textContent=relDate(nearDate(e)); renderRail(e); updateBed(e); }
 }
 const railEl=document.getElementById("rail");
 railEl.innerHTML=`
@@ -514,11 +514,20 @@ railEl.addEventListener("click",ev=>{
     if(navigator.share) navigator.share({title:e.ev_title||e.page,url:u}).catch(()=>{});
     else{ navigator.clipboard?.writeText(u); toast("Ссылка скопирована"); } }
 });
+// ── музыкальная подложка автофона: один общий <audio>, играет только при включённом звуке и только на карточках без настоящего видео ──
+const bed=document.createElement("audio"); bed.loop=true; bed.preload="none"; document.body.appendChild(bed);
+let bedSrc="";
+function updateBed(e){
+  if(!e || !e.music || !SOUND || vidUrl(e)){ try{bed.pause();}catch(_){} return; }   // нет трека / звук выкл / есть своё видео со звуком → молчим
+  if(bedSrc!==e.music){ bedSrc=e.music; bed.src=e.music; }
+  bed.volume=0.55; bed.play().catch(()=>{});
+}
 const soundBtn=document.getElementById("sound");
 function renderSound(){ soundBtn.innerHTML=SOUND?ICON.soundOn:ICON.soundOff; soundBtn.classList.toggle("on",SOUND); }
 soundBtn.addEventListener("click",()=>{ SOUND=!SOUND; renderSound();
   document.querySelectorAll(".card").forEach(c=>{ const v=c.querySelector("video.main"); if(v) v.muted=!(SOUND && +c.dataset.i===ACTIVE); });
   const av=document.querySelector(`.card[data-i="${ACTIVE}"] video.main`); if(av && SOUND) av.play().catch(()=>{});
+  updateBed(VIEW[ACTIVE]);
   toast(SOUND?"Звук включён":"Без звука"); });
 renderSound();
 

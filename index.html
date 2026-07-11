@@ -92,7 +92,6 @@
     text-shadow:0 2px 16px rgba(0,0,0,.85);cursor:pointer}
   .chiprow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .chiprow .dateschip{align-self:auto}
-  .chiprow .ptag{margin-left:auto}   /* цена уходит вправо, ближе к иконке билетов */
   .dateschip{align-self:flex-start;display:inline-flex;font-family:var(--body);font-weight:700;font-size:13px;
     color:var(--ink);cursor:pointer;padding:5px 12px;border-radius:100px;
     background:rgba(30,30,34,.45);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
@@ -134,7 +133,7 @@
   .rail button svg,.rail a svg{width:32px;height:32px;stroke-width:1.8}
   .rail button.on{color:var(--ink)}
   .rail button.on svg{fill:currentColor}
-  .rail button.av{position:relative;width:44px;height:44px;border-radius:50%;background:var(--card);border:2px solid #fff;overflow:visible}
+  .rail button.av{position:relative;overflow:visible}   /* без кружка — голая иконка, как остальные в рейле */
   .rail a.ticket{position:relative;color:var(--ink);margin-top:-7px}   /* подтянуть к «переслать»; подпись «Билеты» уходит в зазор снизу */
   .ticket-hint{position:absolute;left:50%;top:100%;transform:translateX(-50%);white-space:nowrap;margin-top:-1px;
     font-family:var(--disp);font-weight:700;font-size:9px;letter-spacing:.03em;text-transform:uppercase;
@@ -145,7 +144,7 @@
     letter-spacing:.02em;color:rgba(255,255,255,.55);writing-mode:vertical-rl;text-orientation:mixed;
     text-shadow:0 1px 3px rgba(0,0,0,.7);pointer-events:none}
   body.clean .vidcred{opacity:0}
-  .rail button.av svg{width:24px;height:24px;color:rgba(255,255,255,.85)}
+  .rail button.av svg{width:32px;height:32px;color:#fff}   /* в размер остальных иконок рейла */
   .favbadge{position:absolute;top:-5px;right:-6px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;
     background:var(--ink);color:#0b0b0d;font-family:var(--disp);font-size:10px;font-weight:800;display:grid;place-items:center;
     border:2px solid #0e0e10}

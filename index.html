@@ -92,6 +92,7 @@
     text-shadow:0 2px 16px rgba(0,0,0,.85);cursor:pointer}
   .chiprow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .chiprow .dateschip{align-self:auto}
+  .chiprow .ptag{margin-left:auto}   /* цена уходит вправо, ближе к иконке билетов */
   .dateschip{align-self:flex-start;display:inline-flex;font-family:var(--body);font-weight:700;font-size:13px;
     color:var(--ink);cursor:pointer;padding:5px 12px;border-radius:100px;
     background:rgba(30,30,34,.45);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
@@ -134,10 +135,10 @@
   .rail button.on{color:var(--ink)}
   .rail button.on svg{fill:currentColor}
   .rail button.av{position:relative;width:44px;height:44px;border-radius:50%;background:var(--card);border:2px solid #fff;overflow:visible}
-  .rail a.ticket{position:relative;color:var(--ink)}
+  .rail a.ticket{position:relative;color:var(--ink);margin-top:-7px}   /* подтянуть к «переслать»; подпись «Билеты» уходит в зазор снизу */
   .ticket-hint{position:absolute;left:50%;top:100%;transform:translateX(-50%);white-space:nowrap;margin-top:-1px;
     font-family:var(--disp);font-weight:700;font-size:9px;letter-spacing:.03em;text-transform:uppercase;
-    color:rgba(255,255,255,.85);text-shadow:0 1px 4px rgba(0,0,0,.8);
+    color:var(--ink);text-shadow:0 1px 4px rgba(0,0,0,.8);
     pointer-events:none;transition:opacity .3s ease}
   .ticket-hint.hide{opacity:0}
   .vidcred{position:absolute;right:12px;bottom:calc(38% + 6px);z-index:4;font-family:var(--body);font-size:9px;
@@ -681,9 +682,10 @@ function buildDateMenu(){
   const t=new Date(); t.setHours(0,0,0,0);
   menu.innerHTML=[...seen.entries()].map(([k,idx])=>{
     const d=new Date(k+"T00:00:00"); const diff=Math.round((d-t)/864e5);
-    const word = diff===0?"сегодня":diff===1?"завтра":["вс","пн","вт","ср","чт","пт","сб"][d.getDay()];
     const dm=`${d.getDate()}.${String(d.getMonth()+1).padStart(2,"0")}`;
-    return `<button class="dmi" data-idx="${idx}">${word} · ${dm}</button>`;
+    // «сегодня»/«завтра» — без даты (короче), остальные — «пн · 13.07»
+    const label = diff===0?"сегодня":diff===1?"завтра":`${["вс","пн","вт","ср","чт","пт","сб"][d.getDay()]} · ${dm}`;
+    return `<button class="dmi" data-idx="${idx}">${label}</button>`;
   }).join("");
   menu.querySelectorAll(".dmi").forEach(b=>b.addEventListener("click",()=>{
     menu.classList.remove("open");

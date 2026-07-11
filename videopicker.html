@@ -254,11 +254,15 @@ document.getElementById('app').addEventListener('wheel', e=>{
 
 if(new URLSearchParams(location.search).get('view')==='mobile') document.body.classList.add('mobileview');
 // восстановить позицию после обновления + перескочить на первую категорию, где ещё есть НЕоценённые
+const WAREHOUSE_VERSION='sonnet-34-v1';               // менять при пересборке склада — тогда позиция сбрасывается на начало
 (function resumePosition(){
-  let start = parseInt(localStorage.getItem('videopicker_pos')||'0',10);
-  if(isNaN(start) || start<0 || start>=CATEGORIES.length) start=0;
+  let start = 0;
+  if(localStorage.getItem('videopicker_whver')===WAREHOUSE_VERSION){   // тот же склад — продолжаем с места; другой — с начала
+    start = parseInt(localStorage.getItem('videopicker_pos')||'0',10);
+    if(isNaN(start) || start<0 || start>=CATEGORIES.length) start=0;
+  }
+  localStorage.setItem('videopicker_whver', WAREHOUSE_VERSION);
   ci = start; vi = 0;
-  // если текущая категория уже пройдена (0 живых) — ищем ближайшую вперёд с живыми
   let scanned=0;
   while(liveCandidates(CATEGORIES[ci]).length===0 && scanned<CATEGORIES.length){ ci=(ci+1)%CATEGORIES.length; scanned++; }
 })();

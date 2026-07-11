@@ -38,7 +38,7 @@
   .card.horiz video.main{object-fit:contain;object-position:50% 30%}
   .card.af video.main{object-fit:cover}   /* автофон-клипы заполняют кадр */
   .card.af .poster{object-fit:cover;object-position:top center}
-  .card .stage video.afbuf{opacity:0;transition:opacity .35s ease}   /* автофон: два буфера, кроссфейд встык */
+  .card .stage video.afbuf{opacity:0;transition:opacity .9s ease}   /* автофон: два буфера, медленный кроссфейд встык */
   .card .stage video.afbuf.afon{opacity:1}
   video.bg{object-fit:cover;filter:blur(28px) brightness(.5);transform:scale(1.2)}
   .card.playing video.main,.card.playing video.bg,.card.playing iframe.main{opacity:1}
@@ -389,7 +389,7 @@ function cardHTML(e,i){
       ${chip}
       <h1 data-act="open">${title}</h1>
       ${place?`<div class="meta">${place}</div>`:""}
-      <div class="chiprow">${dateChip(e)}${priceTxt?`<span class="ptag ${e.is_free?"free":""}">${priceTxt}</span>`:""}</div>
+      <div class="chiprow">${dateChip(e)}</div>
       ${dateFull(e)}
       <div class="preview" data-act="open">${linkify(bodyText)}<span class="more">  ещё…</span></div>
       <div class="desc"><div class="dtext">${linkify(bodyText)}<span class="collapse" data-act="close">  свернуть</span></div></div>
@@ -436,7 +436,7 @@ function mountAutofon(card, e){
 }
 function startAutofon(card){
   const af=card._af; if(!af || af.running) return; af.running=true;
-  const CLIP=1600, HOLD=2500, N=af.list.length;
+  const CLIP=2800, HOLD=2500, N=af.list.length;   // каждый клип держим дольше + медленный фейд → переходы плавные, а не рваные
   const seekMid=v=>{ try{ v.currentTime=(v.duration||3)*0.4; }catch(_){} };
   // src в буфер + перемотка в середину клипа; резолвится, когда клип готов играть без задержки
   const prep=(v,url)=>new Promise(res=>{ if(v._url===url && v.readyState>=1){ res(); return; }
@@ -494,13 +494,15 @@ railEl.innerHTML=`
   <button data-act="fav">${ICON.bookmark}</button>
   <button data-act="remind">${ICON.bell}</button>
   <button data-act="share">${ICON.forward}</button>
-  <a class="ticket" data-act="ticket" target="_blank" rel="noopener">${ICON.ticket}<span class="ticket-hint" id="ticketHint">Билеты</span></a>
+  <a class="ticket" data-act="ticket" target="_blank" rel="noopener">${ICON.ticket}<span class="ticket-hint" id="ticketPrice"></span></a>
   <button class="av" data-act="me">${ICON.user}<span class="favbadge" style="display:none"></span></button>`;
+function priceLabel(e){ return e.is_free ? "Бесплатно" : (e.price_from!=null ? `от ${Math.round(e.price_from)} €` : (e.ticket ? "Билеты" : "")); }
 function renderRail(e){
   railEl.querySelector('[data-act="fav"]').classList.toggle("on",fav.has(e.id));
   railEl.querySelector('[data-act="remind"]').classList.toggle("on",remind.has(e.id));
   const t=railEl.querySelector('[data-act="ticket"]');
   if(e.ticket){ t.href=e.ticket; t.style.display=""; } else { t.style.display="none"; }
+  const p=document.getElementById("ticketPrice"); if(p) p.textContent=priceLabel(e);   // цена/бесплатно — под значком билета, не отдельным чипом в колонке
 }
 railEl.addEventListener("click",ev=>{
   const el=ev.target.closest("[data-act]"); if(!el) return;
@@ -793,14 +795,6 @@ function hideOnboard(){
   feed.addEventListener("touchstart",e=>{ y0=e.touches[0].clientY; },{passive:true});
   feed.addEventListener("touchmove",e=>{ if(y0-e.touches[0].clientY>30) hideOnboard(); },{passive:true});
   feed.addEventListener("scroll",()=>{ if(feed.scrollTop>20) hideOnboard(); },{passive:true});
-})();
-
-// подпись «Билеты» под иконкой билета — видна только до первого нажатия на сам значок
-(function(){
-  const hint=document.getElementById("ticketHint");
-  if(localStorage.getItem("ticketHintSeen")){ hint.remove(); return; }
-  const dismiss=()=>{ hint.classList.add("hide"); localStorage.setItem("ticketHintSeen","1"); setTimeout(()=>hint.remove(),350); };
-  railEl.querySelector('[data-act="ticket"]').addEventListener("click",dismiss,{once:true});
 })();
 
 // демо-датасет собран один раз и не обновляется живым пайплайном — даты в нём стареют.

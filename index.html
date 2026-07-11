@@ -34,7 +34,9 @@
   video,iframe.main{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);opacity:0;transition:opacity .4s;border:0}
   .tapcatch{position:absolute;inset:0;background:transparent}
   .card.vert  video.main{object-fit:contain}
-  .card.horiz video.main{object-fit:contain;object-position:50% 30%}
+  .card.horiz video.main{object-fit:contain;object-position:50% 18%}
+  /* YouTube-эмбед (iframe) не понимает object-position — пришпиливаем его 16:9-полосой к верхней части, а не по центру */
+  .card.horiz iframe.main{top:13%;bottom:auto;height:auto;aspect-ratio:16/9}
   .card.af video.main{object-fit:cover}   /* автофон-клипы заполняют кадр (постер под ними — общее правило .poster contain) */
   .card .stage video.afbuf{opacity:0;transition:opacity .9s ease}   /* автофон: два буфера, медленный кроссфейд встык */
   .card .stage video.afbuf.afon{opacity:1}

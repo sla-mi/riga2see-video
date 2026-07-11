@@ -255,13 +255,17 @@ const ICON={
 function fmtDate(s){ if(!s) return ""; const d=new Date(s.replace(" ","T")); if(isNaN(d)) return "";
   const wd=["вс","пн","вт","ср","чт","пт","сб"][d.getDay()];
   return `${wd}, ${d.getDate()} ${RU_MONTH[d.getMonth()]} · ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
+// автофон-нарезка выключена: ~38 стоковых клипов мискаст-ят события (орган→гитара и т.п.) → везде чистый постер.
+// вернуть = true (данные и плеер на месте), но только с нормальной библиотекой/настоящим видео.
+const AUTOFON_ON=false;
 function relDate(s){ if(!s) return ""; const d=new Date(s.replace(" ","T")); if(isNaN(d)) return "";
   const t=new Date(); t.setHours(0,0,0,0); const e=new Date(d); e.setHours(0,0,0,0);
   const diff=Math.round((e-t)/864e5);
   if(diff===0) return "сегодня"; if(diff===1) return "завтра";
   const wd=["вс","пн","вт","ср","чт","пт","сб"][d.getDay()];
   const dm=`${d.getDate()}.${String(d.getMonth()+1).padStart(2,"0")}`;
-  return `${wd} · ${dm}`; }
+  const yr=d.getFullYear()!==(new Date()).getFullYear() ? `.${String(d.getFullYear()).slice(2)}` : "";   // год виден, если не текущий — иначе «4.06» читается как прошлый июнь
+  return `${wd} · ${dm}${yr}`; }
 // только сегодняшние и будущие сеансы (прошедшее не показываем — реальные даты)
 function futureDates(e){
   const t=new Date(); t.setHours(0,0,0,0); const t0=t.getTime();
@@ -364,7 +368,7 @@ function cardHTML(e,i){
   // без видео — показываем афишу целиком (contain), никогда не обрезаем; с видео — по его ориентации
   // квадратные видео тоже не заполняют портретный экран целиком — та же обработка (contain + верхняя треть), что у горизонтальных
   const orient = hasVideo(e) ? ((vidOrient(e)==="horiz"||vidOrient(e)==="sq")?"horiz":"vert")
-                : (e.autofon && e.autofon.length ? "af" : "photo");   // af = автофон-плейлист (клипы cover)
+                : (AUTOFON_ON && e.autofon && e.autofon.length ? "af" : "photo");   // af = автофон-плейлист (клипы cover)
   const cat=e.cat||""; const col=CAT_COLOR[cat]||"#cfcfd6";
   const priceTxt = e.is_free ? "Бесплатно" : (e.price_from!=null ? `от ${Math.round(e.price_from)} €` : "");
   const title = e.ev_title || firstLine(e.title) || e.page;
@@ -401,7 +405,7 @@ function mountVideo(card){
   if(card.querySelector(".main")) return card.querySelector(".main");
   const e=VIEW[+card.dataset.i]; const url=vidUrl(e);
   if(!url){                                                 // нет adlib/оригинала
-    if(e.autofon && e.autofon.length) return mountAutofon(card, e);   // но есть автофон-плейлист
+    if(AUTOFON_ON && e.autofon && e.autofon.length) return mountAutofon(card, e);   // но есть автофон-плейлист
     return null;                                            // совсем ничего — только постер
   }
   const stage=card.querySelector(".stage");
@@ -517,7 +521,7 @@ railEl.addEventListener("click",ev=>{
 const bed=document.createElement("audio"); bed.loop=true; bed.preload="none"; document.body.appendChild(bed);
 let bedSrc="";
 function updateBed(e){
-  if(!e || !e.music || !SOUND || vidUrl(e)){ try{bed.pause();}catch(_){} return; }   // нет трека / звук выкл / есть своё видео со звуком → молчим
+  if(!AUTOFON_ON || !e || !e.music || !SOUND || vidUrl(e)){ try{bed.pause();}catch(_){} return; }   // автофон выкл / нет трека / звук выкл / своё видео → молчим
   if(bedSrc!==e.music){ bedSrc=e.music; bed.src=e.music; }
   bed.volume=0.55; bed.play().catch(()=>{});
 }
@@ -745,8 +749,9 @@ function buildDateMenu(){
   const t=new Date(); t.setHours(0,0,0,0);
   menu.innerHTML=[...seen.entries()].map(([k,idx])=>{
     const d=new Date(k+"T00:00:00"); const diff=Math.round((d-t)/864e5);
-    const dm=`${d.getDate()}.${String(d.getMonth()+1).padStart(2,"0")}`;
-    // «сегодня»/«завтра» — без даты (короче), остальные — «пн · 13.07»
+    const yr=d.getFullYear()!==t.getFullYear()?`.${String(d.getFullYear()).slice(2)}`:"";
+    const dm=`${d.getDate()}.${String(d.getMonth()+1).padStart(2,"0")}${yr}`;
+    // «сегодня»/«завтра» — без даты (короче), остальные — «пн · 13.07» (год — если не текущий)
     const label = diff===0?"сегодня":diff===1?"завтра":`${["вс","пн","вт","ср","чт","пт","сб"][d.getDay()]} · ${dm}`;
     return `<button class="dmi" data-idx="${idx}">${label}</button>`;
   }).join("");

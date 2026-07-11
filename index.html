@@ -98,11 +98,11 @@
     background:rgba(30,30,34,.45);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
     border:1px solid rgba(255,255,255,.14)}
   .datesfull{align-self:flex-start;max-width:100%;max-height:0;overflow:hidden;transition:max-height .3s ease;
-    display:inline-flex;flex-wrap:wrap;gap:6px;border-radius:16px}
+    display:grid;grid-template-columns:1fr 1fr;gap:6px;border-radius:16px}   /* сеансы в 2 колонки */
   .card.datesopen .datesfull{max-height:30dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-top:6px;
     padding:8px;background:rgba(30,30,34,.45);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
   .datesfull .di{font-size:12px;font-weight:700;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);
-    border-radius:100px;padding:5px 11px;white-space:nowrap}
+    border-radius:100px;padding:5px 11px;white-space:nowrap;text-align:center}
   /* свёрнутый превью — 3 строки + «ещё…»; видно только пока НЕ open */
   .preview{font-size:15px;line-height:1.5;color:rgba(255,255,255,.92);text-shadow:0 1px 10px rgba(0,0,0,.95);
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
@@ -420,8 +420,9 @@ function unmountVideo(card){ card.classList.remove("playing");
 function setActive(i){
   if(i===ACTIVE) return;
   if(i>0) hideOnboard();
-  const prev=document.querySelector(`.card[data-i="${ACTIVE}"]`); if(prev){ prev.classList.remove("open"); }
-  document.body.classList.remove("clean");   // новое видео — всегда с исходного состояния (заголовки видны)
+  // при переключении на другой ролик — сбрасываем РАЗВЁРНУТЫЕ состояния карточки (описание, список дат)
+  const prev=document.querySelector(`.card[data-i="${ACTIVE}"]`); if(prev){ prev.classList.remove("open"); prev.classList.remove("datesopen"); }
+  // «чистый» режим (скрытые заголовки по тапу) НЕ сбрасываем — это осознанный режим просмотра, как звук: сохраняется между свайпами
   ACTIVE=i;
   const cards=[...document.querySelectorAll(".card")];
   cards.forEach(c=>{

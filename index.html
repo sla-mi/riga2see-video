@@ -36,6 +36,8 @@
   .tapcatch{position:absolute;inset:0;background:transparent}
   .card.vert  video.main{object-fit:contain}
   .card.horiz video.main{object-fit:contain;object-position:50% 30%}
+  .card.af video.main{object-fit:cover}   /* автофон-клипы заполняют кадр */
+  .card.af .poster{object-fit:cover;object-position:top center}
   video.bg{object-fit:cover;filter:blur(28px) brightness(.5);transform:scale(1.2)}
   .card.playing video.main,.card.playing video.bg,.card.playing iframe.main{opacity:1}
   .card.playing .poster:not(.bgp){opacity:0}
@@ -362,7 +364,8 @@ function toast(t){ const el=document.getElementById("toast"); el.textContent=t; 
 function cardHTML(e,i){
   // без видео — показываем афишу целиком (contain), никогда не обрезаем; с видео — по его ориентации
   // квадратные видео тоже не заполняют портретный экран целиком — та же обработка (contain + верхняя треть), что у горизонтальных
-  const orient=!hasVideo(e) ? "photo" : ((vidOrient(e)==="horiz"||vidOrient(e)==="sq")?"horiz":"vert");
+  const orient = hasVideo(e) ? ((vidOrient(e)==="horiz"||vidOrient(e)==="sq")?"horiz":"vert")
+                : (e.autofon && e.autofon.length ? "af" : "photo");   // af = автофон-плейлист (клипы cover)
   const cat=e.cat||""; const col=CAT_COLOR[cat]||"#cfcfd6";
   const priceTxt = e.is_free ? "Бесплатно" : (e.price_from!=null ? `от ${Math.round(e.price_from)} €` : "");
   const title = e.ev_title || firstLine(e.title) || e.page;
@@ -397,7 +400,11 @@ function ytEmbedSrc(url){ const id=(url.match(/embed\/([A-Za-z0-9_-]{6,})/)||[])
   return id ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=0&modestbranding=1&rel=0&playsinline=1` : url; }
 function mountVideo(card){
   if(card.querySelector(".main")) return card.querySelector(".main");
-  const e=VIEW[+card.dataset.i]; const url=vidUrl(e); if(!url) return null;   // статичная карточка (только постер)
+  const e=VIEW[+card.dataset.i]; const url=vidUrl(e);
+  if(!url){                                                 // нет adlib/оригинала
+    if(e.autofon && e.autofon.length) return mountAutofon(card, e);   // но есть автофон-плейлист
+    return null;                                            // совсем ничего — только постер
+  }
   const stage=card.querySelector(".stage");
   if(e.video && e.video.type==="embed"){                  // эмбед из билетки (YouTube) — не mp4, отдельный путь
     const f=document.createElement("iframe"); f.className="main embed"; f.src=ytEmbedSrc(url);
@@ -414,7 +421,37 @@ function mountVideo(card){
   { const bg=document.createElement("video");prep(bg,"bg");stage.appendChild(bg); }
   const v=document.createElement("video");prep(v,"main");stage.appendChild(v); return v;
 }
-function unmountVideo(card){ card.classList.remove("playing");
+// ── АВТОФОН: плейлист из кирпичиков. Каждый клип 1.5с из середины → следующий; в конце постер 3с; луп ──
+function mountAutofon(card, e){
+  const stage=card.querySelector(".stage"); const pu=poster(e);
+  const mk=cls=>{ const v=document.createElement("video"); v.className=cls; v.muted=true; v.defaultMuted=true; v.playsInline=true;
+    v.setAttribute("muted","");v.setAttribute("playsinline","");v.setAttribute("webkit-playsinline","");v.preload="auto"; return v; };
+  const bg=mk("bg"); stage.appendChild(bg);
+  const v=mk("main"); if(pu) v.poster=pu; v.dataset.autofon="1"; stage.appendChild(v);
+  card._af={ list:e.autofon, v, bg, timers:[], running:false };
+  return v;
+}
+function startAutofon(card){
+  const af=card._af; if(!af || af.running) return; af.running=true;
+  const CLIP=1500, HOLD=3000;
+  const step=(pi)=>{
+    if(!af.running) return;
+    if(pi>=af.list.length){ card.classList.remove("playing");        // конец плейлиста → постер держим 3с
+      af.timers.push(setTimeout(()=>step(0), HOLD)); return; }
+    const url=af.list[pi].url, v=af.v, bg=af.bg;
+    v.src=url; bg.src=url;
+    // видео-слой показываем ТОЛЬКО когда клип реально пошёл; иначе остаётся постер (не застывший кадр)
+    v.addEventListener("playing",()=>{ if(af.running) card.classList.add("playing"); },{once:true});
+    const play=()=>{ const mid=(v.duration||3)*0.4; try{v.currentTime=mid;}catch(_){}
+      v.play().catch(()=>{}); try{bg.currentTime=mid;}catch(_){} bg.play().catch(()=>{});
+      af.timers.push(setTimeout(()=>{ card.classList.remove("playing"); step(pi+1); }, CLIP)); };  // перед след. клипом убираем playing, чтобы не мигнул старый кадр
+    if(v.readyState>=1) play(); else v.addEventListener("loadedmetadata",play,{once:true});
+  };
+  step(0);
+}
+function stopAutofon(card){ const af=card._af; if(!af) return; af.running=false;
+  af.timers.forEach(clearTimeout); af.timers=[]; try{af.v.pause();af.bg.pause();}catch(_){} }
+function unmountVideo(card){ card.classList.remove("playing"); stopAutofon(card); card._af=null;
   card.querySelectorAll("video, iframe.main").forEach(v=>{ if(v.tagName==="VIDEO"){v.pause();v.removeAttribute("src");v.load();} v.remove(); }); }
 function setActive(i){
   if(i===ACTIVE) return;
@@ -429,6 +466,7 @@ function setActive(i){
     if(!near){ unmountVideo(c); return; }
     const v=mountVideo(c);
     if(!v){ c.classList.remove("playing"); return; }        // статичная карточка — только постер
+    if(v.dataset && v.dataset.autofon){ if(idx===i) startAutofon(c); else stopAutofon(c); return; }   // автофон-плейлист
     if(v.tagName==="IFRAME"){ if(idx===i) c.classList.add("playing"); else c.classList.remove("playing"); return; }
     if(idx===i){ v.muted=!SOUND; const bg=c.querySelector("video.bg");
       const go=()=>{ v.currentTime=0; v.play().catch(()=>{}); if(bg){bg.currentTime=0;bg.muted=true;bg.play().catch(()=>{});} };

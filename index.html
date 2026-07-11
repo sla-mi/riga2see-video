@@ -553,10 +553,12 @@ function currentList(){
   const catFilter = favMode ? (e=>fav.has(e.id)) : (e=>curCat===null || (e.cat||"")===curCat);
   // реальные даты: показываем только события, у которых есть сегодняшний или будущий сеанс (прошедшие не показываем)
   const base = ALL.filter(e=> catFilter(e) && futureDates(e).length>0);
-  const byDate=(a,b)=>String(nearDate(a)).localeCompare(String(nearDate(b)));   // сортировка по ближайшему БУДУЩЕМУ сеансу
-  const withVideo = base.filter(hasVideo).sort(byDate);
-  const withoutVideo = base.filter(e=>!hasVideo(e)).sort(byDate);
-  return [...withVideo, ...withoutVideo];
+  const isOneTime = e => futureDates(e).length<=1;   // разовое = один будущий сеанс; многоразовое = несколько
+  const byDate=(a,b)=>String(nearDate(a)).localeCompare(String(nearDate(b)));   // по ближайшему БУДУЩЕМУ сеансу
+  // как в Афише: сначала РАЗОВЫЕ (по дате), потом МНОГОРАЗОВЫЕ (по дате)
+  const oneTime  = base.filter(isOneTime).sort(byDate);
+  const recurring= base.filter(e=>!isOneTime(e)).sort(byDate);
+  return [...oneTime, ...recurring];
 }
 // первое событие произвольной категории (для превью-«призрака» во время свайпа)
 function firstItemFor(catKey){

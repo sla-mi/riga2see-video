@@ -27,17 +27,14 @@
     display:flex;flex-direction:column;justify-content:flex-end;background:#000}
   .stage{position:absolute;inset:0;overflow:hidden}
   .nocover{position:absolute;inset:0}
-  .poster{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);object-fit:cover;transition:opacity .4s}
-  /* нет видео — афиша целиком, без обрезки; горизонт-видео — тоже целиком, прижато к верху */
-  .card.horiz .poster,.card.photo .poster{object-fit:contain;object-position:50% 30%}
-  .card.vert .poster{object-fit:contain}
-  .card.horiz .poster.bgp,.card.photo .poster.bgp{object-fit:cover;filter:blur(28px) brightness(.5);transform:scale(1.25);object-position:50% 50%}
+  /* СИСТЕМНО: постер-афиша ВСЕГДА целиком (contain), нигде не обрезается; за ним — размытая заливка того же кадра */
+  .poster{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);object-fit:contain;object-position:center;transition:opacity .4s}
+  .poster.bgp{object-fit:cover;object-position:center;filter:blur(28px) brightness(.5);transform:scale(1.25)}
   video,iframe.main{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);opacity:0;transition:opacity .4s;border:0}
   .tapcatch{position:absolute;inset:0;background:transparent}
   .card.vert  video.main{object-fit:contain}
   .card.horiz video.main{object-fit:contain;object-position:50% 30%}
-  .card.af video.main{object-fit:cover}   /* автофон-клипы заполняют кадр */
-  .card.af .poster:not(.bgp){object-fit:contain;object-position:center}   /* автофон: постер целиком, не обрезан — поверх размытого фона */
+  .card.af video.main{object-fit:cover}   /* автофон-клипы заполняют кадр (постер под ними — общее правило .poster contain) */
   .card .stage video.afbuf{opacity:0;transition:opacity .9s ease}   /* автофон: два буфера, медленный кроссфейд встык */
   .card .stage video.afbuf.afon{opacity:1}
   video.bg{object-fit:cover;filter:blur(28px) brightness(.5);transform:scale(1.2)}
@@ -375,7 +372,7 @@ function cardHTML(e,i){
   const bodyText = (e.body||"Описание появится позже.").trim();
   const chip = ((favMode||curCat===null) && cat) ? `<span class="catchip" data-act="setcat" data-cat="${cat}"><span class="dot" style="background:${col}"></span>${cat}</span>` : "";
   const purl=poster(e);
-  const bgPoster = purl && (orient==="horiz"||orient==="photo"||orient==="af") ? `<img class="poster bgp" src="${purl}" alt="" loading="lazy" onerror="this.remove()">` : "";
+  const bgPoster = purl ? `<img class="poster bgp" src="${purl}" alt="" loading="lazy" onerror="this.remove()">` : "";   // размытая заливка за постером — на любой карточке, чтобы постер шёл целиком без чёрных полей
   // нет вообще никакой картинки (редко, ~0.6%) — заливка цветом категории вместо сломанного img
   // если картинка не грузится (сломанная ссылка у источника) — цветная заглушка вместо «битой иконки»
   const onerr=`this.replaceWith(Object.assign(document.createElement('div'),{className:'nocover',style:'background:${col}55'}))`;

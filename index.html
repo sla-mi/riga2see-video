@@ -73,8 +73,8 @@
     border:1px solid var(--btn-border);padding:6px 12px;border-radius:100px;cursor:pointer}
   .datechip::after{content:"▾";font-size:9px;opacity:.7}
   .datemenu{position:absolute;top:38px;left:0;width:max-content;min-width:108px;max-height:56dvh;overflow-y:auto;
-    -webkit-overflow-scrolling:touch;background:rgba(18,18,22,.96);border:1px solid var(--btn-border);
-    border-radius:14px;padding:5px;display:none;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+    -webkit-overflow-scrolling:touch;background:rgba(20,20,26,.45);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+    border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:5px;display:none;box-shadow:0 12px 40px rgba(0,0,0,.45)}
   .datemenu.open{display:block}
   .datemenu::-webkit-scrollbar{display:none}
   .dmi{display:block;width:100%;text-align:left;background:none;border:0;cursor:pointer;padding:9px 14px;border-radius:9px;
@@ -90,6 +90,8 @@
   .catchip .dot{width:8px;height:8px;border-radius:50%}
   h1{font-family:var(--disp);font-weight:900;font-size:18px;line-height:1.2;margin:0;letter-spacing:-.01em;
     text-shadow:0 2px 16px rgba(0,0,0,.85);cursor:pointer}
+  .chiprow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .chiprow .dateschip{align-self:auto}
   .dateschip{align-self:flex-start;display:inline-flex;font-family:var(--body);font-weight:700;font-size:13px;
     color:var(--ink);cursor:pointer;padding:5px 12px;border-radius:100px;
     background:rgba(30,30,34,.45);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
@@ -133,11 +135,15 @@
   .rail button.on svg{fill:currentColor}
   .rail button.av{position:relative;width:44px;height:44px;border-radius:50%;background:var(--card);border:2px solid #fff;overflow:visible}
   .rail a.ticket{position:relative;color:var(--ink)}
-  .ticket-hint{position:absolute;left:50%;top:100%;transform:translateX(-50%);white-space:nowrap;margin-top:2px;
+  .ticket-hint{position:absolute;left:50%;top:100%;transform:translateX(-50%);white-space:nowrap;margin-top:-1px;
     font-family:var(--disp);font-weight:700;font-size:9px;letter-spacing:.03em;text-transform:uppercase;
     color:rgba(255,255,255,.85);text-shadow:0 1px 4px rgba(0,0,0,.8);
     pointer-events:none;transition:opacity .3s ease}
   .ticket-hint.hide{opacity:0}
+  .vidcred{position:absolute;right:12px;bottom:calc(38% + 6px);z-index:4;font-family:var(--body);font-size:9px;
+    letter-spacing:.02em;color:rgba(255,255,255,.55);writing-mode:vertical-rl;text-orientation:mixed;
+    text-shadow:0 1px 3px rgba(0,0,0,.7);pointer-events:none}
+  body.clean .vidcred{opacity:0}
   .rail button.av svg{width:24px;height:24px;color:rgba(255,255,255,.85)}
   .favbadge{position:absolute;top:-5px;right:-6px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;
     background:var(--ink);color:#0b0b0d;font-family:var(--disp);font-size:10px;font-weight:800;display:grid;place-items:center;
@@ -263,12 +269,16 @@ function futureDates(e){
             .sort((a,b)=>String(a).localeCompare(String(b)));
 }
 function nearDate(e){ const f=futureDates(e); return f[0] || e.date || "9999"; }
-// чип «ближайшая дата +N» для событий с несколькими БУДУЩИМИ сеансами; тап — разворачивает полный список
-function datesChipHTML(e){
+// чип «ближайшая дата +N» (пилюля) и отдельно раскрывающийся список сеансов
+function dateChip(e){
   const future=futureDates(e);
   if(future.length<2) return "";
-  return `<span class="dateschip" data-act="dates">${relDate(future[0])} +${future.length-1}</span>
-    <div class="datesfull" data-act="closedates">${future.map(d=>`<span class="di">${fmtDate(d)}</span>`).join("")}</div>`;
+  return `<span class="dateschip" data-act="dates">${relDate(future[0])} +${future.length-1}</span>`;
+}
+function dateFull(e){
+  const future=futureDates(e);
+  if(future.length<2) return "";
+  return `<div class="datesfull" data-act="closedates">${future.map(d=>`<span class="di">${fmtDate(d)}</span>`).join("")}</div>`;
 }
 function firstLine(t){ return (t||"").split(/[\.\n!|]/)[0].trim().slice(0,70); }
 function esc(s){ return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
@@ -369,16 +379,15 @@ function cardHTML(e,i){
   return `<div class="card ${orient}" data-i="${i}">
     <div class="stage">${stageInner}</div>
     <div class="shade"></div>
+    ${hasVideo(e)?'<div class="vidcred">видео организатора</div>':""}
     <div class="info">
       ${chip}
       <h1 data-act="open">${title}</h1>
       ${place?`<div class="meta">${place}</div>`:""}
-      ${datesChipHTML(e)}
+      <div class="chiprow">${dateChip(e)}${priceTxt?`<span class="ptag ${e.is_free?"free":""}">${priceTxt}</span>`:""}</div>
+      ${dateFull(e)}
       <div class="preview" data-act="open">${linkify(bodyText)}<span class="more">  ещё…</span></div>
       <div class="desc"><div class="dtext">${linkify(bodyText)}<span class="collapse" data-act="close">  свернуть</span></div></div>
-      <div class="arow">
-        ${priceTxt?`<span class="ptag ${e.is_free?"free":""}">${priceTxt}</span>`:""}
-      </div>
     </div>
   </div>`;
 }

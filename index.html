@@ -556,9 +556,10 @@ function currentList(){
   const base = ALL.filter(e=> catFilter(e) && futureDates(e).length>0);
   const isOneTime = e => futureDates(e).length<=1;   // разовое = один будущий сеанс; многоразовое = несколько
   const byDate=(a,b)=>String(nearDate(a)).localeCompare(String(nearDate(b)));   // по ближайшему БУДУЩЕМУ сеансу
-  // как в Афише: сначала РАЗОВЫЕ (по дате), потом МНОГОРАЗОВЫЕ (по дате)
-  const oneTime  = base.filter(isOneTime).sort(byDate);
-  const recurring= base.filter(e=>!isOneTime(e)).sort(byDate);
+  // как в Афише: сначала РАЗОВЫЕ, потом МНОГОРАЗОВЫЕ; ВНУТРИ каждой группы — сначала с видео (по дате), затем без видео (по дате)
+  const grp = list => [...list.filter(hasVideo).sort(byDate), ...list.filter(e=>!hasVideo(e)).sort(byDate)];
+  const oneTime  = grp(base.filter(isOneTime));
+  const recurring= grp(base.filter(e=>!isOneTime(e)));
   return [...oneTime, ...recurring];
 }
 // первое событие произвольной категории (для превью-«призрака» во время свайпа)

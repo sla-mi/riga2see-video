@@ -255,14 +255,20 @@ function relDate(s){ if(!s) return ""; const d=new Date(s.replace(" ","T")); if(
   const wd=["вс","пн","вт","ср","чт","пт","сб"][d.getDay()];
   const dm=`${d.getDate()}.${String(d.getMonth()+1).padStart(2,"0")}`;
   return `${wd} · ${dm}`; }
-// чип «ближайшая дата +N» для событий с несколькими сеансами; тап — разворачивает полный список инлайн
+// только сегодняшние и будущие сеансы (прошедшее не показываем — реальные даты)
+function futureDates(e){
+  const t=new Date(); t.setHours(0,0,0,0); const t0=t.getTime();
+  const src = (e.dates && e.dates.length) ? e.dates : (e.date ? [e.date] : []);
+  return src.filter(d=>{ const x=new Date(d.replace(" ","T")); x.setHours(0,0,0,0); return x.getTime()>=t0; })
+            .sort((a,b)=>String(a).localeCompare(String(b)));
+}
+function nearDate(e){ const f=futureDates(e); return f[0] || e.date || "9999"; }
+// чип «ближайшая дата +N» для событий с несколькими БУДУЩИМИ сеансами; тап — разворачивает полный список
 function datesChipHTML(e){
-  if(!e.dates || e.dates.length<2) return "";
-  const now=Date.now();
-  const future=e.dates.filter(d=>new Date(d.replace(" ","T")).getTime()>=now);
-  const near=(future[0]||e.dates[0]);
-  return `<span class="dateschip" data-act="dates">${relDate(near)} +${e.dates.length-1}</span>
-    <div class="datesfull" data-act="closedates">${e.dates.map(d=>`<span class="di">${fmtDate(d)}</span>`).join("")}</div>`;
+  const future=futureDates(e);
+  if(future.length<2) return "";
+  return `<span class="dateschip" data-act="dates">${relDate(future[0])} +${future.length-1}</span>
+    <div class="datesfull" data-act="closedates">${future.map(d=>`<span class="di">${fmtDate(d)}</span>`).join("")}</div>`;
 }
 function firstLine(t){ return (t||"").split(/[\.\n!|]/)[0].trim().slice(0,70); }
 function esc(s){ return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
@@ -420,7 +426,7 @@ function setActive(i){
       v.addEventListener("playing",()=>c.classList.add("playing"),{once:true});
     } else { c.classList.remove("playing"); v.pause(); const bg=c.querySelector("video.bg"); if(bg) bg.pause(); }
   });
-  const e=VIEW[i]; if(e){ document.getElementById("datechip").textContent=relDate(e.date); renderRail(e); }
+  const e=VIEW[i]; if(e){ document.getElementById("datechip").textContent=relDate(nearDate(e)); renderRail(e); }
 }
 const railEl=document.getElementById("rail");
 railEl.innerHTML=`
@@ -534,10 +540,10 @@ function bindActions(card){
 
 // категории / избранное
 function currentList(){
-  const base = favMode ? ALL.filter(e=>fav.has(e.id))
-                       : ALL.filter(e=>curCat===null || (e.cat||"")===curCat);
-  const byDate=(a,b)=>String(a.date||"9999").localeCompare(String(b.date||"9999"));
-  // приоритет видео: сначала все события с видео (по дате), затем все без видео (по дате)
+  const catFilter = favMode ? (e=>fav.has(e.id)) : (e=>curCat===null || (e.cat||"")===curCat);
+  // реальные даты: показываем только события, у которых есть сегодняшний или будущий сеанс (прошедшие не показываем)
+  const base = ALL.filter(e=> catFilter(e) && futureDates(e).length>0);
+  const byDate=(a,b)=>String(nearDate(a)).localeCompare(String(nearDate(b)));   // сортировка по ближайшему БУДУЩЕМУ сеансу
   const withVideo = base.filter(hasVideo).sort(byDate);
   const withoutVideo = base.filter(e=>!hasVideo(e)).sort(byDate);
   return [...withVideo, ...withoutVideo];
@@ -662,7 +668,7 @@ function buildFeed(list){
 function buildDateMenu(){
   const menu=document.getElementById("datemenu");
   const seen=new Map();
-  VIEW.forEach((e,i)=>{ if(!e.date) return; const k=e.date.slice(0,10); if(!seen.has(k)) seen.set(k,i); });
+  VIEW.forEach((e,i)=>{ const nd=nearDate(e); if(!nd||nd==="9999") return; const k=nd.slice(0,10); if(!seen.has(k)) seen.set(k,i); });
   const t=new Date(); t.setHours(0,0,0,0);
   menu.innerHTML=[...seen.entries()].map(([k,idx])=>{
     const d=new Date(k+"T00:00:00"); const diff=Math.round((d-t)/864e5);
@@ -725,26 +731,9 @@ function hideOnboard(){
 // демо-датасет собран один раз и не обновляется живым пайплайном — даты в нём стареют.
 // вместо ручной правки дат при каждом показе сдвигаем их на лету: якорь = самая ранняя дата в файле,
 // разница между якорем и реальным "сегодня" применяется ко всем датам при каждой загрузке страницы.
-function shiftDatesToToday(list){
-  let anchor=null;
-  for(const e of list){ if(!e.date) continue; const d=new Date(e.date.replace(" ","T"));
-    if(!isNaN(d) && (anchor===null || d<anchor)) anchor=d; }
-  if(!anchor) return;
-  anchor.setHours(0,0,0,0);
-  const today=new Date(); today.setHours(0,0,0,0);
-  const diffDays=Math.round((today-anchor)/864e5);
-  if(!diffDays) return;
-  const pad=n=>String(n).padStart(2,"0");
-  const shift=s=>{ const d=new Date(s.replace(" ","T")); if(isNaN(d)) return s; d.setDate(d.getDate()+diffDays);
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; };
-  for(const e of list){
-    if(e.date) e.date=shift(e.date);
-    if(e.dates) e.dates=e.dates.map(shift);
-  }
-}
+// (удалено) shiftDatesToToday — фейковый сдвиг дат под «сегодня» убран: фронт работает на РЕАЛЬНЫХ датах
 async function boot(){
   ALL=await (await fetch("big_feed.json",{cache:"no-store"})).json();
-  shiftDatesToToday(ALL);
   buildTabs();
   buildFeed(currentList());
   let unlocked=false;

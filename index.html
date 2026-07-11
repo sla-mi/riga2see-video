@@ -30,6 +30,7 @@
   /* СИСТЕМНО: постер-афиша ВСЕГДА целиком (contain), нигде не обрезается; за ним — размытая заливка того же кадра */
   .poster{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);object-fit:contain;object-position:center;transition:opacity .4s}
   .poster.bgp{object-fit:cover;object-position:center;filter:blur(28px) brightness(.5);transform:scale(1.25)}
+  .card.horiz .poster:not(.bgp),.card.photo .poster:not(.bgp){object-position:50% 28%}   /* горизонт/квадрат — постер выше, не по центру (под ним место для текста) */
   video,iframe.main{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);opacity:0;transition:opacity .4s;border:0}
   .tapcatch{position:absolute;inset:0;background:transparent}
   .card.vert  video.main{object-fit:contain}
@@ -274,6 +275,8 @@ function futureDates(e){
             .sort((a,b)=>String(a).localeCompare(String(b)));
 }
 function nearDate(e){ const f=futureDates(e); return f[0] || e.date || "9999"; }
+// без реального описания ивент не показываем (пустое тело / заглушка «появится позже» = почти 0 инфы)
+function hasDesc(e){ const b=(e.body||"").trim(); return b.length>=15 && !/появится позже/i.test(b); }
 // чип «ближайшая дата +N» (пилюля) и отдельно раскрывающийся список сеансов
 function dateChip(e){
   const future=futureDates(e);
@@ -616,7 +619,7 @@ function bindActions(card){
 function currentList(){
   const catFilter = favMode ? (e=>fav.has(e.id)) : (e=>curCat===null || (e.cat||"")===curCat);
   // реальные даты: показываем только события, у которых есть сегодняшний или будущий сеанс (прошедшие не показываем)
-  const base = ALL.filter(e=> catFilter(e) && futureDates(e).length>0);
+  const base = ALL.filter(e=> catFilter(e) && futureDates(e).length>0 && hasDesc(e));
   const isOneTime = e => futureDates(e).length<=1;   // разовое = один будущий сеанс; многоразовое = несколько
   const byDate=(a,b)=>String(nearDate(a)).localeCompare(String(nearDate(b)));   // по ближайшему БУДУЩЕМУ сеансу
   // как в Афише: сначала РАЗОВЫЕ, потом МНОГОРАЗОВЫЕ; ВНУТРИ каждой группы — сначала с видео (по дате), затем без видео (по дате)

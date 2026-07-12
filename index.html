@@ -95,6 +95,16 @@
   h1{font-family:var(--disp);font-weight:900;font-size:18px;line-height:1.2;margin:0;letter-spacing:-.01em;
     text-shadow:0 2px 16px rgba(0,0,0,.85);cursor:pointer}
   .chiprow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .pricebot{margin-top:10px;font-family:var(--disp);font-weight:800;font-size:15px;color:var(--ink);text-shadow:0 1px 8px rgba(0,0,0,.8)}
+  .pricebot.free{color:#b9f0a0}   /* «Бесплатно» — зелёным */
+  .avmenu{position:fixed;right:8px;bottom:calc(74px + env(safe-area-inset-bottom));z-index:30;display:none;flex-direction:column;gap:8px;
+    background:rgba(20,20,26,.92);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:10px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+  .avmenu.open{display:flex}
+  .avm-langs{display:flex;gap:4px}
+  .avm-langs button{width:42px;height:34px;border:0;border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-family:var(--disp);font-weight:800;font-size:12px;cursor:pointer}
+  .avm-langs button.on{background:var(--ink);color:#15151a}
+  .avm-fav{display:flex;align-items:center;gap:8px;border:0;background:none;color:#fff;font-family:var(--body);font-weight:700;font-size:14px;cursor:pointer;padding:6px 4px}
+  .avm-fav svg{width:20px;height:20px}
   .chiprow .dateschip{align-self:auto}
   .dateschip{align-self:flex-start;display:inline-flex;font-family:var(--body);font-weight:700;font-size:13px;
     color:var(--ink);cursor:pointer;padding:5px 12px;border-radius:100px;
@@ -264,8 +274,8 @@ const AUTOFON_ON=false;
 function relDate(s){ if(!s) return ""; const d=new Date(s.replace(" ","T")); if(isNaN(d)) return "";
   const t=new Date(); t.setHours(0,0,0,0); const e=new Date(d); e.setHours(0,0,0,0);
   const diff=Math.round((e-t)/864e5);
-  if(diff===0) return "сегодня"; if(diff===1) return "завтра";
-  const wd=["вс","пн","вт","ср","чт","пт","сб"][d.getDay()];
+  if(diff===0) return tr("today"); if(diff===1) return tr("tomorrow");
+  const wd=WD[LANG][d.getDay()];
   const dm=`${d.getDate()}.${String(d.getMonth()+1).padStart(2,"0")}`;
   const yr=d.getFullYear()!==(new Date()).getFullYear() ? `.${String(d.getFullYear()).slice(2)}` : "";   // год виден, если не текущий — иначе «4.06» читается как прошлый июнь
   return `${wd} · ${dm}${yr}`; }
@@ -300,6 +310,20 @@ function hasVideo(e){ return !!vidUrl(e); }
 
 const fav=new Set(JSON.parse(localStorage.getItem("fav")||"[]"));
 const remind=new Map(); let ALL=[]; let VIEW=[]; let SOUND=false; let ACTIVE=-1; let curCat=null; let TABS=[]; let favMode=false; let lastActiveDate=null;
+// ── язык интерфейса (LV|RU|EN). Контент событий в данных в основном оригинальный; тут локализуем ХРОМ: вкладки, даты, ярлыки ──
+let LANG=localStorage.getItem("lang")||"ru";
+const CATL={ "Концерты":["Koncerti","Concerts"],"Классическая музыка":["Klasiskā mūzika","Classical"],"Театр":["Teātris","Theatre"],
+ "Выставки":["Izstādes","Exhibitions"],"Юмор":["Humors","Comedy"],"С детьми":["Bērniem","Kids"],"Детям":["Bērniem","Kids"],
+ "Клубы":["Klubi","Clubs"],"Кино":["Kino","Cinema"],"Разговоры":["Sarunas","Talks"],"Лекции":["Lekcijas","Talks"],
+ "Фестивали":["Festivāli","Festivals"],"Еда и вино":["Ēdiens un vīns","Food & Wine"],"Впечатления":["Pieredze","Experiences"],
+ "Музыка в барах":["Mūzika bāros","Live bars"],"Спорт":["Sports","Sport"],"Другое":["Cits","Other"] };
+function catLabel(c){ if(!c) return LANG==="lv"?"Visi":LANG==="en"?"All":"Все"; const m=CATL[c]; if(!m) return c; return LANG==="lv"?m[0]:LANG==="en"?m[1]:c; }
+const I18N={
+ today:{ru:"сегодня",lv:"šodien",en:"today"}, tomorrow:{ru:"завтра",lv:"rīt",en:"tomorrow"},
+ orgvideo:{ru:"видео организатора",lv:"organizatora video",en:"organiser video"},
+ free:{ru:"Бесплатно",lv:"Bez maksas",en:"Free"}, fav:{ru:"Избранное",lv:"Izlase",en:"Saved"}, from:{ru:"от",lv:"no",en:"from"} };
+const WD={ru:["вс","пн","вт","ср","чт","пт","сб"],lv:["Sv","P","O","T","C","Pk","S"],en:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]};
+function tr(k){ return (I18N[k]||{})[LANG]||(I18N[k]||{}).ru||k; }
 function saveFav(){ localStorage.setItem("fav", JSON.stringify([...fav])); }
 // варианты напоминания в зависимости от близости события (как в афише)
 function reminderOpts(s){
@@ -375,11 +399,11 @@ function cardHTML(e,i){
   const orient = hasVideo(e) ? ((vidOrient(e)==="horiz"||vidOrient(e)==="sq")?"horiz":"vert")
                 : (AUTOFON_ON && e.autofon && e.autofon.length ? "af" : "photo");   // af = автофон-плейлист (клипы cover)
   const cat=e.cat||""; const col=CAT_COLOR[cat]||"#cfcfd6";
-  const priceTxt = e.is_free ? "Бесплатно" : (e.price_from!=null ? `от ${Math.round(e.price_from)} €` : "");
+  const priceTxt = e.is_free ? tr("free") : (e.price_from!=null ? `${tr("from")} ${Math.round(e.price_from)} €` : "");
   const title = e.ev_title || firstLine(e.title) || e.page;
   const place = e.venue || e.page;
   const bodyText = (e.body||"Описание появится позже.").trim();
-  const chip = ((favMode||curCat===null) && cat) ? `<span class="catchip" data-act="setcat" data-cat="${cat}"><span class="dot" style="background:${col}"></span>${cat}</span>` : "";
+  const chip = ((favMode||curCat===null) && cat) ? `<span class="catchip" data-act="setcat" data-cat="${cat}"><span class="dot" style="background:${col}"></span>${catLabel(cat)}</span>` : "";
   const purl=poster(e);
   const bgPoster = purl ? `<img class="poster bgp" src="${purl}" alt="" loading="lazy" onerror="this.remove()">` : "";   // размытая заливка за постером — на любой карточке, чтобы постер шёл целиком без чёрных полей
   // нет вообще никакой картинки (редко, ~0.6%) — заливка цветом категории вместо сломанного img
@@ -390,7 +414,7 @@ function cardHTML(e,i){
   return `<div class="card ${orient}" data-i="${i}">
     <div class="stage">${stageInner}</div>
     <div class="shade"></div>
-    ${hasVideo(e)?'<div class="vidcred">видео организатора</div>':""}
+    ${hasVideo(e)?`<div class="vidcred">${tr("orgvideo")}</div>`:""}
     <div class="info">
       ${chip}
       <h1 data-act="open">${title}</h1>
@@ -399,6 +423,7 @@ function cardHTML(e,i){
       ${dateFull(e)}
       <div class="preview" data-act="open">${linkify(bodyText)}<span class="more">  ещё…</span></div>
       <div class="desc"><div class="dtext">${linkify(bodyText)}<span class="collapse" data-act="close">  свернуть</span></div></div>
+      ${priceTxt?`<div class="pricebot ${e.is_free?"free":""}">${priceTxt}</div>`:""}
     </div>
   </div>`;
 }
@@ -508,13 +533,27 @@ function renderRail(e){
   railEl.querySelector('[data-act="remind"]').classList.toggle("on",remind.has(e.id));
   const t=railEl.querySelector('[data-act="ticket"]');
   if(e.ticket){ t.href=e.ticket; t.style.display=""; } else { t.style.display="none"; }
-  const p=document.getElementById("ticketPrice"); if(p) p.textContent=priceLabel(e);   // цена/бесплатно — под значком билета, не отдельным чипом в колонке
 }
+// ── меню аватара: язык LV|RU|EN + переход в Избранное ──
+const avMenu=document.createElement("div"); avMenu.className="avmenu";
+avMenu.innerHTML=`<div class="avm-langs"><button data-lang="lv">LV</button><button data-lang="ru">RU</button><button data-lang="en">EN</button></div>
+  <button class="avm-fav">${ICON.bookmark}<span class="avm-favlbl"></span></button>`;
+document.body.appendChild(avMenu);
+function renderAvMenu(){ avMenu.querySelectorAll("[data-lang]").forEach(b=>b.classList.toggle("on",b.dataset.lang===LANG));
+  avMenu.querySelector(".avm-favlbl").textContent=tr("fav"); }
+function toggleAvatarMenu(){ avMenu.classList.toggle("open"); renderAvMenu(); }
+function setLang(l){ LANG=l; localStorage.setItem("lang",l); document.documentElement.lang=l;
+  renderAvMenu(); buildTabs(); buildFeed(currentList()); }   // перерисовываем вкладки и ленту под новый язык
+avMenu.addEventListener("click",ev=>{ const l=ev.target.closest("[data-lang]");
+  if(l){ setLang(l.dataset.lang); return; }
+  if(ev.target.closest(".avm-fav")){ avMenu.classList.remove("open"); enterFav(); } });
+document.addEventListener("click",ev=>{ if(!ev.target.closest(".avmenu") && !ev.target.closest('[data-act="me"]')) avMenu.classList.remove("open"); });
+document.documentElement.lang=LANG;
 railEl.addEventListener("click",ev=>{
   const el=ev.target.closest("[data-act]"); if(!el) return;
   ev.stopPropagation(); const act=el.dataset.act, e=VIEW[ACTIVE]; if(!e) return;
   if(act==="ticket") return;   // обычная ссылка, переход сам сработает
-  if(act==="me"){ enterFav(); }
+  if(act==="me"){ toggleAvatarMenu(); }
   else if(act==="fav"){ if(fav.has(e.id)){fav.delete(e.id);el.classList.remove("on");updateFavBadges();toast("Убрано из «хочу пойти»");}
     else{fav.add(e.id);el.classList.add("on");flyToAvatar(el);toast("Добавлено — хочу пойти");} saveFav(); }
   else if(act==="remind"){ openRemindMenu(e, el); }
@@ -541,13 +580,14 @@ renderSound();
 
 // жесты: открыто → свайп вниз закрывает; закрыто → гориз = смена категории
 function bindGestures(card){
-  let x0=0,y0=0,dx=0,dy=0,horiz=null,drag=false,tgt=null;
+  let x0=0,y0=0,dx=0,dy=0,horiz=null,drag=false,tgt=null,moved=false;
   const desc=card.querySelector(".desc");
   const stage=card.querySelector(".stage"), info=card.querySelector(".info"), shade=card.querySelector(".shade");   // свайпается только контент ивента (картинка/видео+фон+текст), НЕ борт/шапка/дата
   const ghost=document.getElementById("ghost"), ghostimg=document.getElementById("ghostimg");
   let ghostDir=0;   // 1 = следующая категория (свайп влево), -1 = предыдущая (свайп вправо)
-  const start=(x,y,t)=>{ x0=x;y0=y;dx=dy=0;horiz=null;drag=true;tgt=t;ghostDir=0;};
+  const start=(x,y,t)=>{ x0=x;y0=y;dx=dy=0;horiz=null;drag=true;tgt=t;ghostDir=0;moved=false;};
   const move=(x,y)=>{ if(!drag)return; dx=x-x0;dy=y-y0;
+    if(Math.abs(dx)>8||Math.abs(dy)>8) moved=true;
     if(horiz===null && (Math.abs(dx)>10||Math.abs(dy)>10)) horiz=Math.abs(dx)>Math.abs(dy);
     if(!card.classList.contains("open") && horiz && !favMode){
       // нативный свайп — вся карточка едет 1:1 с пальцем; навстречу въезжает превью соседней категории
@@ -570,14 +610,15 @@ function bindGestures(card){
       ghost.style.transition="transform .2s ease";
       ghost.style.transform=`translateX(${commit?0:(ghostDir>0?window.innerWidth:-window.innerWidth)}px)`;
       setTimeout(()=>{ ghost.classList.remove("on"); ghost.style.transition=""; ghost.style.transform=""; }, commit?60:210); }
-    if(card.classList.contains("open")){
-      // описание развёрнуто — тап по картинке/видео (не по заголовку/тексту) сворачивает его обратно
-      if(Math.abs(dx)<8 && Math.abs(dy)<8 && tgt && tgt.closest(".stage")){ card.classList.remove("open"); }
-      return;
-    }
-    // свёрнуто — тап по видео скрывает/показывает заголовки и кнопки (чтобы прочитать надписи на самом видео)
-    if(Math.abs(dx)<8 && Math.abs(dy)<8 && tgt && tgt.closest(".stage")){ document.body.classList.toggle("clean"); return; }
     if(horiz && Math.abs(dx)>70 && !favMode){ switchCategory(dx<0?1:-1); } };
+  // ТАП по видео (без движения) — отдельным click'ом: срабатывает РОВНО один раз на любом устройстве
+  // (touchend+синтетик-mouseup давали двойной тоггл = «моргает и ничего»). Тап по заголовку (data-act) не сюда — там stopPropagation.
+  card.addEventListener("click",e=>{
+    if(moved) return;                                   // это был свайп/скролл, не тап
+    if(!e.target.closest(".stage")) return;             // тап по тексту/кнопкам — не трогаем
+    if(card.classList.contains("open")){ card.classList.remove("open"); return; }   // открытое описание — свернуть
+    document.body.classList.toggle("clean");            // режим чистого просмотра (держится, пока не тапнешь снова)
+  });
   let touchAt=0;   // тач-устройства после touchend шлют синтетический mouseup — иначе clean включался и тут же выключался
   card.addEventListener("touchstart",e=>{ touchAt=Date.now(); start(e.touches[0].clientX,e.touches[0].clientY,e.target); },{passive:true});
   card.addEventListener("touchmove",e=>{ move(e.touches[0].clientX,e.touches[0].clientY);
@@ -641,7 +682,7 @@ function buildTabs(){
   const present=Object.keys(CAT_COLOR).filter(c=>counts[c]);
   TABS=["", ...present];
   const el=document.getElementById("tabs");
-  el.innerHTML=TABS.map(c=>`<span class="tab ${((curCat||"")===c)?'on':''}" data-cat="${c}">${c||"Все"}</span>`).join("");
+  el.innerHTML=TABS.map(c=>`<span class="tab ${((curCat||"")===c)?'on':''}" data-cat="${c}">${catLabel(c)}</span>`).join("");
   el.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>setCategory(t.dataset.cat,0)));
 }
 // шапка переезжает к новой вкладке ровно за то же время, что карточка садится на место (220мс), а не отдельным нативным скроллом

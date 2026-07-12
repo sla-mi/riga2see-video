@@ -97,6 +97,8 @@
   .chiprow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .pricebot{margin-top:10px;font-family:var(--disp);font-weight:800;font-size:15px;color:var(--ink);text-shadow:0 1px 8px rgba(0,0,0,.8)}
   .pricebot.free{color:#b9f0a0}   /* «Бесплатно» — зелёным */
+  .ownersrc{font-family:var(--disp);font-weight:800;font-size:16px;color:#ff5cf0;text-shadow:0 1px 8px rgba(0,0,0,.9);margin-bottom:6px;letter-spacing:.01em}   /* спец-метка источника видео только для owner */
+  body.clean .ownersrc{opacity:1}   /* owner-метку в clean-режиме НЕ прячем — она рабочая */
   .avmenu{position:fixed;right:8px;bottom:calc(74px + env(safe-area-inset-bottom));z-index:30;display:none;flex-direction:column;gap:8px;
     background:rgba(20,20,26,.92);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:10px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
   .avmenu.open{display:flex}
@@ -324,6 +326,15 @@ const I18N={
  free:{ru:"Бесплатно",lv:"Bez maksas",en:"Free"}, fav:{ru:"Избранное",lv:"Izlase",en:"Saved"}, from:{ru:"от",lv:"no",en:"from"} };
 const WD={ru:["вс","пн","вт","ср","чт","пт","сб"],lv:["Sv","P","O","T","C","Pk","S"],en:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]};
 function tr(k){ return (I18N[k]||{})[LANG]||(I18N[k]||{}).ru||k; }
+// ── OWNER-режим: спец-вид для владельца (крупная метка «откуда видео» над заголовком). Включить: ?owner=1 (запоминается) ──
+if(new URLSearchParams(location.search).has("owner")) localStorage.setItem("owner","1");
+const OWNER = localStorage.getItem("owner")==="1";
+function vidSrc(e){ const v=e.video;
+  if(v && v.type==="embed") return "▶ YouTube-эмбед";
+  if(v && (v.local || (v.url||"").includes("/vid2/"))) return "▶ ORG · "+((v.url||"").split("/").pop());
+  if(AUTOFON_ON && e.autofon && e.autofon.length) return "≈ автофон ("+e.autofon.length+")";
+  return "— постер";
+}
 function saveFav(){ localStorage.setItem("fav", JSON.stringify([...fav])); }
 // варианты напоминания в зависимости от близости события (как в афише)
 function reminderOpts(s){
@@ -416,6 +427,7 @@ function cardHTML(e,i){
     <div class="shade"></div>
     ${hasVideo(e)?`<div class="vidcred">${tr("orgvideo")}</div>`:""}
     <div class="info">
+      ${OWNER?`<div class="ownersrc">${vidSrc(e)}</div>`:""}
       ${chip}
       <h1 data-act="open">${title}</h1>
       ${place?`<div class="meta">${place}</div>`:""}
@@ -707,7 +719,7 @@ function updateTabs(){
 }
 function setCategory(cat, dir){
   const next = cat===""?null:cat; if(next===curCat && !favMode){ return; }
-  const curEv=VIEW[ACTIVE]; if(curEv && curEv.date) lastActiveDate=curEv.date;   // запоминаем дату, на которой были, чтобы новая категория открылась рядом с ней, а не с начала
+  lastActiveDate=null;   // смена категории всегда открывается с НАЧАЛА (ближайшие даты / сегодня), а не с даты, где были в прошлой категории (owner)
   favMode=false; curCat=next;
   document.getElementById("favhdr").classList.remove("on"); document.getElementById("hdr").style.display="";
   const feed=document.getElementById("feed");

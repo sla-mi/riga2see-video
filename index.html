@@ -922,7 +922,8 @@ function dismissHero(){
 }
 (function(){
   const hero=document.getElementById("hero");
-  if(sessionStorage.getItem("onboarded")){ hero.remove(); return; }
+  const forcePreview=new URLSearchParams(location.search).has("intro");   // ?intro=1 — всегда показать заставку, для проверки (обычный F5 НЕ сбрасывает sessionStorage, поэтому нужен обходной способ на время тестирования)
+  if(sessionStorage.getItem("onboarded") && !forcePreview){ hero.remove(); return; }
   document.body.classList.add("hero-active");
   document.getElementById("heroHand").innerHTML=ICON.scrollHand;
   applyStaticI18N();

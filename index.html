@@ -875,19 +875,19 @@ document.getElementById("feed").addEventListener("scroll",()=>{
   feed.addEventListener("touchend",()=>{ if(atEnd && over>55 && curCat!==null && !favMode){ switchCategory(1); } over=0; });
 })();
 
-// ── первый экран (hero) — показываем один раз за сессию: фон-коллаж из самых эффектных кадров рок/классика/театр,
+// ── первый экран (hero) — показываем один раз за сессию: фон-коллаж из наших автофон-клипов (Pexels),
 // плейлист встык по 1с, крупная стеклянная плашка с призывом свайпнуть вниз. Свайп/скролл/тап — уходит, открывая ленту.
 const HERO_CLIPS=[   // {u:клип, t:секунда самого эффектного кадра — начало 1-секундного отрывка}
- {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/1211987157432648.mp4", t:14.7},  // Fear Factory — вокалист
- {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/4544187469158256.mp4", t:10.5},  // The Rasmus — зал, руки вверх
- {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/1329279872375988.mp4", t:31.0},  // Placebo — арена
- {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/938918269240565.mp4",  t:8.6},   // Штраусу 200 — смычок
- {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/1723833618247151.mp4", t:11.1},  // Андре Рьё
- {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/3015045572021028.mp4", t:20.6},  // Hans Zimmer by Lords of the Sound
- {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/4551728851628222.mp4", t:22.1},  // рояль, отражение
- {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/2122082188336152.mp4", t:8.6},   // Familie Flöz — маска
- {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/1522687032083764.mp4", t:29.5},  // Дракула — светящиеся глаза
- {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/1579733209872402.mp4", t:23.6}]; // Три грации — костюм
+ {u:"https://videos.pexels.com/video-files/6273821/6273821-sd_360_640_30fps.mp4", t:5},    // вокалист в луче света
+ {u:"https://videos.pexels.com/video-files/17238582/17238582-sd_360_640_30fps.mp4", t:2},  // красная электрогитара
+ {u:"https://videos.pexels.com/video-files/12525478/12525478-sd_360_640_24fps.mp4", t:4},  // зал, фиолетовый свет
+ {u:"https://videos.pexels.com/video-files/5657389/5657389-sd_338_640_25fps.mp4", t:1.5},  // саксофон
+ {u:"https://videos.pexels.com/video-files/6645567/6645567-sd_360_640_24fps.mp4", t:4},    // рояль, руки
+ {u:"https://videos.pexels.com/video-files/35555599/15064947_360_640_60fps.mp4", t:6},     // барабанщик на сцене
+ {u:"https://videos.pexels.com/video-files/9419258/9419258-sd_338_640_25fps.mp4", t:8},    // вокалистка, тёплый свет
+ {u:"https://videos.pexels.com/video-files/8331699/8331699-sd_338_640_25fps.mp4", t:6},    // синтезатор, цветной свет
+ {u:"https://videos.pexels.com/video-files/5124232/5124232-sd_360_640_25fps.mp4", t:10},   // артист в луче на тёмной сцене
+ {u:"https://videos.pexels.com/video-files/6273836/6273836-sd_360_640_30fps.mp4", t:6}];   // группа, тёплый свет сцены
 const HERO_CLIP_MS=1000;
 let heroTimers=[], heroRunning=false;
 function startHeroBG(){

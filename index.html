@@ -210,15 +210,23 @@
   .chan-btn.push .ico,.chan-btn.mail .ico{background:rgba(255,255,255,.12);color:#fff}
   .chan-rec{margin-left:auto;font-family:var(--disp);font-size:9px;font-weight:800;letter-spacing:.06em;
     text-transform:uppercase;color:#0b0b0d;background:var(--ink);padding:3px 8px;border-radius:100px}
-  /* онбординг для новых юзеров — верхняя треть, первое видео уже играет ниже */
-  .onboard{position:fixed;left:16px;right:16px;top:112px;z-index:14;background:rgba(16,16,20,.96);
-    border:1px solid var(--btn-border);border-radius:16px;padding:16px 18px;opacity:1;transform:translateY(0);
-    transition:opacity .3s ease,transform .3s ease}
-  .onboard.hide{opacity:0;transform:translateY(-10px);pointer-events:none}
-  .ob-ttl{font-family:var(--disp);font-weight:800;font-size:15px;line-height:1.35;color:#fff;margin-bottom:10px}
-  .ob-row{font-size:13.5px;color:rgba(255,255,255,.8);line-height:1.6;display:flex;align-items:center;gap:8px}
-  .ob-arrow{display:inline-flex;width:22px;height:22px;border-radius:6px;background:rgba(232,255,71,.15);
-    color:var(--ink);align-items:center;justify-content:center;font-weight:800;flex-shrink:0}
+  /* первый экран — вступительная заставка поверх ленты: видео-коллаж + стеклянная плашка. Скрывает рейл/дату/звук, шапка остаётся */
+  body.hero-active .rail,body.hero-active .datebar,body.hero-active .sound{display:none}
+  .hero{position:fixed;inset:0;z-index:6;background:#000;overflow:hidden;transition:transform .45s cubic-bezier(.4,0,.2,1),opacity .4s ease}
+  .hero.out{transform:translateY(-8%);opacity:0;pointer-events:none}
+  .hero-bg{position:absolute;inset:0;overflow:hidden}
+  .hero-bg video{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);object-fit:cover;opacity:0;transition:opacity .22s linear}
+  .hero-bg video.hon{opacity:1}
+  .hero-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.15) 32%,rgba(0,0,0,.15) 62%,rgba(0,0,0,.6) 100%)}
+  .hero-glass{position:absolute;left:20px;right:20px;top:50%;transform:translateY(-50%);text-align:center;
+    background:rgba(255,255,255,.08);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);
+    border:1px solid rgba(255,255,255,.38);border-radius:26px;padding:34px 24px;box-shadow:0 16px 50px rgba(0,0,0,.4)}
+  .hero-ttl{font-family:var(--disp);font-weight:900;font-size:25px;line-height:1.3;letter-spacing:-.01em;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.5)}
+  .hero-cta{margin-top:24px;display:flex;flex-direction:column;align-items:center;gap:9px}
+  .hero-hand{width:32px;height:32px;color:#fff;animation:heroBounce 1.6s ease-in-out infinite}
+  .hero-cta-txt{font-family:var(--disp);font-weight:700;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.88)}
+  @keyframes heroBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(9px)}}
+  @media (prefers-reduced-motion:reduce){ .hero-hand{animation:none} }
   .toast{position:fixed;left:50%;bottom:120px;transform:translateX(-50%) translateY(16px);background:rgba(20,20,24,.96);
     border:1px solid rgba(255,255,255,.1);padding:11px 18px;border-radius:14px;font-family:var(--body);font-size:14px;
     font-weight:700;z-index:30;opacity:0;transition:.22s;pointer-events:none}
@@ -228,7 +236,7 @@
 <body>
 <div class="top">
   <div class="hdr" id="hdr"><a class="logo"><span class="r">riga</span><span class="d">.</span><span class="b">2see</span></a><div class="tabs" id="tabs"></div></div>
-  <div class="favhdr" id="favhdr"><button class="favback" id="favback"></button><span class="favttl">Избранное</span><button class="favcopy" id="favcopy">Копировать</button></div>
+  <div class="favhdr" id="favhdr"><button class="favback" id="favback"></button><span class="favttl" id="favttl"></span><button class="favcopy" id="favcopy"></button></div>
 </div>
 <div class="datebar">
   <button class="datechip" id="datechip"></button>
@@ -238,10 +246,13 @@
 <div id="feed"></div>
 <div class="rail" id="rail"></div>
 <div class="ghost" id="ghost"><img id="ghostimg" alt=""></div>
-<div class="onboard" id="onboard">
-  <div class="ob-ttl">Все культурные события Риги в одном месте</div>
-  <div class="ob-row"><span class="ob-arrow">↓</span> смотреть, сначала ближайшие по дате</div>
-  <div class="ob-row"><span class="ob-arrow">→</span> переключить категорию</div>
+<div class="hero" id="hero">
+  <div class="hero-bg" id="heroBg"></div>
+  <div class="hero-shade"></div>
+  <div class="hero-glass">
+    <div class="hero-ttl" id="heroTtl"></div>
+    <div class="hero-cta"><span class="hero-hand" id="heroHand"></span><div class="hero-cta-txt" id="heroCtaTxt"></div></div>
+  </div>
 </div>
 <div class="sheet" id="remindsheet"><div class="sheetcard" id="remindcard"></div></div>
 <div class="toast" id="toast"></div>
@@ -265,11 +276,14 @@ const ICON={
  push:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
  mail:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>',
  soundOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>',
- soundOn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>' };
+ soundOn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>',
+ scrollHand:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="16" rx="5"/><line x1="12" y1="6" x2="12" y2="10"/><path d="M8 18l4 4 4-4"/></svg>' };
 
+const MONTHS={ ru:RU_MONTH, lv:["janv","febr","marts","apr","maijs","jūn","jūl","aug","sept","okt","nov","dec"],
+  en:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"] };
 function fmtDate(s){ if(!s) return ""; const d=new Date(s.replace(" ","T")); if(isNaN(d)) return "";
-  const wd=["вс","пн","вт","ср","чт","пт","сб"][d.getDay()];
-  return `${wd}, ${d.getDate()} ${RU_MONTH[d.getMonth()]} · ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
+  const wd=WD[LANG][d.getDay()];
+  return `${wd}, ${d.getDate()} ${MONTHS[LANG][d.getMonth()]} · ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
 // автофон-нарезка выключена: ~38 стоковых клипов мискаст-ят события (орган→гитара и т.п.) → везде чистый постер.
 // вернуть = true (данные и плеер на месте), но только с нормальной библиотекой/настоящим видео.
 const AUTOFON_ON=false;
@@ -326,7 +340,12 @@ function catLabel(c){ if(!c) return LANG==="lv"?"Visi":LANG==="en"?"All":"Все
 const I18N={
  today:{ru:"сегодня",lv:"šodien",en:"today"}, tomorrow:{ru:"завтра",lv:"rīt",en:"tomorrow"},
  orgvideo:{ru:"видео организатора",lv:"organizatora video",en:"organiser video"},
- free:{ru:"Бесплатно",lv:"Bez maksas",en:"Free"}, fav:{ru:"Избранное",lv:"Izlase",en:"Saved"}, from:{ru:"от",lv:"no",en:"from"}, tickets:{ru:"Билеты",lv:"Biļetes",en:"Tickets"} };
+ free:{ru:"Бесплатно",lv:"Bez maksas",en:"Free"}, fav:{ru:"Избранное",lv:"Izlase",en:"Saved"}, from:{ru:"от",lv:"no",en:"from"}, tickets:{ru:"Билеты",lv:"Biļetes",en:"Tickets"},
+ more:{ru:"  ещё…",lv:"  vairāk…",en:"  more…"}, collapse:{ru:"  свернуть",lv:"  aizvērt",en:"  collapse"},
+ copy:{ru:"Копировать",lv:"Kopēt",en:"Copy"},
+ emptyFeed:{ru:"Пока пусто — жми закладку на видео, чтобы добавить сюда",lv:"Pagaidām tukšs — spied grāmatzīmi video, lai pievienotu šeit",en:"Empty for now — tap the bookmark on a video to add it here"},
+ heroTitle:{ru:"Все культурные события Риги в одном месте",lv:"Visi Rīgas kultūras notikumi vienuviet",en:"All of Riga's culture, in one place"},
+ heroCta:{ru:"Свайпни вниз, чтобы начать",lv:"Pavelc uz leju, lai sāktu",en:"Swipe down to start"} };
 const WD={ru:["вс","пн","вт","ср","чт","пт","сб"],lv:["Sv","P","O","T","C","Pk","S"],en:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]};
 function tr(k){ return (I18N[k]||{})[LANG]||(I18N[k]||{}).ru||k; }
 // ── OWNER-режим: спец-вид для владельца (крупная метка «откуда видео» над заголовком). Включить: ?owner=1 (запоминается) ──
@@ -436,8 +455,8 @@ function cardHTML(e,i){
       ${place?`<div class="meta">${place}</div>`:""}
       <div class="chiprow">${dateChip(e)}</div>
       ${dateFull(e)}
-      <div class="preview" data-act="open">${linkify(bodyText)}<span class="more">  ещё…</span></div>
-      <div class="desc"><div class="dtext">${linkify(bodyText)}<span class="collapse" data-act="close">  свернуть</span></div></div>
+      <div class="preview" data-act="open">${linkify(bodyText)}<span class="more">${tr("more")}</span></div>
+      <div class="desc"><div class="dtext">${linkify(bodyText)}<span class="collapse" data-act="close">${tr("collapse")}</span></div></div>
     </div>
   </div>`;
 }
@@ -513,7 +532,6 @@ function unmountVideo(card){ card.classList.remove("playing"); stopAutofon(card)
   card.querySelectorAll("video, iframe.main").forEach(v=>{ if(v.tagName==="VIDEO"){v.pause();v.removeAttribute("src");v.load();} v.remove(); }); }
 function setActive(i){
   if(i===ACTIVE) return;
-  if(i>0) hideOnboard();
   // при переключении на другой ролик — сбрасываем РАЗВЁРНУТЫЕ состояния карточки (описание, список дат)
   const prev=document.querySelector(`.card[data-i="${ACTIVE}"]`); if(prev){ prev.classList.remove("open"); prev.classList.remove("datesopen"); }
   // «чистый» режим (скрытые заголовки по тапу) НЕ сбрасываем — это осознанный режим просмотра, как звук: сохраняется между свайпами
@@ -558,8 +576,15 @@ document.body.appendChild(avMenu);
 function renderAvMenu(){ avMenu.querySelectorAll("[data-lang]").forEach(b=>b.classList.toggle("on",b.dataset.lang===LANG));
   avMenu.querySelector(".avm-favlbl").textContent=tr("fav"); }
 function toggleAvatarMenu(){ avMenu.classList.toggle("open"); renderAvMenu(); }
+// статичные подписи хрома, не завязанные на карточки/вкладки — обновляются отдельно при смене языка
+function applyStaticI18N(){
+  const ft=document.getElementById("favttl"); if(ft) ft.textContent=tr("fav");
+  const fc=document.getElementById("favcopy"); if(fc) fc.textContent=tr("copy");
+  const ht=document.getElementById("heroTtl"); if(ht) ht.textContent=tr("heroTitle");
+  const hc=document.getElementById("heroCtaTxt"); if(hc) hc.textContent=tr("heroCta");
+}
 function setLang(l){ LANG=l; localStorage.setItem("lang",l); document.documentElement.lang=l;
-  renderAvMenu(); buildTabs(); buildFeed(currentList()); }   // перерисовываем вкладки и ленту под новый язык
+  renderAvMenu(); applyStaticI18N(); buildTabs(); buildFeed(currentList()); }   // перерисовываем вкладки и ленту под новый язык
 avMenu.addEventListener("click",ev=>{ const l=ev.target.closest("[data-lang]");
   if(l){ setLang(l.dataset.lang); return; }
   if(ev.target.closest(".avm-fav")){ avMenu.classList.remove("open"); enterFav(); } });
@@ -782,7 +807,7 @@ function buildFeed(list){
   if(_io) _io.disconnect();
   _io=new IntersectionObserver(es=>{ es.forEach(en=>{ if(en.isIntersecting&&en.intersectionRatio>0.6) setActive(+en.target.dataset.i); }); },{threshold:[0,.6,1]});
   if(!VIEW.length){
-    feed.innerHTML=`<div class="empty"><span>Пока пусто — жми <b>закладку</b> на видео, чтобы добавить сюда</span></div>`;
+    feed.innerHTML=`<div class="empty"><span>${tr("emptyFeed")}</span></div>`;
   } else {
     appendBatch();                                   // первые 10 карточек — дальше догружаем по скроллу
   }
@@ -815,7 +840,7 @@ function buildDateMenu(){
     const yr=d.getFullYear()!==t.getFullYear()?`.${String(d.getFullYear()).slice(2)}`:"";
     const dm=`${d.getDate()}.${String(d.getMonth()+1).padStart(2,"0")}${yr}`;
     // «сегодня»/«завтра» — без даты (короче), остальные — «пн · 13.07» (год — если не текущий)
-    const label = diff===0?"сегодня":diff===1?"завтра":`${["вс","пн","вт","ср","чт","пт","сб"][d.getDay()]} · ${dm}`;
+    const label = diff===0?tr("today"):diff===1?tr("tomorrow"):`${WD[LANG][d.getDay()]} · ${dm}`;
     return `<button class="dmi" data-idx="${idx}">${label}</button>`;
   }).join("");
   menu.querySelectorAll(".dmi").forEach(b=>b.addEventListener("click",()=>{
@@ -848,18 +873,65 @@ document.getElementById("feed").addEventListener("scroll",()=>{
   feed.addEventListener("touchend",()=>{ if(atEnd && over>55 && curCat!==null && !favMode){ switchCategory(1); } over=0; });
 })();
 
-// онбординг — показываем один раз за сессию, без кнопки; исчезает по первому свайпу/скроллу ленты или смене карточки
-function hideOnboard(){
-  const ob=document.getElementById("onboard"); if(!ob) return;
-  ob.classList.add("hide"); sessionStorage.setItem("onboarded","1"); setTimeout(()=>ob.remove(),350);
+// ── первый экран (hero) — показываем один раз за сессию: фон-коллаж из самых эффектных кадров рок/классика/театр,
+// плейлист встык по 1с, крупная стеклянная плашка с призывом свайпнуть вниз. Свайп/скролл/тап — уходит, открывая ленту.
+const HERO_CLIPS=[   // {u:клип, t:секунда самого эффектного кадра — начало 1-секундного отрывка}
+ {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/1211987157432648.mp4", t:14.7},  // Fear Factory — вокалист
+ {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/4544187469158256.mp4", t:10.5},  // The Rasmus — зал, руки вверх
+ {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/1329279872375988.mp4", t:31.0},  // Placebo — арена
+ {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/938918269240565.mp4",  t:8.6},   // Штраусу 200 — смычок
+ {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/1723833618247151.mp4", t:11.1},  // Андре Рьё
+ {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/3015045572021028.mp4", t:20.6},  // Hans Zimmer by Lords of the Sound
+ {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/4551728851628222.mp4", t:22.1},  // рояль, отражение
+ {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/2122082188336152.mp4", t:8.6},   // Familie Flöz — маска
+ {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/1522687032083764.mp4", t:29.5},  // Дракула — светящиеся глаза
+ {u:"https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/vid2/1579733209872402.mp4", t:23.6}]; // Три грации — костюм
+const HERO_CLIP_MS=1000;
+let heroTimers=[], heroRunning=false;
+function startHeroBG(){
+  const box=document.getElementById("heroBg"); if(!box || heroRunning) return; heroRunning=true;
+  const mk=()=>{ const v=document.createElement("video"); v.muted=true; v.defaultMuted=true; v.playsInline=true;
+    v.setAttribute("muted","");v.setAttribute("playsinline","");v.setAttribute("webkit-playsinline","");v.preload="auto"; return v; };
+  const a=mk(), b=mk(); box.appendChild(a); box.appendChild(b);
+  const bufs=[a,b]; let idx=0, slot=0;
+  const prep=(v,clip)=>new Promise(res=>{ v.src=clip.u;
+    const d=()=>{ try{v.currentTime=clip.t;}catch(_){} res(); };
+    if(v.readyState>=1) d(); else v.addEventListener("loadedmetadata",d,{once:true}); });
+  const tick=async()=>{
+    if(!heroRunning) return;
+    if(idx>=HERO_CLIPS.length) idx=0;
+    const cur=bufs[slot];
+    await prep(cur, HERO_CLIPS[idx]);
+    if(!heroRunning) return;
+    cur.play().catch(()=>{});
+    cur.classList.add("hon"); bufs[slot^1].classList.remove("hon");
+    const nextIdx=(idx+1)%HERO_CLIPS.length; prep(bufs[slot^1], HERO_CLIPS[nextIdx]);
+    idx++; slot^=1;
+    heroTimers.push(setTimeout(tick, HERO_CLIP_MS));
+  };
+  tick();
+}
+function stopHeroBG(){ heroRunning=false; heroTimers.forEach(clearTimeout); heroTimers=[];
+  const box=document.getElementById("heroBg"); if(box) box.innerHTML=""; }
+function dismissHero(){
+  const hero=document.getElementById("hero"); if(!hero || hero.dataset.gone) return; hero.dataset.gone="1";
+  sessionStorage.setItem("onboarded","1");
+  hero.classList.add("out"); document.body.classList.remove("hero-active");
+  stopHeroBG();
+  setTimeout(()=>hero.remove(), 460);
 }
 (function(){
-  const ob=document.getElementById("onboard");
-  if(sessionStorage.getItem("onboarded")){ ob.remove(); return; }
-  const feed=document.getElementById("feed"); let y0=0;
-  feed.addEventListener("touchstart",e=>{ y0=e.touches[0].clientY; },{passive:true});
-  feed.addEventListener("touchmove",e=>{ if(y0-e.touches[0].clientY>30) hideOnboard(); },{passive:true});
-  feed.addEventListener("scroll",()=>{ if(feed.scrollTop>20) hideOnboard(); },{passive:true});
+  const hero=document.getElementById("hero");
+  if(sessionStorage.getItem("onboarded")){ hero.remove(); return; }
+  document.body.classList.add("hero-active");
+  document.getElementById("heroHand").innerHTML=ICON.scrollHand;
+  applyStaticI18N();
+  startHeroBG();
+  let y0=0;
+  hero.addEventListener("touchstart",e=>{ y0=e.touches[0].clientY; },{passive:true});
+  hero.addEventListener("touchmove",e=>{ if(y0-e.touches[0].clientY>30) dismissHero(); },{passive:true});
+  hero.addEventListener("wheel",e=>{ if(e.deltaY>0) dismissHero(); },{passive:true});
+  hero.addEventListener("click",dismissHero);
 })();
 
 // демо-датасет собран один раз и не обновляется живым пайплайном — даты в нём стареют.
@@ -867,6 +939,7 @@ function hideOnboard(){
 // разница между якорем и реальным "сегодня" применяется ко всем датам при каждой загрузке страницы.
 // (удалено) shiftDatesToToday — фейковый сдвиг дат под «сегодня» убран: фронт работает на РЕАЛЬНЫХ датах
 async function boot(){
+  applyStaticI18N();
   ALL=await (await fetch("big_feed.json",{cache:"no-store"})).json();
   buildTabs();
   buildFeed(currentList());

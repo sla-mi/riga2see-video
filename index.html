@@ -323,6 +323,8 @@ function poster(e){ return e.img || (e.file? e.file.replace("vid/","poster/").re
 function vidUrl(e){ return e.video ? e.video.url : (e.file || null); }          // стрим-URL или локальный файл
 function vidOrient(e){ return e.video ? e.video.orient : (e.orient || "vert"); }
 function hasVideo(e){ return !!vidUrl(e); }
+// ссылка «поделиться» — на ЭТОТ ивент в нашей ленте (не на билетку): получатель откроется прямо на посте и дальше листает нашу ленту
+function eventShareUrl(e){ return `${location.origin}${location.pathname}?e=${e.id}`; }
 
 const fav=new Set(JSON.parse(localStorage.getItem("fav")||"[]"));
 const remind=new Map(); let ALL=[]; let VIEW=[]; let SOUND=false; let ACTIVE=-1; let curCat=null; let TABS=[]; let favMode=false; let lastActiveDate=null;
@@ -598,7 +600,7 @@ railEl.addEventListener("click",ev=>{
   else if(act==="fav"){ if(fav.has(e.id)){fav.delete(e.id);el.classList.remove("on");updateFavBadges();toast("Убрано из «хочу пойти»");}
     else{fav.add(e.id);el.classList.add("on");flyToAvatar(el);toast("Добавлено — хочу пойти");} saveFav(); }
   else if(act==="remind"){ openRemindMenu(e, el); }
-  else if(act==="share"){ const u=e.ticket||e.lib;
+  else if(act==="share"){ const u=eventShareUrl(e);   // ссылка на ЭТОТ ивент в НАШЕЙ ленте — получатель откроется на нём и дальше свайпает нашу ленту
     if(navigator.share) navigator.share({title:e.ev_title||e.page,url:u}).catch(()=>{});
     else{ navigator.clipboard?.writeText(u); toast("Ссылка скопирована"); } }
 });
@@ -925,8 +927,10 @@ function dismissHero(){
 }
 (function(){
   const hero=document.getElementById("hero");
-  const forcePreview=new URLSearchParams(location.search).has("intro");   // ?intro=1 — всегда показать заставку, для проверки (обычный F5 НЕ сбрасывает sessionStorage, поэтому нужен обходной способ на время тестирования)
-  if(sessionStorage.getItem("onboarded") && !forcePreview){ hero.remove(); return; }
+  const params=new URLSearchParams(location.search);
+  const forcePreview=params.has("intro");   // ?intro=1 — всегда показать заставку, для проверки (обычный F5 НЕ сбрасывает sessionStorage, поэтому нужен обходной способ на время тестирования)
+  // пришли по ссылке на конкретный ивент (?e=…) — заставку не показываем, сразу открываем пост
+  if((sessionStorage.getItem("onboarded") || params.has("e")) && !forcePreview){ hero.remove(); return; }
   document.body.classList.add("hero-active");
   document.getElementById("heroHand").innerHTML=ICON.scrollHand;
   applyStaticI18N();
@@ -954,11 +958,22 @@ function dismissHero(){
 // вместо ручной правки дат при каждом показе сдвигаем их на лету: якорь = самая ранняя дата в файле,
 // разница между якорем и реальным "сегодня" применяется ко всем датам при каждой загрузке страницы.
 // (удалено) shiftDatesToToday — фейковый сдвиг дат под «сегодня» убран: фронт работает на РЕАЛЬНЫХ датах
+// пришли по шаренной ссылке ?e=<id> — открыть ленту прямо на этом ивенте (в «Все»), дальше юзер свайпает как обычно
+function openSharedEvent(id){
+  const idx=VIEW.findIndex(e=>e.id===id);
+  if(idx<0) return false;
+  ensureRendered(idx);
+  const card=document.querySelector(`.card[data-i="${idx}"]`);
+  if(card){ document.getElementById("feed").scrollTo({top:card.offsetTop}); setActive(idx); }
+  return true;
+}
 async function boot(){
   applyStaticI18N();
   ALL=await (await fetch("big_feed.json",{cache:"no-store"})).json();
   buildTabs();
   buildFeed(currentList());
+  const sharedId=new URLSearchParams(location.search).get("e");
+  if(sharedId) openSharedEvent(+sharedId);   // лента уже в «Все» — событие точно внутри
   let unlocked=false;
   const unlock=()=>{ if(unlocked)return; unlocked=true;
     const v=document.querySelector(`.card[data-i="${ACTIVE}"] video.main`); if(v){ v.muted=!SOUND; v.play().catch(()=>{}); } };

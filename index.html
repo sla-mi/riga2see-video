@@ -334,8 +334,9 @@ function poster(e){ return e.img || (e.file? e.file.replace("vid/","poster/").re
 function vidUrl(e){ return e.video ? e.video.url : (e.file || null); }          // стрим-URL или локальный файл
 function vidOrient(e){ return e.video ? e.video.orient : (e.orient || "vert"); }
 function hasVideo(e){ return !!vidUrl(e); }
-// ссылка «поделиться» — на ЭТОТ ивент в нашей ленте (не на билетку): получатель откроется прямо на посте и дальше листает нашу ленту
-function eventShareUrl(e){ return `${location.origin}${location.pathname}?e=${e.id}`; }
+// ссылка «поделиться» — на ЭТОТ ивент в нашей ленте (не на билетку): получатель откроется прямо на посте и дальше листает нашу ленту.
+// &lang=<текущий язык> — чтобы превью в соцсети собралось на языке того, кто делится (edge-функция локализует OG-теги)
+function eventShareUrl(e){ return `${location.origin}${location.pathname}?e=${e.id}&lang=${LANG}`; }
 
 const fav=new Set(JSON.parse(localStorage.getItem("fav")||"[]"));
 const remind=new Map(); let ALL=[]; let VIEW=[]; let SOUND=false; let ACTIVE=-1; let curCat=null; let TABS=[]; let favMode=false; let lastActiveDate=null;

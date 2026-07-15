@@ -274,12 +274,15 @@
   body.step2 .tour-cta{display:flex}
   /* каждая подпись — маленький стеклянный чип (тот же приём, что .hero-glass: блюр + полупрозрачная белая заливка),
      а не голый текст с тенью — так читается на любом фоне и выглядит одним визуальным языком с первой плашкой */
-  .tour-item{position:absolute;display:flex;align-items:center;gap:6px;max-width:170px;font-family:var(--disp);font-weight:700;font-size:12px;line-height:1.3;color:var(--ink);
-    background:rgba(255,255,255,.1);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);
-    border:1px solid rgba(255,255,255,.3);border-radius:14px;padding:7px 11px;box-shadow:0 6px 20px rgba(0,0,0,.3)}
-  .tour-arrow{width:20px;height:11px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
-  .tour-rotateicon svg{width:22px;height:22px;color:var(--ink)}
-  .tour-hint{position:absolute;left:0;right:0;text-align:center;font-family:var(--disp);font-weight:700;font-size:12px;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+  /* ТОТ ЖЕ рецепт, что у .hero-glass (один визуальный язык обеих плашек интро): те же цифры фона/блюра/контура,
+     просто меньше размером под короткий чип. Шрифт крупнее (15px, не 12) — на реальном телефоне 12px читался
+     плохо/мелко. */
+  .tour-item{position:absolute;display:flex;align-items:center;gap:8px;max-width:190px;font-family:var(--disp);font-weight:700;font-size:15px;line-height:1.32;color:var(--ink);
+    background:rgba(255,255,255,.08);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);
+    border:1px solid rgba(255,255,255,.38);border-radius:16px;padding:9px 13px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .tour-arrow{width:22px;height:12px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  .tour-rotateicon svg{width:24px;height:24px;color:var(--ink)}
+  .tour-hint{position:absolute;left:0;right:0;text-align:center;font-family:var(--disp);font-weight:700;font-size:14px;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.6)}
   @media (prefers-reduced-motion:reduce){ .hero-hand{animation:none} }
   .toast{position:fixed;left:50%;bottom:120px;transform:translateX(-50%) translateY(16px);background:rgba(20,20,24,.96);
     border:1px solid rgba(255,255,255,.1);padding:11px 18px;border-radius:14px;font-family:var(--body);font-size:14px;
@@ -349,9 +352,9 @@
   <div class="tour-item" data-k="tourCats" data-side="below"><svg class="tour-arrow" viewBox="0 0 32 16" style="transform:rotate(-90deg)"></svg><span></span></div>
   <div class="tour-item" data-k="tourDate" data-side="below"><svg class="tour-arrow" viewBox="0 0 32 16" style="transform:rotate(-90deg)"></svg><span></span></div>
   <div class="tour-item" data-k="tourSound" data-side="below" style="flex-direction:row-reverse;text-align:right"><svg class="tour-arrow" viewBox="0 0 32 16" style="transform:rotate(-90deg)"></svg><span></span></div>
-  <div class="tour-item" data-k="tourRotate" style="top:44%;left:0;right:0;max-width:none;justify-content:center;flex-direction:column;gap:4px;background:none;border:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none"><span class="tour-rotateicon"></span><span></span></div>
-  <div class="tour-hint" style="top:57%;left:16px;right:185px;text-align:left" data-k="tourSwipeCats2"></div>
-  <div class="tour-hint" style="top:63%;left:16px;right:185px;text-align:left" data-k="tourTap"></div>
+  <div class="tour-item" data-k="tourRotate" style="left:50%;transform:translate(-50%,-50%);max-width:220px;justify-content:center;flex-direction:column;gap:4px;text-align:center"><span class="tour-rotateicon"></span><span></span></div>
+  <div class="tour-hint" style="left:16px;right:185px;text-align:left" data-k="tourSwipeCats2"></div>
+  <div class="tour-hint" style="left:16px;right:185px;text-align:left" data-k="tourTap"></div>
   <div class="tour-item" data-k="tourFav" data-side="left" style="flex-direction:row-reverse;text-align:right"><svg class="tour-arrow" viewBox="0 0 32 16"></svg><span></span></div>
   <div class="tour-item" data-k="tourRemind" data-side="left" style="flex-direction:row-reverse;text-align:right"><svg class="tour-arrow" viewBox="0 0 32 16"></svg><span></span></div>
   <div class="tour-item" data-k="tourShare" data-side="left" style="flex-direction:row-reverse;text-align:right"><svg class="tour-arrow" viewBox="0 0 32 16"></svg><span></span></div>
@@ -1164,11 +1167,28 @@ function layoutTourTargets(){
     const item=place(k, el, "below");   // belowFloor должен учитывать УЖЕ размещённые — считаем по одному, не пачкой
     if(item) belowFloor=Math.max(belowFloor, item.getBoundingClientRect().bottom+8);
   });
-  place("tourFav", document.querySelector('.rail [data-act="fav"]'), "left");
-  place("tourRemind", document.querySelector('.rail [data-act="remind"]'), "left");
-  place("tourShare", document.querySelector('.rail [data-act="share"]'), "left");
-  place("tourTicket", document.querySelector('.rail [data-act="ticket"]'), "left");
-  place("tourAvatar", document.querySelector('.rail [data-act="me"]'), "left");
+  const railItems=[place("tourFav", document.querySelector('.rail [data-act="fav"]'), "left"),
+    place("tourRemind", document.querySelector('.rail [data-act="remind"]'), "left"),
+    place("tourShare", document.querySelector('.rail [data-act="share"]'), "left"),
+    place("tourTicket", document.querySelector('.rail [data-act="ticket"]'), "left"),
+    place("tourAvatar", document.querySelector('.rail [data-act="me"]'), "left")].filter(Boolean);
+  // «rotate» ни на что реальное не указывает (стрелки нет) — раньше стояла на угаданных 44% высоты экрана,
+  // из-за чего на некоторых реальных телефонах садилась прямо на чип «избранное» (верх рейла едет вместе
+  // с высотой экрана). Теперь — ровно посередине между низом верхнего кластера и верхом первого чипа рейла.
+  const rotateItem=document.querySelector('.tour-item[data-k="tourRotate"]');
+  let hintFloor=belowFloor;
+  if(rotateItem && railItems.length){
+    const railTop=Math.min(...railItems.map(it=>it.getBoundingClientRect().top));
+    rotateItem.style.top=((belowFloor+railTop)/2)+"px";
+    hintFloor=rotateItem.getBoundingClientRect().bottom+10;
+  }
+  // те же жестовые хинты («листать»/«тап») — раньше на угаданных 57%/63%, при более крупном шрифте начали
+  // наезжать на чип «избранное» на реальном телефоне. Теперь идут строго друг под другом от низа rotate-чипа.
+  ["tourSwipeCats2","tourTap"].forEach(k=>{
+    const el=document.querySelector(`.tour-hint[data-k="${k}"]`); if(!el) return;
+    el.style.top=hintFloor+"px";
+    hintFloor=el.getBoundingClientRect().bottom+6;
+  });
 }
 (function(){
   const hero=document.getElementById("hero");

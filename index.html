@@ -85,7 +85,6 @@
   .tab.on{color:#fff}
   .tab.on::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;border-radius:2px;background:var(--ink)}
   .favhdr{display:none;align-items:center;gap:8px;padding-right:12px}
-  .topicons{display:none}   /* пусто в портрете; в ландшафте JS переносит сюда mute+избранное (см. landscape media ниже) */
   .favttl{flex:1;min-width:0}
   .favhdr.on{display:flex}
   .favcopy{margin-left:auto;font-family:var(--disp);font-weight:700;font-size:11px;letter-spacing:.02em;text-transform:uppercase;
@@ -266,14 +265,11 @@
     /* категории не тянутся во всю ширину — обрываются (с плавным затуханием) до значков mute/избранное, а не залезают под них */
     .hdr{-webkit-mask-image:linear-gradient(to right, black calc(100% - 28px), transparent); mask-image:linear-gradient(to right, black calc(100% - 28px), transparent)}
     .datebar{display:none}              /* дата есть в info-строке снизу */
-    /* mute + избранное физически переезжают JS-ом в верхнюю строку (см. layoutTopIconsForOrientation); отсюда вниз —
-       короткая вертикальная панель (bell/поделиться/билет/аватар), подвешенная под ними. Размер и правый край —
-       ТЕ ЖЕ, что у #rail ниже, чтобы вся колонка стояла ровно по одной вертикальной линии, а не вразнобой. */
-    .topicons{display:flex;align-items:center;gap:14px;flex-shrink:0}
-    .topicons button{position:static;width:34px;height:34px;border:0;background:none;color:#fff;display:grid;place-items:center;cursor:pointer;filter:none}
-    .topicons button svg{width:23px;height:23px;stroke-width:1.8}
-    .topicons button.on{color:var(--ink)}
-    .topicons button.on svg{fill:currentColor}
+    /* mute + избранное НИКУДА не переезжают в DOM (переезд ломал clean-режим — .top гаснет по тапу на видео и гасил
+       их вместе с собой). Остаются на своих постоянных местах, просто визуально подтягиваются в верхнюю строку
+       через fixed-позиционирование — тот же --railTop даёт им ту же вертикаль, что и остатку рейла ниже. */
+    .sound{top:calc(var(--railTop)/2 - 17px);right:calc(var(--edgeR) + 48px);width:34px;height:34px}
+    .rail [data-act="fav"]{position:fixed;top:calc(var(--railTop)/2 - 17px);right:var(--edgeR);z-index:20}
     .rail{gap:14px;right:var(--edgeR);bottom:auto;top:calc(var(--railTop) + 4px)}   /* впритык к реальному низу шапки, без зазора и без наезда */
     .rail button,.rail a{width:34px;height:34px}
     .rail button svg,.rail a svg,.rail button.av svg{width:23px;height:23px}
@@ -295,7 +291,6 @@
 <div class="top">
   <div class="hdr" id="hdr"><a class="logo"><span class="r">riga</span><span class="d">.</span><span class="b">2see</span></a><div class="tabs" id="tabs"></div></div>
   <div class="favhdr" id="favhdr"><button class="favback" id="favback"></button><span class="favttl" id="favttl"></span><button class="favcopy" id="favcopy"></button></div>
-  <div class="topicons" id="topicons"></div>
 </div>
 <div class="datebar">
   <button class="datechip" id="datechip"></button>
@@ -680,7 +675,7 @@ railEl.innerHTML=`
   <button class="av" data-act="me">${ICON.user}<span class="favbadge" style="display:none"></span></button>`;
 function priceLabel(e){ return e.is_free ? tr("free") : (e.price_from!=null ? `${tr("from")} ${Math.round(e.price_from)} €` : (e.ticket ? tr("tickets") : "")); }
 function renderRail(e){
-  document.querySelector('[data-act="fav"]').classList.toggle("on",fav.has(e.id));   // не railEl.querySelector — в ландшафте кнопка физически переехала в верхнюю строку
+  railEl.querySelector('[data-act="fav"]').classList.toggle("on",fav.has(e.id));
   railEl.querySelector('[data-act="remind"]').classList.toggle("on",remind.has(e.id));
   const t=railEl.querySelector('[data-act="ticket"]');
   if(e.ticket){ t.href=e.ticket; t.style.display=""; } else { t.style.display="none"; }
@@ -723,10 +718,7 @@ avMenu.addEventListener("click",ev=>{ const l=ev.target.closest("[data-lang]");
   if(ev.target.closest(".avm-fav")){ avMenu.classList.remove("open"); enterFav(); } });
 document.addEventListener("click",ev=>{ if(!ev.target.closest(".avmenu") && !ev.target.closest('[data-act="me"]')) avMenu.classList.remove("open"); });
 document.documentElement.lang=LANG;
-// делегируем на document, не на #rail: в ландшафте mute/избранное физически переезжают в #topicons —
-// их клики тогда не всплывут до #rail. Клики карточек (open/setcat/rotate…) сюда не долетают —
-// bindActions уже гасит их через stopPropagation раньше, на самой карточке.
-document.addEventListener("click",ev=>{
+railEl.addEventListener("click",ev=>{
   const el=ev.target.closest("[data-act]"); if(!el) return;
   ev.stopPropagation(); const act=el.dataset.act, e=VIEW[ACTIVE]; if(!e) return;
   if(act==="ticket") return;   // обычная ссылка, переход сам сработает
@@ -754,31 +746,17 @@ soundBtn.addEventListener("click",()=>{ SOUND=!SOUND; renderSound();
   updateBed(VIEW[ACTIVE]);
   toast(SOUND?tr("soundOnToast"):tr("soundOffToast")); });
 renderSound();
-// ландшафт — mute и «избранное» переезжают физически в верхнюю строку (рядом с категориями, справа), а не висят
-// отдельно/в общем рейле; остаток рейла (bell/поделиться/билет/аватар) — короткая колонка под ними. Портрет — всё возвращается на место.
-const _soundHome=soundBtn.parentElement, _soundNext=soundBtn.nextSibling;
-const topIconsEl=document.getElementById("topicons");
-function layoutTopIconsForOrientation(){
-  const landscape=window.matchMedia("(orientation: landscape)").matches;
-  const favBtn=document.querySelector('[data-act="fav"]');   // может жить и в #rail, и в #topicons — искать глобально
-  const inTop=soundBtn.parentElement===topIconsEl;
-  if(landscape && !inTop){
-    topIconsEl.appendChild(soundBtn);
-    if(favBtn) topIconsEl.appendChild(favBtn);
-  } else if(!landscape && inTop){
-    _soundHome.insertBefore(soundBtn, _soundNext);
-    if(favBtn) railEl.insertBefore(favBtn, railEl.firstChild);   // вернуть первым значком рейла — там он был изначально
-  }
-  if(landscape) syncRailTop();   // разрыв между верхней строкой и рейлом был из-за угаданного top:40px — меряем реальную высоту шапки
-}
-// реальная высота .top (не «на глаз» 40px) — шрифты/чёлка/язык дают разную высоту на разных телефонах,
-// рейл должен начинаться СРАЗУ под шапкой, без зазора и без наезда
+// реальная высота .top (не «на глаз» 40px) — шрифты/чёлка/язык дают разную высоту на разных телефонах.
+// В ландшафте --railTop используется дважды: рейл начинается СРАЗУ под шапкой, а mute/избранное (см. CSS
+// .sound и .rail [data-act="fav"] в landscape media) центруются по вертикали внутри самой строки шапки —
+// без физического переноса в DOM (переезд ломал clean-режим, см. комментарий в CSS).
 function syncRailTop(){
+  if(!window.matchMedia("(orientation: landscape)").matches) return;
   const h=document.querySelector(".top").getBoundingClientRect().height;
   document.documentElement.style.setProperty("--railTop", h+"px");
 }
-layoutTopIconsForOrientation();
-document.fonts && document.fonts.ready && document.fonts.ready.then(()=>{ if(window.matchMedia("(orientation: landscape)").matches) syncRailTop(); });   // шрифт догрузился — высота шапки могла чуть измениться, перемерить
+syncRailTop();
+document.fonts && document.fonts.ready && document.fonts.ready.then(syncRailTop);   // шрифт догрузился — высота шапки могла чуть измениться, перемерить
 
 // жесты: открыто → свайп вниз закрывает; закрыто → гориз = смена категории
 function bindGestures(card){
@@ -1147,7 +1125,7 @@ async function boot(){
 // обратно к активной карточке (без анимации, без смены видео) — тот же ролик остаётся на экране.
 let _reorientT=null;
 window.addEventListener("resize",()=>{
-  layoutTopIconsForOrientation();
+  syncRailTop();
   clearTimeout(_reorientT);
   _reorientT=setTimeout(()=>{
     if(ACTIVE<0) return;

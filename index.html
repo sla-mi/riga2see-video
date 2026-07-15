@@ -255,34 +255,34 @@
   .hero-hand{width:46px;height:46px;color:#fff;animation:heroBounce 1.6s ease-in-out infinite}
   .hero-cta-txt{font-family:var(--disp);font-weight:700;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.88)}
   @keyframes heroBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(9px)}}
-  /* 2й шаг интро — тот же фон .hero-bg/.hero-shade (никуда не едет), заголовок сменяется стрелками-подсказками.
-     ВАЖНО: .tour-dim/.tour/.tour-cta — НЕ внутри .hero. .hero (z-index:6) сам создаёт стек-контекст, и всё
-     что внутри него никогда не окажется поверх .rail(z-index:20)/.datebar(12)/.sound(9), сколько бы z-index
-     ни стояло у потомка — они снаружи по DOM и уже выше по z-index. Поэтому: на шаге 2 настоящие sound/date/rail
-     СНИМАЕМ с показа-скрытия (убираем body.hero-active), они реально всплывают на своих местах — а поверх ВСЕГО
-     кладём затемняющий стеклянный слой (.tour-dim) и уже НАД ним — стрелки/подписи, которые измеряют реальные
-     координаты этих элементов через JS (layoutTourTargets), а не угадывают пиксели. */
-  .tour-dim{position:fixed;inset:0;z-index:26;display:none;background:rgba(8,8,11,.44);backdrop-filter:blur(5px) saturate(130%);-webkit-backdrop-filter:blur(5px) saturate(130%)}
-  .tour{position:fixed;inset:0;z-index:27;display:none;pointer-events:none}
-  /* держим в ЛЕВОЙ части экрана (right:185px — та же граница, что у хинтов ниже), а не во всю ширину:
-     чипы рейла справа реально дотягиваются почти до центра экрана (аватар — самый нижний — вплотную к
-     низу), и по всей ширине «SWIPE DOWN» неизбежно наезжал бы на них на многих реальных высотах экрана. */
-  .tour-cta{display:none;position:fixed;left:0;right:185px;bottom:calc(40px + env(safe-area-inset-bottom));z-index:27;text-align:center;flex-direction:column;align-items:center;gap:9px}
+  /* 2й шаг интро. Прошлый подход (десяток отдельных стеклянных чипов поверх сплошного размытия) не читался:
+     размывались и сами значки — стрелка указывала в размытое пятно. Теперь наоборот:
+     — РЕАЛЬНЫЕ контролы (верхний ряд + правый рейл) поднимаем НАД затемняющим слоем: они остаются резкими и
+       подсвечены жёлтым свечением, чтобы было видно, на что указывает подсказка;
+     — затемняем/слегка размываем ТОЛЬКО видео под ними;
+     — вся текстовая подсказка — в ОДНОЙ цельной стеклянной плашке (рецепт как у .hero-glass), не на весь экран,
+       снизу-слева, не заходя на правый рейл и верхний ряд, чтобы значки было видно.
+     .tour-dim/.tourpanel — НЕ внутри .hero: .hero (z-index:6) — свой стек-контекст, потомок не встал бы выше
+     .rail(20). Поэтому это соседи в body. */
+  body.step2 .top,body.step2 .sound,body.step2 .datebar,body.step2 .rail{z-index:28}
+  body.step2 .rail button,body.step2 .rail a,body.step2 .sound,body.step2 .datechip,body.step2 .tab.on{filter:drop-shadow(0 0 7px rgba(232,255,71,.65))}
+  .tour-dim{position:fixed;inset:0;z-index:26;display:none;background:rgba(8,8,11,.55);backdrop-filter:blur(2px) saturate(120%);-webkit-backdrop-filter:blur(2px) saturate(120%)}
   body.step2 .hero-glass{display:none}
   body.step2 .tour-dim{display:block}
-  body.step2 .tour{display:block}
-  body.step2 .tour-cta{display:flex}
-  /* каждая подпись — маленький стеклянный чип (тот же приём, что .hero-glass: блюр + полупрозрачная белая заливка),
-     а не голый текст с тенью — так читается на любом фоне и выглядит одним визуальным языком с первой плашкой */
-  /* ТОТ ЖЕ рецепт, что у .hero-glass (один визуальный язык обеих плашек интро): те же цифры фона/блюра/контура,
-     просто меньше размером под короткий чип. Шрифт крупнее (15px, не 12) — на реальном телефоне 12px читался
-     плохо/мелко. */
-  .tour-item{position:absolute;display:flex;align-items:center;gap:8px;max-width:190px;font-family:var(--disp);font-weight:700;font-size:15px;line-height:1.32;color:var(--ink);
+  /* ОДНА плашка. left:16 / right:78 — не заходит на правый рейл (значки ~12–58px от края, остаётся резким);
+     снизу, авто-высота — верхний ряд далеко сверху, тоже виден. */
+  .tourpanel{position:fixed;left:16px;right:78px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:29;display:none;
+    flex-direction:column;gap:11px;
     background:rgba(255,255,255,.08);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);
-    border:1px solid rgba(255,255,255,.38);border-radius:16px;padding:9px 13px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
-  .tour-arrow{width:22px;height:12px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
-  .tour-rotateicon svg{width:24px;height:24px;color:var(--ink)}
-  .tour-hint{position:absolute;left:0;right:0;text-align:center;font-family:var(--disp);font-weight:700;font-size:14px;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+    border:1px solid rgba(255,255,255,.38);border-radius:20px;padding:16px 17px;box-shadow:0 14px 44px rgba(0,0,0,.42)}
+  body.step2 .tourpanel{display:flex}
+  .prow{display:flex;align-items:flex-start;gap:9px;font-family:var(--disp);font-weight:700;font-size:14.5px;line-height:1.28;color:#fff}
+  .prow .parr{color:var(--ink);font-size:17px;line-height:1.2;flex-shrink:0;min-width:16px;text-align:center}
+  .prow .parr svg{width:22px;height:22px;display:block}
+  .prow b{color:var(--ink);font-weight:700}
+  .pcta{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:2px;padding-top:12px;border-top:1px solid rgba(255,255,255,.16)}
+  .pcta .hero-hand{width:38px;height:38px}
+  .pcta span{font-family:var(--disp);font-weight:700;font-size:12.5px;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.9)}
   @media (prefers-reduced-motion:reduce){ .hero-hand{animation:none} }
   .toast{position:fixed;left:50%;bottom:120px;transform:translateX(-50%) translateY(16px);background:rgba(20,20,24,.96);
     border:1px solid rgba(255,255,255,.1);padding:11px 18px;border-radius:14px;font-family:var(--body);font-size:14px;
@@ -348,20 +348,12 @@
   </div>
 </div>
 <div class="tour-dim" id="tourDim"></div>
-<div class="tour" id="tour">
-  <div class="tour-item" data-k="tourCats" data-side="below"><svg class="tour-arrow" viewBox="0 0 32 16" style="transform:rotate(-90deg)"></svg><span></span></div>
-  <div class="tour-item" data-k="tourDate" data-side="below"><svg class="tour-arrow" viewBox="0 0 32 16" style="transform:rotate(-90deg)"></svg><span></span></div>
-  <div class="tour-item" data-k="tourSound" data-side="below" style="flex-direction:row-reverse;text-align:right"><svg class="tour-arrow" viewBox="0 0 32 16" style="transform:rotate(-90deg)"></svg><span></span></div>
-  <div class="tour-item" data-k="tourRotate" style="left:50%;transform:translate(-50%,-50%);max-width:220px;justify-content:center;flex-direction:column;gap:4px;text-align:center"><span class="tour-rotateicon"></span><span></span></div>
-  <div class="tour-hint" style="left:16px;right:185px;text-align:left" data-k="tourSwipeCats2"></div>
-  <div class="tour-hint" style="left:16px;right:185px;text-align:left" data-k="tourTap"></div>
-  <div class="tour-item" data-k="tourFav" data-side="left" style="flex-direction:row-reverse;text-align:right"><svg class="tour-arrow" viewBox="0 0 32 16"></svg><span></span></div>
-  <div class="tour-item" data-k="tourRemind" data-side="left" style="flex-direction:row-reverse;text-align:right"><svg class="tour-arrow" viewBox="0 0 32 16"></svg><span></span></div>
-  <div class="tour-item" data-k="tourShare" data-side="left" style="flex-direction:row-reverse;text-align:right"><svg class="tour-arrow" viewBox="0 0 32 16"></svg><span></span></div>
-  <div class="tour-item" data-k="tourTicket" data-side="left" style="flex-direction:row-reverse;text-align:right"><svg class="tour-arrow" viewBox="0 0 32 16"></svg><span></span></div>
-  <div class="tour-item" data-k="tourAvatar" data-side="left" style="flex-direction:row-reverse;text-align:right;max-width:118px"><svg class="tour-arrow" viewBox="0 0 32 16"></svg><span></span></div>
+<div class="tourpanel" id="tourPanel">
+  <div class="prow"><span class="parr">↑</span><span><b data-k="tourTopLbl"></b> <span data-k="tourTop"></span></span></div>
+  <div class="prow"><span class="parr">→</span><span><b data-k="tourRightLbl"></b> <span data-k="tourRight"></span></span></div>
+  <div class="prow"><span class="parr" id="tourRotIcon"></span><span data-k="tourVideo"></span></div>
+  <div class="pcta"><span class="hero-hand" id="tourHand"></span><span data-k="tourCta"></span></div>
 </div>
-<div class="tour-cta" id="tourCta"><span class="hero-hand" id="tourHand"></span><div class="hero-cta-txt" id="tourCtaTxt"></div></div>
 <div class="sheet" id="remindsheet"><div class="sheetcard" id="remindcard"></div></div>
 <div class="toast" id="toast"></div>
 
@@ -466,17 +458,11 @@ const I18N={
  heroTitle:{ru:"Ты рулишь, не алгоритм!",lv:"Tu vadi, ne algoritms!",en:"You're in control, not the algorithm!"},
  heroSub:{ru:"Листай и выбирай на свой вкус",lv:"Ritini un izvēlies pēc savas gaumes",en:"Swipe through and pick what you like"},
  heroCta:{ru:"Свайпни вниз, чтобы начать",lv:"Pavelc uz leju, lai sāktu",en:"Swipe down to start"},
- tourCats:{ru:"категории — свайп вбок",lv:"kategorijas — velc sānis",en:"categories — swipe sideways"},
- tourDate:{ru:"перейти к дате",lv:"pāriet uz datumu",en:"jump to a date"},
- tourSound:{ru:"звук",lv:"skaņa",en:"sound"},
- tourRotate:{ru:"поверни вертикально/горизонтально",lv:"pagriez vertikāli/horizontāli",en:"rotate vertical/horizontal"},
- tourSwipeCats2:{ru:"листать события",lv:"ritini notikumus",en:"swipe through events"},
- tourTap:{ru:"тап по видео — скрыть надписи",lv:"pieskaries video — paslēpt tekstu",en:"tap the video — hide captions"},
- tourFav:{ru:"сохранить — хочу пойти",lv:"saglabāt — gribu iet",en:"save — I want to go"},
- tourRemind:{ru:"напомнить перед началом",lv:"atgādināt pirms sākuma",en:"remind me before it starts"},
- tourShare:{ru:"поделиться — ссылка на твою ленту",lv:"dalīties — saite uz tavu lenti",en:"share — a link to your feed"},
- tourTicket:{ru:"билеты и цена",lv:"biļetes un cena",en:"tickets and price"},
- tourAvatar:{ru:"язык, избранное, организаторам",lv:"valoda, izlase, organizatoriem",en:"language, favorites, for organizers"},
+ tourTopLbl:{ru:"Сверху:",lv:"Augšā:",en:"Top:"},
+ tourTop:{ru:"категории (листай вбок), дата, звук",lv:"kategorijas (velc sānis), datums, skaņa",en:"categories (swipe sideways), date, sound"},
+ tourRightLbl:{ru:"Справа:",lv:"Labajā:",en:"Right:"},
+ tourRight:{ru:"сохранить, напомнить, поделиться, билеты, язык и избранное",lv:"saglabāt, atgādināt, dalīties, biļetes, valoda un izlase",en:"save, remind, share, tickets, language and favorites"},
+ tourVideo:{ru:"Листай ленту · тап по видео скрывает надписи · поверни телефон — сменится ориентация",lv:"Ritini lenti · pieskāriens video paslēpj tekstu · pagriez telefonu — mainīsies orientācija",en:"Swipe the feed · tap the video to hide captions · rotate the phone to switch orientation"},
  tourCta:{ru:"Листай вниз",lv:"Ritini uz leju",en:"Swipe down"},
  installBtn:{ru:"Добавить на экран «Домой»",lv:"Pievienot sākuma ekrānam",en:"Add to Home Screen"},
  installTtl:{ru:"Значок на экране «Домой» — сайт откроется на весь экран, без адресной строки",lv:"Ikona sākuma ekrānā — vietne atvērsies pilnekrānā, bez adreses joslas",en:"An icon on your Home Screen — the site opens full-screen, no address bar"},
@@ -778,9 +764,7 @@ function applyStaticI18N(){
   const ht=document.getElementById("heroTtl"); if(ht) ht.textContent=tr("heroTitle");
   const hs=document.getElementById("heroSub"); if(hs) hs.textContent=tr("heroSub");
   const hc=document.getElementById("heroCtaTxt"); if(hc) hc.textContent=tr("heroCta");
-  const tc=document.getElementById("tourCtaTxt"); if(tc) tc.textContent=tr("tourCta");
-  document.querySelectorAll("#tour .tour-item[data-k]").forEach(el=>{ const s=el.querySelector("span:last-child"); if(s) s.textContent=tr(el.dataset.k); });
-  document.querySelectorAll("#tour .tour-hint[data-k]").forEach(el=>{ el.textContent=tr(el.dataset.k); });
+  document.querySelectorAll("#tourPanel [data-k]").forEach(el=>{ el.textContent=tr(el.dataset.k); });
 }
 function setLang(l){ LANG=l; localStorage.setItem("lang",l); document.documentElement.lang=l;
   renderAvMenu(); applyStaticI18N(); buildTabs(); buildFeed(currentList()); }   // перерисовываем вкладки и ленту под новый язык
@@ -1132,63 +1116,16 @@ function stopHeroBG(){ heroRunning=false; heroTimers.forEach(clearTimeout); hero
 function dismissHero(){
   const hero=document.getElementById("hero"); if(!hero || hero.dataset.gone) return; hero.dataset.gone="1";
   sessionStorage.setItem("onboarded","1");
-  document.body.classList.remove("hero-active","step2");   // сразу возвращаем рейл/дату/звук; step2 — иначе стеклянный слой шага 2 остался бы висеть навсегда
+  document.body.classList.remove("hero-active","step2");   // сразу возвращаем рейл/дату/звук; step2 — иначе затемнение/подсветка шага 2 остались бы висеть навсегда
   stopHeroBG();
   hero.style.transition="transform .3s cubic-bezier(.33,0,.2,1)";
   hero.style.transform="translateY(-100%)";
-  // шаг 2 живёт отдельными fixed-элементами (не внутри .hero — иначе не встали бы поверх рейла), поэтому
-  // при закрытии едут вместе с .hero тем же движением, а не просто исчезают статично
-  ["tourDim","tour","tourCta"].forEach(id=>{ const el=document.getElementById(id); if(!el) return;
+  // затемнение + плашка шага 2 живут отдельными fixed-элементами (не внутри .hero — иначе не встали бы поверх
+  // рейла), поэтому при закрытии едут вместе с .hero тем же движением, а не просто исчезают статично
+  ["tourDim","tourPanel"].forEach(id=>{ const el=document.getElementById(id); if(!el) return;
     el.style.transition="transform .3s cubic-bezier(.33,0,.2,1)"; el.style.transform="translateY(-100%)"; });
   setTimeout(()=>{ hero.remove();
-    ["tourDim","tour","tourCta"].forEach(id=>document.getElementById(id)?.remove()); }, 340);
-}
-// стрелки-подсказки шага 2 указывают на РЕАЛЬНЫЕ элементы (категории/дата/звук/рейл), измеренные через
-// getBoundingClientRect — не угаданные пиксели. Вызывается после снятия body.hero-active (элементы уже
-// в DOM-раскладке) и на resize, пока шаг 2 активен.
-function layoutTourTargets(){
-  const vw=window.innerWidth;
-  let belowFloor=0;   // категории/дата/звук идут одна под другой сверху вниз — каждая следующая не выше конца предыдущей (иначе при длинном тексте наезжают)
-  const place=(key,targetEl,side)=>{
-    const item=document.querySelector(`.tour-item[data-k="${key}"]`); if(!item||!targetEl) return null;
-    const r=targetEl.getBoundingClientRect(); if(!r.width && !r.height) return null;   // элемент скрыт/не отрисован — не переносим стрелку в (0,0)
-    item.style.left=""; item.style.right=""; item.style.top=""; item.style.bottom=""; item.style.transform="";
-    if(side==="left"){                              // рейл: подпись слева от иконки, стрелка вправо
-      item.style.top=(r.top+r.height/2)+"px"; item.style.right=(vw-r.left+10)+"px"; item.style.transform="translateY(-50%)";
-    } else if(side==="below"){                       // категории/дата/звук: подпись под элементом, стрелка вверх
-      const top=Math.max(r.bottom+10, belowFloor);
-      item.style.top=top+"px";
-      if(item.style.textAlign==="right"){ item.style.right=(vw-r.right)+"px"; } else { item.style.left=r.left+"px"; }
-    }
-    return item;
-  };
-  [["tourCats",document.querySelector(".hdr")], ["tourDate",document.getElementById("datechip")],
-   ["tourSound",document.getElementById("sound")]].forEach(([k,el])=>{
-    const item=place(k, el, "below");   // belowFloor должен учитывать УЖЕ размещённые — считаем по одному, не пачкой
-    if(item) belowFloor=Math.max(belowFloor, item.getBoundingClientRect().bottom+8);
-  });
-  const railItems=[place("tourFav", document.querySelector('.rail [data-act="fav"]'), "left"),
-    place("tourRemind", document.querySelector('.rail [data-act="remind"]'), "left"),
-    place("tourShare", document.querySelector('.rail [data-act="share"]'), "left"),
-    place("tourTicket", document.querySelector('.rail [data-act="ticket"]'), "left"),
-    place("tourAvatar", document.querySelector('.rail [data-act="me"]'), "left")].filter(Boolean);
-  // «rotate» ни на что реальное не указывает (стрелки нет) — раньше стояла на угаданных 44% высоты экрана,
-  // из-за чего на некоторых реальных телефонах садилась прямо на чип «избранное» (верх рейла едет вместе
-  // с высотой экрана). Теперь — ровно посередине между низом верхнего кластера и верхом первого чипа рейла.
-  const rotateItem=document.querySelector('.tour-item[data-k="tourRotate"]');
-  let hintFloor=belowFloor;
-  if(rotateItem && railItems.length){
-    const railTop=Math.min(...railItems.map(it=>it.getBoundingClientRect().top));
-    rotateItem.style.top=((belowFloor+railTop)/2)+"px";
-    hintFloor=rotateItem.getBoundingClientRect().bottom+10;
-  }
-  // те же жестовые хинты («листать»/«тап») — раньше на угаданных 57%/63%, при более крупном шрифте начали
-  // наезжать на чип «избранное» на реальном телефоне. Теперь идут строго друг под другом от низа rotate-чипа.
-  ["tourSwipeCats2","tourTap"].forEach(k=>{
-    const el=document.querySelector(`.tour-hint[data-k="${k}"]`); if(!el) return;
-    el.style.top=hintFloor+"px";
-    hintFloor=el.getBoundingClientRect().bottom+6;
-  });
+    ["tourDim","tourPanel"].forEach(id=>document.getElementById(id)?.remove()); }, 340);
 }
 (function(){
   const hero=document.getElementById("hero");
@@ -1199,8 +1136,7 @@ function layoutTourTargets(){
   document.body.classList.add("hero-active");
   document.getElementById("heroHand").innerHTML=ICON.scrollHand;
   document.getElementById("tourHand").innerHTML=ICON.scrollHand;
-  document.querySelectorAll("#tour .tour-arrow").forEach(el=>el.innerHTML=ICON.tourArrow);
-  document.querySelector(".tour-rotateicon").innerHTML=ICON.rotate;
+  document.getElementById("tourRotIcon").innerHTML=ICON.rotate;
   applyStaticI18N();
   startHeroBG();
   // 2 шага одним и тем же .hero (фон/коллаж не трогаем, едет только целиком в конце): шаг 1 — заголовок,
@@ -1213,7 +1149,6 @@ function layoutTourTargets(){
       document.body.classList.add("step2");
       document.body.classList.remove("hero-active");   // настоящие sound/date/rail теперь реально видимы — стрелки указывают на них, не в пустоту
       hero.style.transition="transform .2s ease"; hero.style.transform="";
-      requestAnimationFrame(()=>requestAnimationFrame(layoutTourTargets));   // 2 rAF — дождаться, пока браузер отрисует только что показанные элементы
     }
     else dismissHero();
   }
@@ -1228,14 +1163,14 @@ function layoutTourTargets(){
     // вверх — следуем 1:1 на шаге 2 (уезжает целиком); на шаге 1 контент ещё не едет — фон общий, просто пружиним
     const t = (heroStep===2 && dy<0) ? dy : dy*0.25;
     hero.style.transform=`translateY(${t}px)`;
-    if(heroStep===2){   // стеклянный слой шага 2 живёт отдельными fixed-элементами — тащим их тем же пальцем синхронно
-      ["tourDim","tour","tourCta"].forEach(id=>{ const el=document.getElementById(id); if(el){ el.style.transition="none"; el.style.transform=`translateY(${t}px)`; } });
+    if(heroStep===2){   // затемнение + плашка шага 2 живут отдельными fixed-элементами — тащим их тем же пальцем синхронно
+      ["tourDim","tourPanel"].forEach(id=>{ const el=document.getElementById(id); if(el){ el.style.transition="none"; el.style.transform=`translateY(${t}px)`; } });
     } },{passive:false});
   hero.addEventListener("touchend",e=>{ if(!dragging) return; dragging=false;
     const dx=Math.abs((e.changedTouches[0]||{}).clientX-x0);
     if(-dy>H()*0.14 || dx>70 || dy>110){ advance(); }       // свайп вверх (осн.), вбок или заметно вниз — доводим
     else { hero.style.transition="transform .2s ease"; hero.style.transform="";
-      if(heroStep===2) ["tourDim","tour","tourCta"].forEach(id=>{ const el=document.getElementById(id); if(el){ el.style.transition="transform .2s ease"; el.style.transform=""; } });
+      if(heroStep===2) ["tourDim","tourPanel"].forEach(id=>{ const el=document.getElementById(id); if(el){ el.style.transition="transform .2s ease"; el.style.transform=""; } });
     } },{passive:true});   // не дотянул — вернулась на место
   hero.addEventListener("wheel",e=>{ if(Math.abs(e.deltaY)>0 || Math.abs(e.deltaX)>0) advance(); },{passive:true});
   hero.addEventListener("click",advance);
@@ -1276,7 +1211,7 @@ window.addEventListener("resize",()=>{
   // этой панели и получить чуть другое число → рейл/иконки скачут от ролика к ролику. Ждём, пока resize'ы
   // утихнут, и меряем один раз в спокойном кадре (rAF — после того, как браузер точно закончил layout).
   clearTimeout(_railT);
-  _railT=setTimeout(()=>requestAnimationFrame(()=>{ syncRailTop(); if(document.body.classList.contains("step2")) layoutTourTargets(); }),150);
+  _railT=setTimeout(()=>requestAnimationFrame(syncRailTop),150);
   clearTimeout(_reorientT);
   _reorientT=setTimeout(()=>{
     if(ACTIVE<0) return;

@@ -1125,9 +1125,14 @@ async function boot(){
 // поворот экрана меняет высоту карточки (100dvh) → тот же scrollTop после поворота указывает на ДРУГУЮ карточку →
 // IntersectionObserver подхватывает не то видео («перескакивает»). Чиним: после поворота довскролливаем
 // обратно к активной карточке (без анимации, без смены видео) — тот же ролик остаётся на экране.
-let _reorientT=null;
+let _reorientT=null, _railT=null;
 window.addEventListener("resize",()=>{
-  syncRailTop();
+  // iOS Safari шлёт resize и когда просто прячется/появляется системная панель при скролле между роликами —
+  // не только при повороте. Меряя высоту .top СРАЗУ на каждый resize, можно попасть на кадр посреди анимации
+  // этой панели и получить чуть другое число → рейл/иконки скачут от ролика к ролику. Ждём, пока resize'ы
+  // утихнут, и меряем один раз в спокойном кадре (rAF — после того, как браузер точно закончил layout).
+  clearTimeout(_railT);
+  _railT=setTimeout(()=>requestAnimationFrame(syncRailTop),150);
   clearTimeout(_reorientT);
   _reorientT=setTimeout(()=>{
     if(ACTIVE<0) return;

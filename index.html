@@ -259,11 +259,13 @@
   @media (orientation:landscape){
     /* один и тот же правый отступ для .top и #rail — иначе верхняя пара значков и колонка под ней едут не по одной
        вертикали и вся панель выглядит вкривь. Чёлка/динамик-айленд слева-справа — учитываем safe-area, не число. */
-    :root{ --edgeR: max(12px, env(safe-area-inset-right)); --railTop: 40px; }   /* --railTop — запасное значение; JS (syncRailTop) подставляет РЕАЛЬНУЮ высоту шапки */
+    :root{ --edgeR: max(12px, env(safe-area-inset-right)); --railTop: 40px; --iconsW: 92px; }   /* --railTop — запасное значение (JS подставляет реальное); --iconsW — ширина зоны mute+избранное (34+14+34+доп.отступ), .hdr должен освобождать под неё место сам, т.к. mute/fav больше не сидят в flex-потоке .top */
     .top{padding:6px var(--edgeR) 6px max(12px, env(safe-area-inset-left))}
     .tab{font-size:12px;padding-bottom:5px}     /* категории остаются, просто мельче — та же строка с лого, места хватает */
-    /* категории не тянутся во всю ширину — обрываются (с плавным затуханием) до значков mute/избранное, а не залезают под них */
-    .hdr{-webkit-mask-image:linear-gradient(to right, black calc(100% - 28px), transparent); mask-image:linear-gradient(to right, black calc(100% - 28px), transparent)}
+    /* категории не тянутся во всю ширину — обрываются (с плавным затуханием) до значков mute/избранное, а не залезают под них.
+       Раньше .hdr сужался сам (topicons был реальным flex-соседом и отъедал место); теперь mute/fav — position:fixed
+       и в раскладке .top не участвуют, поэтому место под них резервируем явно через margin-right. */
+    .hdr{margin-right:var(--iconsW);-webkit-mask-image:linear-gradient(to right, black calc(100% - 28px), transparent); mask-image:linear-gradient(to right, black calc(100% - 28px), transparent)}
     .datebar{display:none}              /* дата есть в info-строке снизу */
     /* mute + избранное НИКУДА не переезжают в DOM (переезд ломал clean-режим — .top гаснет по тапу на видео и гасил
        их вместе с собой). Остаются на своих постоянных местах, просто визуально подтягиваются в верхнюю строку

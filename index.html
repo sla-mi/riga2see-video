@@ -260,7 +260,7 @@
   @media (orientation:landscape){
     /* один и тот же правый отступ для .top и #rail — иначе верхняя пара значков и колонка под ней едут не по одной
        вертикали и вся панель выглядит вкривь. Чёлка/динамик-айленд слева-справа — учитываем safe-area, не число. */
-    :root{ --edgeR: max(12px, env(safe-area-inset-right)); }
+    :root{ --edgeR: max(12px, env(safe-area-inset-right)); --railTop: 40px; }   /* --railTop — запасное значение; JS (syncRailTop) подставляет РЕАЛЬНУЮ высоту шапки */
     .top{padding:6px var(--edgeR) 6px max(12px, env(safe-area-inset-left))}
     .tab{font-size:12px;padding-bottom:5px}     /* категории остаются, просто мельче — та же строка с лого, места хватает */
     /* категории не тянутся во всю ширину — обрываются (с плавным затуханием) до значков mute/избранное, а не залезают под них */
@@ -274,7 +274,7 @@
     .topicons button svg{width:23px;height:23px;stroke-width:1.8}
     .topicons button.on{color:var(--ink)}
     .topicons button.on svg{fill:currentColor}
-    .rail{gap:14px;right:var(--edgeR);bottom:auto;top:calc(40px + env(safe-area-inset-top))}
+    .rail{gap:14px;right:var(--edgeR);bottom:auto;top:calc(var(--railTop) + 4px)}   /* впритык к реальному низу шапки, без зазора и без наезда */
     .rail button,.rail a{width:34px;height:34px}
     .rail button svg,.rail a svg,.rail button.av svg{width:23px;height:23px}
     .ticket-hint{display:none}
@@ -769,8 +769,16 @@ function layoutTopIconsForOrientation(){
     _soundHome.insertBefore(soundBtn, _soundNext);
     if(favBtn) railEl.insertBefore(favBtn, railEl.firstChild);   // вернуть первым значком рейла — там он был изначально
   }
+  if(landscape) syncRailTop();   // разрыв между верхней строкой и рейлом был из-за угаданного top:40px — меряем реальную высоту шапки
+}
+// реальная высота .top (не «на глаз» 40px) — шрифты/чёлка/язык дают разную высоту на разных телефонах,
+// рейл должен начинаться СРАЗУ под шапкой, без зазора и без наезда
+function syncRailTop(){
+  const h=document.querySelector(".top").getBoundingClientRect().height;
+  document.documentElement.style.setProperty("--railTop", h+"px");
 }
 layoutTopIconsForOrientation();
+document.fonts && document.fonts.ready && document.fonts.ready.then(()=>{ if(window.matchMedia("(orientation: landscape)").matches) syncRailTop(); });   // шрифт догрузился — высота шапки могла чуть измениться, перемерить
 
 // жесты: открыто → свайп вниз закрывает; закрыто → гориз = смена категории
 function bindGestures(card){

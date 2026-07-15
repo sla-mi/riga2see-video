@@ -258,28 +258,31 @@
      категории/дата прячем (второстепенное, пока смотрят видео), описание прячем, рейл и текст — в минимум.
      Блок — В КОНЦЕ style, иначе базовые правила ниже по каскаду (равный приоритет) их перебивают. */
   @media (orientation:landscape){
-    /* чёлка/динамик-айленд в ландшафте вылезает то слева, то справа (зависит от того, каким боком повернули) —
-       везде по краям добавляем safe-area-inset, а не фиксированный отступ */
-    .top{padding:6px max(12px, env(safe-area-inset-right)) 6px max(12px, env(safe-area-inset-left))}
+    /* один и тот же правый отступ для .top и #rail — иначе верхняя пара значков и колонка под ней едут не по одной
+       вертикали и вся панель выглядит вкривь. Чёлка/динамик-айленд слева-справа — учитываем safe-area, не число. */
+    :root{ --edgeR: max(12px, env(safe-area-inset-right)); }
+    .top{padding:6px var(--edgeR) 6px max(12px, env(safe-area-inset-left))}
     .tab{font-size:12px;padding-bottom:5px}     /* категории остаются, просто мельче — та же строка с лого, места хватает */
     /* категории не тянутся во всю ширину — обрываются (с плавным затуханием) до значков mute/избранное, а не залезают под них */
     .hdr{-webkit-mask-image:linear-gradient(to right, black calc(100% - 28px), transparent); mask-image:linear-gradient(to right, black calc(100% - 28px), transparent)}
     .datebar{display:none}              /* дата есть в info-строке снизу */
     /* mute + избранное физически переезжают JS-ом в верхнюю строку (см. layoutTopIconsForOrientation); отсюда вниз —
-       короткая вертикальная панель (bell/поделиться/билет/аватар), подвешенная под ними, а не от низа экрана */
-    .topicons{display:flex;align-items:center;gap:10px;flex-shrink:0}
-    .topicons button{position:static;width:28px;height:28px;border:0;background:none;color:#fff;display:grid;place-items:center;cursor:pointer;filter:none}
-    .topicons button svg{width:20px;height:20px;stroke-width:1.8}
+       короткая вертикальная панель (bell/поделиться/билет/аватар), подвешенная под ними. Размер и правый край —
+       ТЕ ЖЕ, что у #rail ниже, чтобы вся колонка стояла ровно по одной вертикальной линии, а не вразнобой. */
+    .topicons{display:flex;align-items:center;gap:14px;flex-shrink:0}
+    .topicons button{position:static;width:34px;height:34px;border:0;background:none;color:#fff;display:grid;place-items:center;cursor:pointer;filter:none}
+    .topicons button svg{width:23px;height:23px;stroke-width:1.8}
     .topicons button.on{color:var(--ink)}
     .topicons button.on svg{fill:currentColor}
-    .rail{gap:14px;right:max(6px, env(safe-area-inset-right));bottom:auto;top:calc(40px + env(safe-area-inset-top))}
+    .rail{gap:14px;right:var(--edgeR);bottom:auto;top:calc(40px + env(safe-area-inset-top))}
     .rail button,.rail a{width:34px;height:34px}
     .rail button svg,.rail a svg,.rail button.av svg{width:23px;height:23px}
     .ticket-hint{display:none}
     .railprice{font-size:9px;margin-top:-6px}
     .vidcred{display:none}              /* декоративная подпись сбоку — убираем, не критична */
-    /* рейл теперь висит вверху и короче — низ экрана свободен, полю info правый отступ под него больше не нужен */
-    .info{padding:4px max(14px, env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));gap:4px}
+    /* рейл теперь висит вверху и короче — низ экрана свободен, полю info правый отступ под него больше не нужен.
+       Но текст всё равно не на всю ширину — левые 2/3, чтобы правая треть с иконками смотрелась просторно, не впритык */
+    .info{padding:4px max(14px, env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));gap:4px;max-width:66%}
     .catchip{min-height:18px;font-size:8px;padding:0 8px;margin-left:-8px}
     h1{font-size:14px;-webkit-line-clamp:1;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}
     .meta{font-size:11px}

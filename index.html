@@ -59,19 +59,6 @@
   @media not (orientation:landscape){ .card.horiz .rotatehint{display:flex} }   /* портрет-экран, гориз-ролик */
   @media (orientation:landscape){ .card.vert .rotatehint{display:flex} }        /* ландшафт-экран, верт-ролик */
   body.clean .rotatehint{opacity:0;pointer-events:none}
-  /* ландшафт-экран — интерфейс компактнее по высоте, чтобы весь рейл и текст влезли на короткий экран */
-  @media (orientation:landscape){
-    .top{padding:10px 14px 8px}
-    .datebar{top:50px}
-    .rail{gap:11px;right:6px;bottom:calc(8px + env(safe-area-inset-bottom))}
-    .rail button,.rail a{width:34px;height:34px}
-    .rail button svg,.rail a svg,.rail button.av svg{width:22px;height:22px}
-    .info{padding:6px 66px calc(8px + env(safe-area-inset-bottom)) 16px;gap:4px}
-    h1{font-size:14px}
-    .meta{font-size:12px}
-    .preview,.dtext{font-size:12px}
-    .catchip{min-height:22px;font-size:9px}
-  }
   .card.af video.main{object-fit:cover}   /* автофон-клипы заполняют кадр (постер под ними — общее правило .poster contain) */
   .card .stage video.afbuf{opacity:0;transition:opacity .9s ease}   /* автофон: два буфера, медленный кроссфейд встык */
   .card .stage video.afbuf.afon{opacity:1}
@@ -266,6 +253,27 @@
     border:1px solid rgba(255,255,255,.1);padding:11px 18px;border-radius:14px;font-family:var(--body);font-size:14px;
     font-weight:700;z-index:30;opacity:0;transition:.22s;pointer-events:none}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  /* ландшафт-экран на реальном телефоне короче, чем кажется (панели Safari съедают высоту) — режем жёстко:
+     категории/дата прячем (второстепенное, пока смотрят видео), описание прячем, рейл и текст — в минимум.
+     Блок — В КОНЦЕ style, иначе базовые правила ниже по каскаду (равный приоритет) их перебивают. */
+  @media (orientation:landscape){
+    .top{padding:6px 12px}
+    .tabs{display:none}                 /* переключение категории подождёт возврата в портрет */
+    .datebar{display:none}              /* дата есть в info-строке снизу */
+    .sound{top:8px;right:10px;width:30px;height:30px}
+    .sound svg{width:18px;height:18px}
+    .rail{gap:6px;right:5px;bottom:calc(5px + env(safe-area-inset-bottom))}
+    .rail button,.rail a{width:26px;height:26px}
+    .rail button svg,.rail a svg,.rail button.av svg{width:18px;height:18px}
+    .ticket-hint{display:none}
+    .railprice{font-size:8px;margin-top:-6px}
+    .vidcred{display:none}              /* декоративная подпись сбоку — убираем, не критична */
+    .info{padding:4px 58px calc(4px + env(safe-area-inset-bottom)) 14px;gap:2px}
+    .catchip{min-height:18px;font-size:8px;padding:0 8px;margin-left:-8px}
+    h1{font-size:13px;-webkit-line-clamp:1;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}
+    .meta{font-size:10px}
+    .preview,.chiprow,.datesfull{display:none}   /* описание-превью и чипы дат — прячем, места нет; полное описание всё ещё доступно по тапу на заголовок */
+  }
 </style>
 </head>
 <body>

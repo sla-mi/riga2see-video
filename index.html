@@ -384,6 +384,10 @@ function poster(e){ return e.img || (e.file? e.file.replace("vid/","poster/").re
 function vidUrl(e){ return e.video ? e.video.url : (e.file || null); }          // стрим-URL или локальный файл
 function vidOrient(e){ return e.video ? e.video.orient : (e.orient || "vert"); }
 function hasVideo(e){ return !!vidUrl(e); }
+// реальный перевод контента (не только интерфейса): подтянут из живой базы Афиши по тем же id (title_ru/lv/en,
+// body_ru/lv/en, venue_ru/lv/en). Есть не у всех событий (снапшот демо и живая база разошлись) — тогда просто
+// показываем оригинал организатора, как раньше.
+function loc(e,base){ const v=e[base+"_"+LANG]; return (v&&v.trim())?v:null; }
 // ссылка «поделиться» — на ЭТОТ ивент в нашей ленте (не на билетку): получатель откроется прямо на посте и дальше листает нашу ленту.
 // &lang=<текущий язык> — чтобы превью в соцсети собралось на языке того, кто делится (edge-функция локализует OG-теги)
 function eventShareUrl(e){ return `${location.origin}${location.pathname}?e=${e.id}&lang=${LANG}`; }
@@ -478,7 +482,7 @@ function reminderOpts(s){
 }
 function openRemindMenu(e, btnEl){
   const card=document.getElementById("remindcard"); const cur=remind.get(e.id);
-  let html=`<div class="sheet-ttl">${tr("remindTtl")} · ${e.ev_title||e.page}</div>`;
+  let html=`<div class="sheet-ttl">${tr("remindTtl")} · ${loc(e,"title")||e.ev_title||e.page}</div>`;
   if(cur!==undefined) html+=`<button class="ropt off" data-v="__off">${tr("remRemoveOpt")}</button>`;
   reminderOpts(e.date).forEach(o=>html+=`<button class="ropt ${cur===o?'on':''}" data-v="${o}">${tr(o)}</button>`);
   card.innerHTML=html;
@@ -487,7 +491,7 @@ function openRemindMenu(e, btnEl){
       document.getElementById("remindsheet").classList.remove("open"); return; }
     remind.set(e.id,b.dataset.v); if(btnEl) btnEl.classList.add("on");
     if(!notifyChannel){                                    // канал ещё не выбран — спрашиваем один раз
-      openChannelSheet(`«${e.ev_title||e.page}» — ${tr(b.dataset.v).toLowerCase()}`);
+      openChannelSheet(`«${loc(e,"title")||e.ev_title||e.page}» — ${tr(b.dataset.v).toLowerCase()}`);
     } else {
       toast(tr("remWillNotify")+" · "+tr(b.dataset.v).toLowerCase()+(notifyChannel==="tg"?" · Telegram":" · Push"));
       document.getElementById("remindsheet").classList.remove("open");
@@ -541,9 +545,9 @@ function cardHTML(e,i){
                 : (AUTOFON_ON && e.autofon && e.autofon.length ? "af" : "photo");   // af = автофон-плейлист (клипы cover)
   const cat=e.cat||""; const col=CAT_COLOR[cat]||"#cfcfd6";
   const priceTxt = e.is_free ? tr("free") : (e.price_from!=null ? `${tr("from")} ${Math.round(e.price_from)} €` : "");
-  const title = e.ev_title || firstLine(e.title) || e.page;
-  const place = e.venue || e.page;
-  const bodyText = (e.body||"Описание появится позже.").trim();
+  const title = loc(e,"title") || e.ev_title || firstLine(e.title) || e.page;
+  const place = loc(e,"venue") || e.venue || e.page;
+  const bodyText = (loc(e,"body") || e.body || "Описание появится позже.").trim();
   const chip = ((favMode||curCat===null) && cat) ? `<span class="catchip" data-act="setcat" data-cat="${cat}"><span class="dot" style="background:${col}"></span>${catLabel(cat)}</span>` : "";
   const purl=poster(e);
   const bgPoster = purl ? `<img class="poster bgp" src="${purl}" alt="" loading="lazy" onerror="this.remove()">` : "";   // размытая заливка за постером — на любой карточке, чтобы постер шёл целиком без чёрных полей
@@ -731,7 +735,7 @@ document.addEventListener("click",ev=>{
     else{fav.add(e.id);el.classList.add("on");flyToAvatar(el);toast(tr("favAddedToast"));} saveFav(); }
   else if(act==="remind"){ openRemindMenu(e, el); }
   else if(act==="share"){ const u=eventShareUrl(e);   // ссылка на ЭТОТ ивент в НАШЕЙ ленте — получатель откроется на нём и дальше свайпает нашу ленту
-    if(navigator.share) navigator.share({title:e.ev_title||e.page,url:u}).catch(()=>{});
+    if(navigator.share) navigator.share({title:loc(e,"title")||e.ev_title||e.page,url:u}).catch(()=>{});
     else{ navigator.clipboard?.writeText(u); toast(tr("linkCopiedToast")); } }
 });
 // ── музыкальная подложка автофона: один общий <audio>, играет только при включённом звуке и только на карточках без настоящего видео ──
@@ -937,7 +941,7 @@ document.getElementById("favback").innerHTML=ICON.back;
 document.getElementById("favback").addEventListener("click",exitFav);
 document.getElementById("favcopy").addEventListener("click",()=>{
   const list=ALL.filter(e=>fav.has(e.id));
-  const text=list.map(e=>`${e.ev_title||e.title||e.page} — ${e.venue||e.page||""} (id ${e.id})`).join("\n");
+  const text=list.map(e=>`${loc(e,"title")||e.ev_title||e.title||e.page} — ${loc(e,"venue")||e.venue||e.page||""} (id ${e.id})`).join("\n");
   navigator.clipboard?.writeText(text||tr("favEmptyClipboard"));
   toast(text?tr("favListCopiedToast"):tr("favEmptyToast"));
 });

@@ -42,7 +42,8 @@ function eventDesc(ev, lang) {
   const parts = [];
   const dateStr = fmtDate(ev.dd, ev.d, lang);
   if (dateStr) parts.push("📅 " + dateStr);
-  if (ev.v) parts.push("📍 " + ev.v);
+  const venue = ev[`v_${lang}`] || ev.v;   // переведённое место, если есть (тянется из живой базы Афиши по id)
+  if (venue) parts.push("📍 " + venue);
   const price = ev.free ? FREE[lang] : (ev.p != null ? `${FROM[lang]} ${Math.round(ev.p)} €` : "");
   if (price) parts.push("🎟 " + price);
   return parts.join("   ·   ");
@@ -76,7 +77,7 @@ export async function onRequest(context) {
       if (r.ok) { const idx = await r.json(); ev = idx[eid]; }
     } catch (_) {}
     if (ev) {
-      title = ev.t || BRAND[lang].t;
+      title = ev[`t_${lang}`] || ev.t || BRAND[lang].t;   // переведённое название, если оно есть для этого id
       desc  = eventDesc(ev, lang) || BRAND[lang].d;
       img   = ev.img || brandImg;                // нет афиши — брендовая карточка
     } else {

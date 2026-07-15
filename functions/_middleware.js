@@ -73,7 +73,7 @@ export async function onRequest(context) {
   if (eid) {
     let ev = null;
     try {
-      const r = await fetch(new URL("/og_index.json", origin), { cf: { cacheTtl: 3600, cacheEverything: true } });
+      const r = await fetch(new URL("/og_index.json", origin), { cf: { cacheTtl: 300, cacheEverything: true } });   // 5 мин, не час — данные теперь обновляются, не только статичный снапшот
       if (r.ok) { const idx = await r.json(); ev = idx[eid]; }
     } catch (_) {}
     if (ev) {

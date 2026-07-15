@@ -250,6 +250,7 @@
     background:rgba(255,255,255,.08);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);
     border:1px solid rgba(255,255,255,.38);border-radius:26px;padding:34px 24px;box-shadow:0 16px 50px rgba(0,0,0,.4)}
   .hero-ttl{font-family:var(--disp);font-weight:900;font-size:25px;line-height:1.3;letter-spacing:-.01em;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.5)}
+  .hero-sub{margin-top:8px;font-size:15px;font-weight:500;line-height:1.4;color:rgba(255,255,255,.86);text-shadow:0 2px 14px rgba(0,0,0,.5)}
   .hero-cta{margin-top:24px;display:flex;flex-direction:column;align-items:center;gap:9px}
   .hero-hand{width:46px;height:46px;color:#fff;animation:heroBounce 1.6s ease-in-out infinite}
   .hero-cta-txt{font-family:var(--disp);font-weight:700;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.88)}
@@ -314,6 +315,7 @@
   <div class="hero-shade"></div>
   <div class="hero-glass">
     <div class="hero-ttl" id="heroTtl"></div>
+    <div class="hero-sub" id="heroSub"></div>
     <div class="hero-cta"><span class="hero-hand" id="heroHand"></span><div class="hero-cta-txt" id="heroCtaTxt"></div></div>
   </div>
 </div>
@@ -417,7 +419,8 @@ const I18N={
  copy:{ru:"Копировать",lv:"Kopēt",en:"Copy"},
  rotate:{ru:"повернуть",lv:"pagriezt",en:"rotate"},
  emptyFeed:{ru:"Пока пусто — жми закладку на видео, чтобы добавить сюда",lv:"Pagaidām tukšs — spied grāmatzīmi video, lai pievienotu šeit",en:"Empty for now — tap the bookmark on a video to add it here"},
- heroTitle:{ru:"Все культурные события Риги в одном месте",lv:"Visi Rīgas kultūras notikumi vienuviet",en:"All of Riga's culture, in one place"},
+ heroTitle:{ru:"Ты рулишь, не алгоритм!",lv:"Tu vadi, ne algoritms!",en:"You're in control, not the algorithm!"},
+ heroSub:{ru:"Листай и выбирай на свой вкус",lv:"Ritini un izvēlies pēc savas gaumes",en:"Swipe through and pick what you like"},
  heroCta:{ru:"Свайпни вниз, чтобы начать",lv:"Pavelc uz leju, lai sāktu",en:"Swipe down to start"},
  installBtn:{ru:"Добавить на экран «Домой»",lv:"Pievienot sākuma ekrānam",en:"Add to Home Screen"},
  installTtl:{ru:"Значок на экране «Домой» — сайт откроется на весь экран, без адресной строки",lv:"Ikona sākuma ekrānā — vietne atvērsies pilnekrānā, bez adreses joslas",en:"An icon on your Home Screen — the site opens full-screen, no address bar"},
@@ -717,6 +720,7 @@ function applyStaticI18N(){
   const ft=document.getElementById("favttl"); if(ft) ft.textContent=tr("fav");
   const fc=document.getElementById("favcopy"); if(fc) fc.textContent=tr("copy");
   const ht=document.getElementById("heroTtl"); if(ht) ht.textContent=tr("heroTitle");
+  const hs=document.getElementById("heroSub"); if(hs) hs.textContent=tr("heroSub");
   const hc=document.getElementById("heroCtaTxt"); if(hc) hc.textContent=tr("heroCta");
 }
 function setLang(l){ LANG=l; localStorage.setItem("lang",l); document.documentElement.lang=l;

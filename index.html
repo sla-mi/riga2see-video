@@ -45,9 +45,9 @@
   video,iframe.main{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);opacity:0;transition:opacity .4s;border:0}
   .tapcatch{position:absolute;inset:0;background:transparent}
   .card.vert  video.main{object-fit:contain;object-position:50% 30%}   /* приподнять: адлиб-ролики часто горизонт-контент, залетбоксенный в портретный файл — так полоса садится выше, не по центру */
-  .card.horiz video.main{object-fit:contain;object-position:50% 50%}   /* по центру — на «чужой» ориентации (портрет-экран/гориз-ролик или наоборот) рядом всегда значок поворота */
-  /* YouTube-эмбед (iframe) не понимает object-position — пришпиливаем его 16:9-полосой по центру */
-  .card.horiz iframe.main{top:50%;bottom:auto;height:auto;aspect-ratio:16/9;transform:translateY(-50%)}
+  .card.horiz video.main{object-fit:contain;object-position:50% 18%}   /* верхняя треть на портрет-фиде — так надписи снизу не мешают видео; значок поворота выровнен под тот же уровень */
+  /* YouTube-эмбед (iframe) не понимает object-position — пришпиливаем его 16:9-полосой к верхней части */
+  .card.horiz iframe.main{top:13%;bottom:auto;height:auto;aspect-ratio:16/9}
   /* значок «повернуть» — только когда ориентация ролика НЕ совпадает с ориентацией экрана; чистый CSS (orientation media), без JS */
   .rotatehint{display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:6;
     flex-direction:column;align-items:center;justify-content:center;gap:0;width:58px;height:58px;border-radius:50%;
@@ -56,7 +56,7 @@
   .rotatehint svg{width:26px;height:26px;color:#fff}
   .rotatehint span{position:absolute;top:100%;margin-top:8px;white-space:nowrap;font-family:var(--disp);font-weight:700;
     font-size:9px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink);text-shadow:0 1px 4px rgba(0,0,0,.8)}
-  @media not (orientation:landscape){ .card.horiz .rotatehint{display:flex} }   /* портрет-экран, гориз-ролик */
+  @media not (orientation:landscape){ .card.horiz .rotatehint{display:flex;top:24%} }   /* портрет-экран, гориз-ролик — значок на уровне видео (верхняя треть), не по центру всего экрана */
   @media (orientation:landscape){ .card.vert .rotatehint{display:flex} }        /* ландшафт-экран, верт-ролик */
   body.clean .rotatehint{opacity:0;pointer-events:none}
   .card.af video.main{object-fit:cover}   /* автофон-клипы заполняют кадр (постер под ними — общее правило .poster contain) */
@@ -257,18 +257,20 @@
      категории/дата прячем (второстепенное, пока смотрят видео), описание прячем, рейл и текст — в минимум.
      Блок — В КОНЦЕ style, иначе базовые правила ниже по каскаду (равный приоритет) их перебивают. */
   @media (orientation:landscape){
-    .top{padding:6px 12px}
+    /* чёлка/динамик-айленд в ландшафте вылезает то слева, то справа (зависит от того, каким боком повернули) —
+       везде по краям добавляем safe-area-inset, а не фиксированный отступ */
+    .top{padding:6px max(12px, env(safe-area-inset-right)) 6px max(12px, env(safe-area-inset-left))}
     .tabs{display:none}                 /* переключение категории подождёт возврата в портрет */
     .datebar{display:none}              /* дата есть в info-строке снизу */
-    .sound{top:8px;right:10px;width:30px;height:30px}
+    .sound{top:8px;right:max(10px, env(safe-area-inset-right));width:30px;height:30px}
     .sound svg{width:18px;height:18px}
-    .rail{gap:6px;right:5px;bottom:calc(5px + env(safe-area-inset-bottom))}
+    .rail{gap:6px;right:max(5px, env(safe-area-inset-right));bottom:calc(5px + env(safe-area-inset-bottom))}
     .rail button,.rail a{width:26px;height:26px}
     .rail button svg,.rail a svg,.rail button.av svg{width:18px;height:18px}
     .ticket-hint{display:none}
     .railprice{font-size:8px;margin-top:-6px}
     .vidcred{display:none}              /* декоративная подпись сбоку — убираем, не критична */
-    .info{padding:4px 58px calc(4px + env(safe-area-inset-bottom)) 14px;gap:2px}
+    .info{padding:4px calc(58px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));gap:2px}
     .catchip{min-height:18px;font-size:8px;padding:0 8px;margin-left:-8px}
     h1{font-size:13px;-webkit-line-clamp:1;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}
     .meta{font-size:10px}
@@ -1034,6 +1036,18 @@ async function boot(){
     const v=document.querySelector(`.card[data-i="${ACTIVE}"] video.main`); if(v){ v.muted=!SOUND; v.play().catch(()=>{}); } };
   ["touchstart","click","scroll"].forEach(ev=>window.addEventListener(ev,unlock,{once:true,passive:true}));
 }
+// поворот экрана меняет высоту карточки (100dvh) → тот же scrollTop после поворота указывает на ДРУГУЮ карточку →
+// IntersectionObserver подхватывает не то видео («перескакивает»). Чиним: после поворота довскролливаем
+// обратно к активной карточке (без анимации, без смены видео) — тот же ролик остаётся на экране.
+let _reorientT=null;
+window.addEventListener("resize",()=>{
+  clearTimeout(_reorientT);
+  _reorientT=setTimeout(()=>{
+    if(ACTIVE<0) return;
+    const card=document.querySelector(`.card[data-i="${ACTIVE}"]`);
+    if(card) document.getElementById("feed").scrollTo({top:card.offsetTop});
+  },120);
+});
 boot();
 </script>
 </body>

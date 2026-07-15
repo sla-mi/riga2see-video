@@ -78,7 +78,13 @@
   .hdr::-webkit-scrollbar{display:none}
   .logo{font-family:var(--disp);font-weight:900;font-size:17px;letter-spacing:-.02em;display:inline-flex;align-items:baseline;flex-shrink:0}
   .logo .r,.logo .d{color:#fff}
-  .logo .b{color:#15151a;background:var(--ink);padding:2px 7px 3px 4px;border-radius:5px 9px 7px 6px;transform:rotate(-1.6deg);display:inline-block}
+  /* «2see» — тот же крафт-маркер, что в проде (static/index.html .l-brand): не плоская заливка, а текстура +
+     рваный контур через SVG-фильтр #mrough (feTurbulence/feDisplacementMap, определён в body). Раньше тут
+     была плоская упрощённая версия — не из брендбука, донесли на скорую руку. */
+  .logo .b{color:#15151a;font-weight:900;position:relative;display:inline-block;padding:2px 4px 2px 1px;transform:rotate(-1.6deg);background:transparent}
+  .logo .b::before{content:"";position:absolute;top:-1px;bottom:-1px;left:-1px;right:0;z-index:-1;
+    border-radius:3px 6px 5px 4px / 4px 7px 5px 5px;filter:url(#mrough);
+    background:repeating-linear-gradient(93deg, transparent 0 6px, rgba(255,255,255,.11) 6px 8px), var(--ink)}
   .tabs{display:flex;gap:20px;flex-shrink:0}
   .tab{font-family:var(--disp);font-size:16px;font-weight:700;color:rgba(255,255,255,.5);white-space:nowrap;
     cursor:pointer;padding:2px 0 8px;position:relative;flex-shrink:0}
@@ -290,6 +296,7 @@
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="mrough" x="-20%" y="-45%" width="126%" height="190%"><feTurbulence type="fractalNoise" baseFrequency="0.02 0.09" numOctaves="3" seed="11" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.6"/></filter></svg>
 <div class="top">
   <div class="hdr" id="hdr"><a class="logo"><span class="r">riga</span><span class="d">.</span><span class="b">2see</span></a><div class="tabs" id="tabs"></div></div>
   <div class="favhdr" id="favhdr"><button class="favback" id="favback"></button><span class="favttl" id="favttl"></span><button class="favcopy" id="favcopy"></button></div>

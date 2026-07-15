@@ -74,7 +74,7 @@
   .top{position:fixed;top:0;left:0;right:0;z-index:9;display:flex;align-items:center;padding:18px 16px 12px;
     background:linear-gradient(to bottom,rgba(0,0,0,.68),transparent)}
   /* лого скроллится единой связкой с категориями (не отдельно) — но центрирование НЕ применяем для «Все» и соседней, чтобы не выталкивало лого */
-  .hdr{display:flex;align-items:center;gap:18px;min-width:0;flex:1;overflow-x:auto;scrollbar-width:none;transition:transform .2s ease,opacity .2s ease}
+  .hdr{display:flex;align-items:center;gap:18px;min-width:0;flex:1;overflow-x:auto;scrollbar-width:none;transition:transform .2s ease,opacity .2s ease;touch-action:pan-x}   /* pan-x — палец по категориям скроллит ТОЛЬКО их, не ленту вниз/вверх */
   .hdr::-webkit-scrollbar{display:none}
   .logo{font-family:var(--disp);font-weight:900;font-size:17px;letter-spacing:-.02em;display:inline-flex;align-items:baseline;flex-shrink:0}
   .logo .r,.logo .d{color:#fff}
@@ -85,6 +85,7 @@
   .tab.on{color:#fff}
   .tab.on::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;border-radius:2px;background:var(--ink)}
   .favhdr{display:none;align-items:center;gap:8px;padding-right:12px}
+  .topicons{display:none}   /* пусто в портрете; в ландшафте JS переносит сюда mute+избранное (см. landscape media ниже) */
   .favttl{flex:1;min-width:0}
   .favhdr.on{display:flex}
   .favcopy{margin-left:auto;font-family:var(--disp);font-weight:700;font-size:11px;letter-spacing:.02em;text-transform:uppercase;
@@ -261,21 +262,29 @@
        везде по краям добавляем safe-area-inset, а не фиксированный отступ */
     .top{padding:6px max(12px, env(safe-area-inset-right)) 6px max(12px, env(safe-area-inset-left))}
     .tab{font-size:12px;padding-bottom:5px}     /* категории остаются, просто мельче — та же строка с лого, места хватает */
+    /* категории не тянутся во всю ширину — обрываются (с плавным затуханием) до значков mute/избранное, а не залезают под них */
+    .hdr{-webkit-mask-image:linear-gradient(to right, black calc(100% - 28px), transparent); mask-image:linear-gradient(to right, black calc(100% - 28px), transparent)}
     .datebar{display:none}              /* дата есть в info-строке снизу */
-    /* мьют физически переезжает JS-ом внутрь #rail (см. layoutSoundForOrientation) — здесь только его размер в общем ряду */
-    .rail .sound{position:static;width:26px;height:26px;margin:0;filter:none;top:auto;right:auto}
-    .rail .sound svg{width:18px;height:18px}
-    .rail{gap:6px;right:max(5px, env(safe-area-inset-right));bottom:calc(5px + env(safe-area-inset-bottom))}
-    .rail button,.rail a{width:26px;height:26px}
-    .rail button svg,.rail a svg,.rail button.av svg{width:18px;height:18px}
+    /* mute + избранное физически переезжают JS-ом в верхнюю строку (см. layoutTopIconsForOrientation); отсюда вниз —
+       короткая вертикальная панель (bell/поделиться/билет/аватар), подвешенная под ними, а не от низа экрана */
+    .topicons{display:flex;align-items:center;gap:10px;flex-shrink:0}
+    .topicons button{position:static;width:28px;height:28px;border:0;background:none;color:#fff;display:grid;place-items:center;cursor:pointer;filter:none}
+    .topicons button svg{width:20px;height:20px;stroke-width:1.8}
+    .topicons button.on{color:var(--ink)}
+    .topicons button.on svg{fill:currentColor}
+    .rail{gap:14px;right:max(6px, env(safe-area-inset-right));bottom:auto;top:calc(40px + env(safe-area-inset-top))}
+    .rail button,.rail a{width:34px;height:34px}
+    .rail button svg,.rail a svg,.rail button.av svg{width:23px;height:23px}
     .ticket-hint{display:none}
-    .railprice{font-size:8px;margin-top:-6px}
+    .railprice{font-size:9px;margin-top:-6px}
     .vidcred{display:none}              /* декоративная подпись сбоку — убираем, не критична */
-    .info{padding:4px calc(58px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));gap:2px}
+    /* рейл теперь висит вверху и короче — низ экрана свободен, полю info правый отступ под него больше не нужен */
+    .info{padding:4px max(14px, env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));gap:4px}
     .catchip{min-height:18px;font-size:8px;padding:0 8px;margin-left:-8px}
-    h1{font-size:13px;-webkit-line-clamp:1;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}
-    .meta{font-size:10px}
-    .preview,.chiprow,.datesfull{display:none}   /* описание-превью и чипы дат — прячем, места нет; полное описание всё ещё доступно по тапу на заголовок */
+    h1{font-size:14px;-webkit-line-clamp:1;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}
+    .meta{font-size:11px}
+    .preview{font-size:12px}
+    .chiprow,.datesfull{display:none}   /* чипы дат — по-прежнему прячем, полное описание доступно по тапу на заголовок */
   }
 </style>
 </head>
@@ -283,6 +292,7 @@
 <div class="top">
   <div class="hdr" id="hdr"><a class="logo"><span class="r">riga</span><span class="d">.</span><span class="b">2see</span></a><div class="tabs" id="tabs"></div></div>
   <div class="favhdr" id="favhdr"><button class="favback" id="favback"></button><span class="favttl" id="favttl"></span><button class="favcopy" id="favcopy"></button></div>
+  <div class="topicons" id="topicons"></div>
 </div>
 <div class="datebar">
   <button class="datechip" id="datechip"></button>
@@ -539,7 +549,8 @@ function cardHTML(e,i){
   const onerr=`this.replaceWith(Object.assign(document.createElement('div'),{className:'nocover',style:'background:${col}55'}))`;
   const stageInner = purl ? `${bgPoster}<img class="poster" src="${purl}" alt="" loading="lazy" onerror="${onerr}">`
                            : `<div class="nocover" style="background:${col}55"></div>`;
-  const rotateHint = hasVideo(e) ? `<div class="rotatehint" data-act="rotate">${ICON.rotate}<span>${tr("rotate")}</span></div>` : "";
+  // поворот телефона не помогает квадратному видео (1:1 в любой ориентации всё равно с полями) — значок только для настоящей горизонтали
+  const rotateHint = (hasVideo(e) && vidOrient(e)==="horiz") ? `<div class="rotatehint" data-act="rotate">${ICON.rotate}<span>${tr("rotate")}</span></div>` : "";
   return `<div class="card ${orient}" data-i="${i}">
     <div class="stage">${stageInner}${rotateHint}</div>
     <div class="shade"></div>
@@ -662,7 +673,7 @@ railEl.innerHTML=`
   <button class="av" data-act="me">${ICON.user}<span class="favbadge" style="display:none"></span></button>`;
 function priceLabel(e){ return e.is_free ? tr("free") : (e.price_from!=null ? `${tr("from")} ${Math.round(e.price_from)} €` : (e.ticket ? tr("tickets") : "")); }
 function renderRail(e){
-  railEl.querySelector('[data-act="fav"]').classList.toggle("on",fav.has(e.id));
+  document.querySelector('[data-act="fav"]').classList.toggle("on",fav.has(e.id));   // не railEl.querySelector — в ландшафте кнопка физически переехала в верхнюю строку
   railEl.querySelector('[data-act="remind"]').classList.toggle("on",remind.has(e.id));
   const t=railEl.querySelector('[data-act="ticket"]');
   if(e.ticket){ t.href=e.ticket; t.style.display=""; } else { t.style.display="none"; }
@@ -705,7 +716,10 @@ avMenu.addEventListener("click",ev=>{ const l=ev.target.closest("[data-lang]");
   if(ev.target.closest(".avm-fav")){ avMenu.classList.remove("open"); enterFav(); } });
 document.addEventListener("click",ev=>{ if(!ev.target.closest(".avmenu") && !ev.target.closest('[data-act="me"]')) avMenu.classList.remove("open"); });
 document.documentElement.lang=LANG;
-railEl.addEventListener("click",ev=>{
+// делегируем на document, не на #rail: в ландшафте mute/избранное физически переезжают в #topicons —
+// их клики тогда не всплывут до #rail. Клики карточек (open/setcat/rotate…) сюда не долетают —
+// bindActions уже гасит их через stopPropagation раньше, на самой карточке.
+document.addEventListener("click",ev=>{
   const el=ev.target.closest("[data-act]"); if(!el) return;
   ev.stopPropagation(); const act=el.dataset.act, e=VIEW[ACTIVE]; if(!e) return;
   if(act==="ticket") return;   // обычная ссылка, переход сам сработает
@@ -733,16 +747,23 @@ soundBtn.addEventListener("click",()=>{ SOUND=!SOUND; renderSound();
   updateBed(VIEW[ACTIVE]);
   toast(SOUND?tr("soundOnToast"):tr("soundOffToast")); });
 renderSound();
-// ландшафт — мьют переезжает физически внутрь #rail (первым значком), чтобы стоять в один ряд с остальными,
-// а не висеть отдельно вверху; портрет — возвращается на своё обычное место у шапки
+// ландшафт — mute и «избранное» переезжают физически в верхнюю строку (рядом с категориями, справа), а не висят
+// отдельно/в общем рейле; остаток рейла (bell/поделиться/билет/аватар) — короткая колонка под ними. Портрет — всё возвращается на место.
 const _soundHome=soundBtn.parentElement, _soundNext=soundBtn.nextSibling;
-function layoutSoundForOrientation(){
+const topIconsEl=document.getElementById("topicons");
+function layoutTopIconsForOrientation(){
   const landscape=window.matchMedia("(orientation: landscape)").matches;
-  const inRail=soundBtn.parentElement===railEl;
-  if(landscape && !inRail) railEl.insertBefore(soundBtn, railEl.firstChild);
-  else if(!landscape && inRail) _soundHome.insertBefore(soundBtn, _soundNext);
+  const favBtn=document.querySelector('[data-act="fav"]');   // может жить и в #rail, и в #topicons — искать глобально
+  const inTop=soundBtn.parentElement===topIconsEl;
+  if(landscape && !inTop){
+    topIconsEl.appendChild(soundBtn);
+    if(favBtn) topIconsEl.appendChild(favBtn);
+  } else if(!landscape && inTop){
+    _soundHome.insertBefore(soundBtn, _soundNext);
+    if(favBtn) railEl.insertBefore(favBtn, railEl.firstChild);   // вернуть первым значком рейла — там он был изначально
+  }
 }
-layoutSoundForOrientation();
+layoutTopIconsForOrientation();
 
 // жесты: открыто → свайп вниз закрывает; закрыто → гориз = смена категории
 function bindGestures(card){
@@ -1111,7 +1132,7 @@ async function boot(){
 // обратно к активной карточке (без анимации, без смены видео) — тот же ролик остаётся на экране.
 let _reorientT=null;
 window.addEventListener("resize",()=>{
-  layoutSoundForOrientation();
+  layoutTopIconsForOrientation();
   clearTimeout(_reorientT);
   _reorientT=setTimeout(()=>{
     if(ACTIVE<0) return;

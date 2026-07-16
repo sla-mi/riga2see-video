@@ -257,54 +257,6 @@
   .hero-hand{width:46px;height:46px;color:#fff;animation:heroBounce 1.6s ease-in-out infinite}
   .hero-cta-txt{font-family:var(--disp);font-weight:700;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.88)}
   @keyframes heroBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(9px)}}
-  /* 2й шаг интро. Прошлый подход (десяток отдельных стеклянных чипов поверх сплошного размытия) не читался:
-     размывались и сами значки — стрелка указывала в размытое пятно. Теперь наоборот:
-     — РЕАЛЬНЫЕ контролы (верхний ряд + правый рейл) поднимаем НАД затемняющим слоем: они остаются резкими и
-       подсвечены жёлтым свечением, чтобы было видно, на что указывает подсказка;
-     — затемняем/слегка размываем ТОЛЬКО видео под ними;
-     — вся текстовая подсказка — в ОДНОЙ цельной стеклянной плашке (рецепт как у .hero-glass), не на весь экран,
-       снизу-слева, не заходя на правый рейл и верхний ряд, чтобы значки было видно.
-     .tour-dim/.tourpanel — НЕ внутри .hero: .hero (z-index:6) — свой стек-контекст, потомок не встал бы выше
-     .rail(20). Поэтому это соседи в body. */
-  body.step2 .top,body.step2 .sound,body.step2 .datebar,body.step2 .rail{z-index:28}
-  body.step2 .rail button,body.step2 .rail a,body.step2 .sound,body.step2 .datechip,body.step2 .tab.on{filter:drop-shadow(0 0 7px rgba(232,255,71,.65))}
-  /* pointer-events:none — ОБЯЗАТЕЛЬНО: слой и плашка лежат НАД .hero (z6) отдельными элементами, и без этого
-     тап/свайп попадал в них, а не в обработчик на .hero → из шага 2 нельзя было выйти вообще (интро зависало). */
-  .tour-dim{position:fixed;inset:0;z-index:26;display:none;pointer-events:none;background:rgba(8,8,11,.55);backdrop-filter:blur(2px) saturate(120%);-webkit-backdrop-filter:blur(2px) saturate(120%)}
-  body.step2 .hero-glass{display:none}
-  body.step2 .tour-dim{display:block}
-  /* ОДНА плашка почти во весь экран: left:16 / right:78 — не заходит на правый рейл (значки ~12–58px от края,
-     остаются резкими); top/height ставит JS (layoutTourPanel): начинается СРАЗУ ПОД чипом даты, потому что на
-     дату мы тоже показываем — закрывать её нельзя. Строки рейла позиционируются абсолютно, ровно по центрам
-     реальных значков (замер getBoundingClientRect), чтобы стрелка смотрела точно напротив своего значка. */
-  .tourpanel{position:fixed;left:16px;right:78px;z-index:29;display:none;
-    pointer-events:none;   /* см. коммент у .tour-dim — иначе тап по плашке не доходит до .hero и из интро не выйти */
-    background:rgba(255,255,255,.08);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);
-    border:1px solid rgba(255,255,255,.38);border-radius:20px;box-shadow:0 14px 44px rgba(0,0,0,.42)}
-  body.step2 .tourpanel{display:block}
-  .prow{display:flex;align-items:center;gap:9px;font-family:var(--disp);font-weight:700;font-size:15px;line-height:1.25;color:#fff}
-  .prow .parr{color:var(--ink);font-size:17px;line-height:1;flex-shrink:0;min-width:15px;text-align:center}
-  /* верхняя строка — ОДИН flex-ряд без переноса: дата/категории слева, звук прижат вправо (margin-left:auto).
-     Отдельными absolute-блоками они наезжали друг на друга, когда «категории» переносились на 2-ю строку. */
-  .ptop{position:absolute;top:14px;left:15px;right:13px;gap:5px;flex-wrap:nowrap;font-size:13.5px;white-space:nowrap}
-  .ptop .psep{color:rgba(255,255,255,.35);margin:0 1px}
-  /* «звук» — сам мьют сидит вверху справа ЗА краем плашки, поэтому стрелка ↗ */
-  .psound{margin-left:auto;display:flex;align-items:center;gap:5px;flex-shrink:0}
-  /* жесты (поворот, тап) — ни на какой значок не показывают, поэтому просто в свободной верхней части */
-  .pgest{position:absolute;top:50px;left:15px;right:13px;display:flex;flex-direction:column;gap:9px}
-  .pgest .prow{align-items:flex-start;font-size:14px}
-  .pico{margin-top:1px}
-  .pico svg{width:19px;height:19px;display:block}
-  /* строка рейла: текст, затем стрелка вплотную к правому краю плашки — она указывает на значок сразу за ней */
-  .prail{position:absolute;right:13px;transform:translateY(-50%);justify-content:flex-end;text-align:right;max-width:148px}
-  /* «Поехали!» — внизу СЛЕВА, в одну строку: нижний значок рейла (аватар) висит у самого низа, и по центру
-     плашки CTA неминуемо налезал бы на строку «настройки». Слева место свободно. */
-  /* в столбик (значок над словом), а не в строку: нижний значок рейла (аватар) висит у самого низа, и длинная
-     строка «настройки и организаторам» дотягивается влево — в одну строку CTA смыкался с ней вплотную.
-     Столбиком он узкий (~80px) и расходится с ней по горизонтали. */
-  .pcta{position:absolute;left:14px;bottom:8px;display:flex;flex-direction:column;align-items:flex-start;gap:1px}
-  .pcta .hero-hand{width:22px;height:22px;margin-left:2px}
-  .pcta span{font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.92);white-space:nowrap}
   @media (prefers-reduced-motion:reduce){ .hero-hand{animation:none} }
   .toast{position:fixed;left:50%;bottom:120px;transform:translateX(-50%) translateY(16px);background:rgba(20,20,24,.96);
     border:1px solid rgba(255,255,255,.1);padding:11px 18px;border-radius:14px;font-family:var(--body);font-size:14px;
@@ -369,20 +321,6 @@
     <div class="hero-cta"><span class="hero-hand" id="heroHand"></span><div class="hero-cta-txt" id="heroCtaTxt"></div></div>
   </div>
 </div>
-<div class="tour-dim" id="tourDim"></div>
-<div class="tourpanel" id="tourPanel">
-  <div class="prow ptop"><span class="parr">↑</span><span data-k="tourDate"></span><span class="psep">/</span><span class="parr">↑</span><span data-k="tourCats"></span><span class="psound"><span data-k="tourSound"></span><span class="parr">↗</span></span></div>
-  <div class="pgest">
-    <div class="prow"><span class="parr pico" id="tourRotIcon"></span><span data-k="tourRotate"></span></div>
-    <div class="prow"><span class="parr pico" id="tourTapIcon"></span><span data-k="tourTap"></span></div>
-  </div>
-  <div class="prow prail" data-anchor="fav"><span data-k="tourFav"></span><span class="parr">→</span></div>
-  <div class="prow prail" data-anchor="remind"><span data-k="tourRemind"></span><span class="parr">→</span></div>
-  <div class="prow prail" data-anchor="share"><span data-k="tourShare"></span><span class="parr">→</span></div>
-  <div class="prow prail" data-anchor="ticket"><span data-k="tourTicket"></span><span class="parr">→</span></div>
-  <div class="prow prail" data-anchor="me"><span data-k="tourSettings"></span><span class="parr">→</span></div>
-  <div class="pcta"><span class="hero-hand" id="tourHand"></span><span data-k="tourCta"></span></div>
-</div>
 <div class="sheet" id="remindsheet"><div class="sheetcard" id="remindcard"></div></div>
 <div class="toast" id="toast"></div>
 
@@ -408,8 +346,6 @@ const ICON={
  soundOn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>',
  scrollHand:'<svg viewBox="-20.5 0 154 154" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M95.0671 143.189C100.984 138.278 105.109 131.572 107.673 122.683C111.098 110.876 112.553 98.5845 111.981 86.3038C111.739 82.8036 110.968 79.3604 109.694 76.0912C108.924 73.7454 107.366 71.739 105.284 70.4106C103.202 69.0828 100.725 68.5157 98.274 68.8058C96.4546 69.0612 94.6766 69.5495 92.9826 70.2596C92.2573 70.5222 91.5104 70.7998 90.7464 71.0472C89.9805 69.2653 88.8129 67.6835 87.3348 66.4267C85.8574 65.1697 84.1095 64.271 82.2272 63.8007C77.6092 62.5536 73.8063 63.5716 70.9184 66.8296C69.3688 64.3454 67.2646 61.8277 63.5943 61.1799C60.4176 60.6201 57.8342 61.8658 54.8059 64.1151C54.8098 63.7495 54.8157 63.4102 54.8216 63.0918C54.8531 62.2401 54.8421 61.3873 54.7882 60.5367C54.6281 58.5747 54.4702 56.6125 54.3149 54.65C53.7937 48.1149 53.2545 41.3572 52.5693 34.7256C52.0107 29.3055 50.4401 24.8352 47.7682 21.0593C45.0352 17.1954 41.2232 16.396 37.0351 18.8094C35.9152 19.4368 34.9351 20.2862 34.1546 21.3053C33.3742 22.3245 32.8097 23.4921 32.4958 24.7368C31.9652 26.5956 31.6462 28.5085 31.5453 30.439L31.4258 33.7043C31.1462 41.2358 30.858 49.0239 30.8508 56.6873C30.8449 62.7479 31.0302 68.6772 31.2258 74.9538C31.3026 77.4295 31.3807 79.919 31.4463 82.4295L31.2703 82.2864C30.7879 81.8926 30.3323 81.523 29.8538 81.1844C23.0463 76.3715 15.8988 74.7188 8.61479 76.2704C7.07181 76.5716 5.62705 77.249 4.40854 78.2427C3.19003 79.2364 2.23537 80.5149 1.62936 81.9654C1.01507 83.4783 0.78366 85.1191 0.955395 86.7429C1.12713 88.366 1.6967 89.9222 2.61386 91.2729C3.87155 93.0221 5.34968 94.6019 7.01146 95.973C12.312 100.754 16.2395 105.682 19.0178 111.037C23.1974 119.091 27.8784 127.563 33.3345 136.938C34.7706 139.404 37.0481 141.409 38.8714 142.878C42.3309 145.668 46.4605 147.949 51.8667 150.057C56.6668 151.951 61.781 152.922 66.941 152.921C72.7752 152.851 78.5536 151.77 84.0183 149.726C88.0574 148.215 91.7979 146.002 95.0671 143.189ZM43.0097 136.429C41.8359 135.634 40.8134 134.636 39.9905 133.481C37.958 130.538 36.074 127.496 34.3459 124.364C31.8742 119.776 29.3937 114.872 26.7625 109.369C22.533 100.527 17.2884 93.7631 10.729 88.6903C10.6513 88.6338 10.5778 88.5715 10.5092 88.5045C10.3051 88.2938 10.0931 88.0858 9.8791 87.8764C8.49751 86.5224 7.19195 85.2438 8.03728 83.1567C8.90102 81.0236 11.1181 80.8345 13.139 80.8345H13.1784C15.7254 80.7965 18.2546 81.2638 20.6195 82.2102C22.9845 83.1567 25.1383 84.5632 26.9558 86.3478C28.7953 88.0897 30.0252 90.377 30.4637 92.8718C31.0406 96.0878 32.9028 96.504 33.9575 96.4606C35.6751 96.395 37.0067 94.9734 37.436 92.7536C37.5644 91.9562 37.61 91.1469 37.5719 90.3396C37.4098 81.8558 37.2488 73.5413 37.0572 65.0937C37.0145 63.2467 36.9419 61.3696 36.871 59.5542C36.7345 56.0756 36.5933 52.4808 36.6688 48.953C36.8178 42.0254 37.2869 35.1332 37.7398 28.4667C37.978 24.9507 38.5523 24.0745 41.7736 22.5347C43.9468 24.11 45.2367 26.3848 45.8274 29.681C46.6794 34.2974 47.2771 38.9572 47.6179 43.6393C48.0898 50.5827 48.4422 57.6528 48.7828 64.4898C48.939 67.6198 49.0989 70.7499 49.2626 73.8793C49.3407 75.3449 49.7101 77.3376 51.9988 77.7189C54.3268 78.1068 55.2806 76.1621 55.8497 74.9991L56.3819 73.901C57.3008 72.0009 58.2492 70.0365 59.3355 68.2014C59.8802 67.2785 61.1076 65.8071 63.219 66.3118C63.985 66.4977 64.6777 66.9084 65.2089 67.4905C65.74 68.0727 66.0853 68.8006 66.2001 69.5803C66.5125 71.21 66.7166 72.8581 66.8131 74.514C66.8413 75.1198 66.8236 75.7269 66.7606 76.3301C66.7297 76.7239 66.6995 77.1177 66.691 77.5115C66.6562 79.1839 67.4786 80.2438 69.0105 80.4946C69.3505 80.5851 69.7062 80.6055 70.0547 80.5549C70.4032 80.5044 70.7373 80.3843 71.0386 80.2012C71.3392 80.0181 71.5997 79.7759 71.8052 79.4897C72.0099 79.2036 72.155 78.8787 72.2311 78.5347C72.3145 78.2532 72.3913 77.9696 72.4687 77.6861C72.5678 77.3245 72.6656 76.9641 72.7765 76.6045C72.9013 76.2034 73.0161 75.7985 73.1316 75.3929C73.3869 74.4057 73.7118 73.4376 74.103 72.4958L74.1562 72.375C75.1525 70.1362 76.0963 68.0169 78.956 68.2827C82.1235 68.5715 84.2447 70.1586 85.2607 73.0012C85.6152 74.1294 85.8508 75.2905 85.9657 76.4673L86.0654 77.2057C86.1166 77.669 86.1291 78.1363 86.1028 78.6017C86.095 78.9102 86.0871 79.2193 86.0976 79.5265C86.1947 82.2339 86.9351 83.477 88.6573 83.8183C90.7851 84.237 91.7001 82.7465 92.5041 81.4298L92.6032 81.2684C92.7863 80.9704 92.9668 80.6692 93.148 80.3679C93.8929 79.029 94.7658 77.7649 95.753 76.5926C97.0945 75.1119 98.7065 74.4044 100.15 74.6505C101.499 74.8783 102.622 75.9055 103.315 77.5424C104.471 80.2727 106.026 84.3683 106.173 88.3765C106.562 99.0171 105.187 109.648 102.104 119.84C100.764 124.207 98.7859 128.353 96.2327 132.14C92.8421 137.18 87.6446 140.744 80.3454 143.036C67.285 147.134 55.0758 144.974 43.0097 136.43V136.429Z"/><path d="M12.6817 39.6592C12.2807 39.3219 11.8941 38.9957 11.5226 38.6793C10.3779 37.7099 9.29635 36.7943 8.20946 35.9312C6.97686 34.9533 5.70403 34.9146 4.7169 35.8321C3.17385 37.2662 4.5528 38.7535 5.00501 39.2451L6.04464 40.3668C8.8505 43.3971 11.7547 46.5304 14.6879 49.5345C15.0304 49.9466 15.4527 50.2855 15.9291 50.5309C16.4055 50.7763 16.9265 50.9231 17.461 50.9626C17.5122 50.9626 17.564 50.9626 17.6152 50.958C18.1095 50.9006 18.5853 50.7352 19.0086 50.4735C19.4318 50.2118 19.7925 49.8604 20.0649 49.4439C22.3568 46.4648 24.5816 43.359 26.7324 40.3556L28.0012 38.5835C28.5034 38.0246 28.8074 37.3157 28.8662 36.5665C28.8091 35.8498 28.5061 34.5227 27.7355 34.0947C26.9525 33.6589 25.6484 34.0508 25.0019 34.3514C24.5537 34.6303 24.2026 35.0409 23.9968 35.5269C23.9013 35.7051 23.7968 35.8784 23.6837 36.0461L19.6585 41.8074L19.4615 41.7103C19.4267 41.451 19.3868 41.1924 19.3467 40.9331C19.2327 40.2764 19.1583 39.6134 19.1236 38.9478C18.8532 30.1296 18.5951 21.3118 18.3497 12.4941L18.1837 6.68349C18.1738 6.35532 18.1744 6.02321 18.1744 5.69242C18.189 5.00351 18.1612 4.31438 18.0911 3.6289C17.8036 1.26215 16.5161 0.848658 15.4836 0.924793C14.1769 1.01799 13.4567 1.94475 13.3419 3.68142C13.2914 4.45065 13.2331 5.21987 13.1747 5.9891C13.023 7.98635 12.8653 10.0511 12.8522 12.0884C12.8148 17.5905 12.8248 23.1839 12.8339 28.5934C12.8392 31.6169 12.8416 34.6404 12.8416 37.664C12.8295 38.2114 12.7885 38.7578 12.7189 39.3008C12.7051 39.4163 12.6922 39.5359 12.6817 39.6592Z"/></svg>',
  rotate:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="13" height="9" rx="2"/><path d="M20 7a5 5 0 0 0-8-4"/><path d="M20 3v4h-4"/></svg>',
- tourArrow:'<path d="M2 8 H26 M18 2 L26 8 L18 14"/>',
- tap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/><path d="M6.6 17.4a7.6 7.6 0 0 1 0-10.8"/><path d="M17.4 6.6a7.6 7.6 0 0 1 0 10.8"/></svg>',
  addhome:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></svg>' };
 
 const MONTHS={ ru:RU_MONTH, lv:["janv","febr","marts","apr","maijs","jūn","jūl","aug","sept","okt","nov","dec"],
@@ -488,17 +424,6 @@ const I18N={
  heroTitle:{ru:"Ты рулишь, не алгоритм!",lv:"Tu vadi, ne algoritms!",en:"You're in control, not the algorithm!"},
  heroSub:{ru:"Листай и выбирай на свой вкус",lv:"Ritini un izvēlies pēc savas gaumes",en:"Swipe through and pick what you like"},
  heroCta:{ru:"Свайпни вниз, чтобы начать",lv:"Pavelc uz leju, lai sāktu",en:"Swipe down to start"},
- tourDate:{ru:"дата",lv:"datums",en:"date"},
- tourCats:{ru:"категории",lv:"kategorijas",en:"categories"},
- tourSound:{ru:"звук",lv:"skaņa",en:"sound"},
- tourRotate:{ru:"поверни экран — сменится ориентация",lv:"pagriez ekrānu — mainīsies orientācija",en:"rotate the screen — orientation follows"},
- tourTap:{ru:"тап по видео — без надписей",lv:"pieskaries video — bez tekstiem",en:"tap the video — no captions"},
- tourFav:{ru:"избранное",lv:"izlase",en:"favorites"},
- tourRemind:{ru:"напоминания",lv:"atgādinājumi",en:"reminders"},
- tourShare:{ru:"переслать",lv:"pārsūtīt",en:"share"},
- tourTicket:{ru:"билеты",lv:"biļetes",en:"tickets"},
- tourSettings:{ru:"настройки и организаторам",lv:"iestatījumi un organizatoriem",en:"settings & for organizers"},
- tourCta:{ru:"Поехали!",lv:"Sāksim!",en:"Let's go!"},
  installBtn:{ru:"Добавить на экран «Домой»",lv:"Pievienot sākuma ekrānam",en:"Add to Home Screen"},
  installTtl:{ru:"Значок на экране «Домой» — сайт откроется на весь экран, без адресной строки",lv:"Ikona sākuma ekrānā — vietne atvērsies pilnekrānā, bez adreses joslas",en:"An icon on your Home Screen — the site opens full-screen, no address bar"},
  installSafariStep:{ru:"Нажми значок «Поделиться» (квадрат со стрелкой вверх) внизу экрана → «На экран Домой» → Добавить",lv:"Nospied «Dalīties» (kvadrāts ar bultu uz augšu) ekrāna apakšā → «Uz sākuma ekrānu» → Pievienot",en:"Tap Share (square with an up arrow) at the bottom of the screen → \"Add to Home Screen\" → Add"},
@@ -799,7 +724,6 @@ function applyStaticI18N(){
   const ht=document.getElementById("heroTtl"); if(ht) ht.textContent=tr("heroTitle");
   const hs=document.getElementById("heroSub"); if(hs) hs.textContent=tr("heroSub");
   const hc=document.getElementById("heroCtaTxt"); if(hc) hc.textContent=tr("heroCta");
-  document.querySelectorAll("#tourPanel [data-k]").forEach(el=>{ el.textContent=tr(el.dataset.k); });
 }
 function setLang(l){ LANG=l; localStorage.setItem("lang",l); document.documentElement.lang=l;
   renderAvMenu(); applyStaticI18N(); buildTabs(); buildFeed(currentList()); }   // перерисовываем вкладки и ленту под новый язык
@@ -1158,40 +1082,15 @@ function startHeroBG(){
 }
 function stopHeroBG(){ heroRunning=false; heroTimers.forEach(clearTimeout); heroTimers=[];
   const box=document.getElementById("heroBg"); if(box) box.innerHTML=""; }
-// Плашка шага 2 считается по РЕАЛЬНЫМ координатам, а не по угаданным процентам: сверху — сразу под чипом даты
-// (на дату мы тоже показываем, закрывать нельзя), снизу — по низу рейла (он сам учитывает safe-area, поэтому на
-// реальном телефоне всё съедет корректно). Каждая строка встаёт ровно напротив центра своего значка.
-function layoutTourPanel(){
-  const panel=document.getElementById("tourPanel"); if(!panel) return;
-  const chip=document.getElementById("datechip"), rail=document.querySelector(".rail");
-  const chipR=chip&&chip.getBoundingClientRect();
-  const top=(chipR&&chipR.height?chipR.bottom:100)+10;
-  const railR=rail&&rail.getBoundingClientRect();
-  const bottom=(railR&&railR.height?railR.bottom:window.innerHeight-24)+10;
-  panel.style.top=top+"px";
-  panel.style.height=Math.max(180,bottom-top)+"px";
-  panel.querySelectorAll(".prail[data-anchor]").forEach(row=>{
-    const t=document.querySelector(`.rail [data-act="${row.dataset.anchor}"]`);
-    const r=t&&t.getBoundingClientRect();
-    if(!r||!r.height){ row.style.display="none"; return; }   // значка нет (напр. у события нет билета) — строку не показываем
-    row.style.display="flex";
-    row.style.top=(r.top+r.height/2-top)+"px";
-  });
-}
 // заставка уходит целиком вверх (как переход к следующему посту ленты), под ней уже первый ролик со всеми компонентами
 function dismissHero(){
   const hero=document.getElementById("hero"); if(!hero || hero.dataset.gone) return; hero.dataset.gone="1";
   sessionStorage.setItem("onboarded","1");
-  document.body.classList.remove("hero-active","step2");   // сразу возвращаем рейл/дату/звук; step2 — иначе затемнение/подсветка шага 2 остались бы висеть навсегда
+  document.body.classList.remove("hero-active");   // сразу возвращаем рейл/дату/звук — первый пост «приезжает» уже полным
   stopHeroBG();
   hero.style.transition="transform .3s cubic-bezier(.33,0,.2,1)";
   hero.style.transform="translateY(-100%)";
-  // затемнение + плашка шага 2 живут отдельными fixed-элементами (не внутри .hero — иначе не встали бы поверх
-  // рейла), поэтому при закрытии едут вместе с .hero тем же движением, а не просто исчезают статично
-  ["tourDim","tourPanel"].forEach(id=>{ const el=document.getElementById(id); if(!el) return;
-    el.style.transition="transform .3s cubic-bezier(.33,0,.2,1)"; el.style.transform="translateY(-100%)"; });
-  setTimeout(()=>{ hero.remove();
-    ["tourDim","tourPanel"].forEach(id=>document.getElementById(id)?.remove()); }, 340);
+  setTimeout(()=>hero.remove(), 340);
 }
 (function(){
   const hero=document.getElementById("hero");
@@ -1201,25 +1100,8 @@ function dismissHero(){
   if((sessionStorage.getItem("onboarded") || params.has("e")) && !forcePreview){ hero.remove(); return; }
   document.body.classList.add("hero-active");
   document.getElementById("heroHand").innerHTML=ICON.scrollHand;
-  document.getElementById("tourHand").innerHTML=ICON.scrollHand;
-  document.getElementById("tourRotIcon").innerHTML=ICON.rotate;
-  document.getElementById("tourTapIcon").innerHTML=ICON.tap;
   applyStaticI18N();
   startHeroBG();
-  // 2 шага одним и тем же .hero (фон/коллаж не трогаем, едет только целиком в конце): шаг 1 — заголовок,
-  // шаг 2 — стрелки-подсказки на том же фоне. Свайп на шаге 1 переключает контент на месте (без движения
-  // .hero), свайп на шаге 2 — уже настоящий dismissHero (уезжает вверх, открывает ленту).
-  let heroStep=1;
-  function advance(){
-    if(heroStep===1){
-      heroStep=2;
-      document.body.classList.add("step2");
-      document.body.classList.remove("hero-active");   // настоящие sound/date/rail теперь реально видимы — стрелки указывают на них, не в пустоту
-      hero.style.transition="transform .2s ease"; hero.style.transform="";
-      requestAnimationFrame(()=>requestAnimationFrame(layoutTourPanel));   // 2 rAF — дождаться, пока браузер отрисует только что показанные рейл/дату, иначе замер даст нули
-    }
-    else dismissHero();
-  }
   // палец ведёт заставку вертикально 1:1 (как свайп поста в ленте): тянешь вверх — уезжает, отпустил за порогом — доводит и открывает первый ролик
   let x0=0,y0=0,dy=0,dragging=false;
   const H=()=>window.innerHeight||812;
@@ -1228,20 +1110,15 @@ function dismissHero(){
   // НЕ passive — сами гасим жест (preventDefault), иначе браузер параллельно тащит/выделяет видео как картинку под пальцем
   hero.addEventListener("touchmove",e=>{ if(!dragging) return; e.preventDefault();
     dy=e.touches[0].clientY-y0;
-    // вверх — следуем 1:1 на шаге 2 (уезжает целиком); на шаге 1 контент ещё не едет — фон общий, просто пружиним
-    const t = (heroStep===2 && dy<0) ? dy : dy*0.25;
-    hero.style.transform=`translateY(${t}px)`;
-    if(heroStep===2){   // затемнение + плашка шага 2 живут отдельными fixed-элементами — тащим их тем же пальцем синхронно
-      ["tourDim","tourPanel"].forEach(id=>{ const el=document.getElementById(id); if(el){ el.style.transition="none"; el.style.transform=`translateY(${t}px)`; } });
-    } },{passive:false});
+    // вверх — следуем 1:1 (уезжает целиком, открывая ленту); вниз — пружиним слабо (открывать нечего)
+    const t = dy<0 ? dy : dy*0.25;
+    hero.style.transform=`translateY(${t}px)`; },{passive:false});
   hero.addEventListener("touchend",e=>{ if(!dragging) return; dragging=false;
     const dx=Math.abs((e.changedTouches[0]||{}).clientX-x0);
-    if(-dy>H()*0.14 || dx>70 || dy>110){ advance(); }       // свайп вверх (осн.), вбок или заметно вниз — доводим
-    else { hero.style.transition="transform .2s ease"; hero.style.transform="";
-      if(heroStep===2) ["tourDim","tourPanel"].forEach(id=>{ const el=document.getElementById(id); if(el){ el.style.transition="transform .2s ease"; el.style.transform=""; } });
-    } },{passive:true});   // не дотянул — вернулась на место
-  hero.addEventListener("wheel",e=>{ if(Math.abs(e.deltaY)>0 || Math.abs(e.deltaX)>0) advance(); },{passive:true});
-  hero.addEventListener("click",advance);
+    if(-dy>H()*0.14 || dx>70 || dy>110){ dismissHero(); }       // свайп вверх (осн.), вбок или заметно вниз — доводим
+    else { hero.style.transition="transform .2s ease"; hero.style.transform=""; } },{passive:true});   // не дотянул — вернулась на место
+  hero.addEventListener("wheel",e=>{ if(Math.abs(e.deltaY)>0 || Math.abs(e.deltaX)>0) dismissHero(); },{passive:true});
+  hero.addEventListener("click",dismissHero);
 })();
 
 // демо-датасет собран один раз и не обновляется живым пайплайном — даты в нём стареют.
@@ -1279,7 +1156,7 @@ window.addEventListener("resize",()=>{
   // этой панели и получить чуть другое число → рейл/иконки скачут от ролика к ролику. Ждём, пока resize'ы
   // утихнут, и меряем один раз в спокойном кадре (rAF — после того, как браузер точно закончил layout).
   clearTimeout(_railT);
-  _railT=setTimeout(()=>requestAnimationFrame(()=>{ syncRailTop(); if(document.body.classList.contains("step2")) layoutTourPanel(); }),150);
+  _railT=setTimeout(()=>requestAnimationFrame(syncRailTop),150);
   clearTimeout(_reorientT);
   _reorientT=setTimeout(()=>{
     if(ACTIVE<0) return;

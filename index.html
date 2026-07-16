@@ -45,7 +45,9 @@
   video,iframe.main{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);opacity:0;transition:opacity .4s;border:0}
   .tapcatch{position:absolute;inset:0;background:transparent}
   .card.vert  video.main{object-fit:contain;object-position:50% 30%}   /* приподнять: адлиб-ролики часто горизонт-контент, залетбоксенный в портретный файл — так полоса садится выше, не по центру */
-  .card.horiz video.main{object-fit:contain;object-position:50% 18%}   /* верхняя треть на портрет-фиде — так надписи снизу не мешают видео; значок поворота выровнен под тот же уровень */
+  /* 18% тут раньше стояло «на глаз» и клало центр полосы на 222px вместо 281px (выше трети на 59px).
+     Точное значение зависит от пропорций файла → считает JS (fitHorizThird), тут только запасное на время загрузки. */
+  .card.horiz video.main{object-fit:contain;object-position:50% 26%}
   /* YouTube-эмбед (iframe) не понимает object-position — пришпиливаем его 16:9-полосой к верхней части */
   .card.horiz iframe.main{top:13%;bottom:auto;height:auto;aspect-ratio:16/9}
   /* значок «повернуть» — только когда ориентация ролика НЕ совпадает с ориентацией экрана; чистый CSS (orientation media), без JS */
@@ -56,7 +58,7 @@
   .rotatehint svg{width:26px;height:26px;color:#fff}
   .rotatehint span{position:absolute;top:100%;margin-top:8px;white-space:nowrap;font-family:var(--disp);font-weight:700;
     font-size:9px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink);text-shadow:0 1px 4px rgba(0,0,0,.8)}
-  @media not (orientation:landscape){ .card.horiz .rotatehint{display:flex;top:24%} }   /* портрет-экран, гориз-ролик — значок на уровне видео (верхняя треть), не по центру всего экрана */
+  @media not (orientation:landscape){ .card.horiz .rotatehint{display:flex;top:33.33%} }   /* портрет-экран, гориз-ролик — значок ровно на середине полосы видео: она стоит на верхней трети (см. fitHorizThird) */
   @media (orientation:landscape){ .card.vert .rotatehint{display:flex} }        /* ландшафт-экран, верт-ролик */
   body.clean .rotatehint{opacity:0;pointer-events:none}
   .card.af video.main{object-fit:cover}   /* автофон-клипы заполняют кадр (постер под ними — общее правило .poster contain) */
@@ -608,7 +610,29 @@ function mountVideo(card){
     if(cls==="main"&&pu) vd.poster=pu;                    // постер на паузе/буферизации вместо чёрного
     vd.setAttribute("muted","");vd.setAttribute("playsinline","");vd.setAttribute("webkit-playsinline","");vd.setAttribute("autoplay","");vd.preload="auto"; };
   { const bg=document.createElement("video");prep(bg,"bg");stage.appendChild(bg); }
-  const v=document.createElement("video");prep(v,"main");stage.appendChild(v); return v;
+  const v=document.createElement("video");prep(v,"main");stage.appendChild(v);
+  if(card.classList.contains("horiz")){                    // гориз/квадрат — ставим середину полосы видео на верхнюю треть
+    const fit=()=>fitHorizThird(v);
+    if(v.readyState>=1) fit(); else v.addEventListener("loadedmetadata",fit,{once:true});
+  }
+  return v;
+}
+// Горизонтальный (и квадратный) ролик на портрет-экране: при object-fit:contain видео — полоса с полями
+// сверху/снизу. Owner: СЕРЕДИНА полосы должна стоять ровно на линии верхней трети экрана.
+// Одной константой не выйдет: нужный процент зависит от пропорций файла (16:9 → 27.5%, 4:3 → 24.5%),
+// а у нас есть и то, и другое, и квадраты. Поэтому считаем от РЕАЛЬНЫХ размеров видео.
+//   object-position Y% при contain кладёт верх полосы на Y% свободного места, значит:
+//   центр = Y%*(H-h) + h/2, приравниваем к H/3 и решаем относительно Y.
+function fitHorizThird(v){
+  const st=v.closest(".stage"); if(!st) return;
+  const W=st.clientWidth, H=st.clientHeight;
+  const vw=v.videoWidth, vh=v.videoHeight;
+  if(!W||!H||!vw||!vh) return;
+  const h=vh*Math.min(W/vw, H/vh);      // высота полосы видео после contain
+  const free=H-h;
+  if(free<=0.5){ v.style.objectPosition=""; return; }   // полей нет — двигать нечего
+  const y=Math.max(0, Math.min(100, (H/3 - h/2)/free*100));
+  v.style.objectPosition=`50% ${y.toFixed(2)}%`;
 }
 // ── АВТОФОН: плейлист из кирпичиков. Каждый клип 1.5с из середины → следующий; в конце постер 3с; луп ──
 function mountAutofon(card, e){
@@ -1156,7 +1180,9 @@ window.addEventListener("resize",()=>{
   // этой панели и получить чуть другое число → рейл/иконки скачут от ролика к ролику. Ждём, пока resize'ы
   // утихнут, и меряем один раз в спокойном кадре (rAF — после того, как браузер точно закончил layout).
   clearTimeout(_railT);
-  _railT=setTimeout(()=>requestAnimationFrame(syncRailTop),150);
+  _railT=setTimeout(()=>requestAnimationFrame(()=>{ syncRailTop();
+    document.querySelectorAll(".card.horiz video.main").forEach(fitHorizThird);   // высота экрана изменилась — треть уехала, пересчитать
+  }),150);
   clearTimeout(_reorientT);
   _reorientT=setTimeout(()=>{
     if(ACTIVE<0) return;

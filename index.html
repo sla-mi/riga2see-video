@@ -266,20 +266,23 @@
      .rail(20). Поэтому это соседи в body. */
   body.step2 .top,body.step2 .sound,body.step2 .datebar,body.step2 .rail{z-index:28}
   body.step2 .rail button,body.step2 .rail a,body.step2 .sound,body.step2 .datechip,body.step2 .tab.on{filter:drop-shadow(0 0 7px rgba(232,255,71,.65))}
-  .tour-dim{position:fixed;inset:0;z-index:26;display:none;background:rgba(8,8,11,.55);backdrop-filter:blur(2px) saturate(120%);-webkit-backdrop-filter:blur(2px) saturate(120%)}
+  /* pointer-events:none — ОБЯЗАТЕЛЬНО: слой и плашка лежат НАД .hero (z6) отдельными элементами, и без этого
+     тап/свайп попадал в них, а не в обработчик на .hero → из шага 2 нельзя было выйти вообще (интро зависало). */
+  .tour-dim{position:fixed;inset:0;z-index:26;display:none;pointer-events:none;background:rgba(8,8,11,.55);backdrop-filter:blur(2px) saturate(120%);-webkit-backdrop-filter:blur(2px) saturate(120%)}
   body.step2 .hero-glass{display:none}
   body.step2 .tour-dim{display:block}
-  /* ОДНА плашка. left:16 / right:78 — не заходит на правый рейл (значки ~12–58px от края, остаётся резким);
-     снизу, авто-высота — верхний ряд далеко сверху, тоже виден. */
-  .tourpanel{position:fixed;left:16px;right:78px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:29;display:none;
-    flex-direction:column;gap:11px;
+  /* ОДНА плашка. left:16 / right:78 — не заходит на правый рейл (значки ~12–58px от края, остаётся резким).
+     Поднята над низом (bottom:96) — у каждого значка рейла своя строка со стрелкой, строк много, снизу не влезало. */
+  .tourpanel{position:fixed;left:16px;right:78px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:29;display:none;
+    pointer-events:none;flex-direction:column;gap:9px;   /* см. коммент у .tour-dim — иначе тап по плашке не доходит до .hero */
     background:rgba(255,255,255,.08);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);
-    border:1px solid rgba(255,255,255,.38);border-radius:20px;padding:16px 17px;box-shadow:0 14px 44px rgba(0,0,0,.42)}
+    border:1px solid rgba(255,255,255,.38);border-radius:20px;padding:15px 16px;box-shadow:0 14px 44px rgba(0,0,0,.42)}
   body.step2 .tourpanel{display:flex}
-  .prow{display:flex;align-items:flex-start;gap:9px;font-family:var(--disp);font-weight:700;font-size:14.5px;line-height:1.28;color:#fff}
-  .prow .parr{color:var(--ink);font-size:17px;line-height:1.2;flex-shrink:0;min-width:16px;text-align:center}
-  .prow .parr svg{width:22px;height:22px;display:block}
-  .prow b{color:var(--ink);font-weight:700}
+  .prow{display:flex;align-items:center;gap:9px;font-family:var(--disp);font-weight:700;font-size:15px;line-height:1.25;color:#fff}
+  .prow .parr{color:var(--ink);font-size:17px;line-height:1;flex-shrink:0;min-width:15px;text-align:center}
+  .ptop{gap:7px;flex-wrap:wrap;padding-bottom:3px}
+  .ptop .psep{color:rgba(255,255,255,.35);margin:0 2px}
+  .prail{padding-left:2px}
   .pcta{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:2px;padding-top:12px;border-top:1px solid rgba(255,255,255,.16)}
   .pcta .hero-hand{width:38px;height:38px}
   .pcta span{font-family:var(--disp);font-weight:700;font-size:12.5px;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.9)}
@@ -349,9 +352,12 @@
 </div>
 <div class="tour-dim" id="tourDim"></div>
 <div class="tourpanel" id="tourPanel">
-  <div class="prow"><span class="parr">↑</span><span><b data-k="tourTopLbl"></b> <span data-k="tourTop"></span></span></div>
-  <div class="prow"><span class="parr">→</span><span><b data-k="tourRightLbl"></b> <span data-k="tourRight"></span></span></div>
-  <div class="prow"><span class="parr" id="tourRotIcon"></span><span data-k="tourVideo"></span></div>
+  <div class="prow ptop"><span class="parr">↑</span><span data-k="tourDate"></span><span class="psep">/</span><span class="parr">↑</span><span data-k="tourCats"></span></div>
+  <div class="prow prail"><span class="parr">→</span><span data-k="tourFav"></span></div>
+  <div class="prow prail"><span class="parr">→</span><span data-k="tourRemind"></span></div>
+  <div class="prow prail"><span class="parr">→</span><span data-k="tourShare"></span></div>
+  <div class="prow prail"><span class="parr">→</span><span data-k="tourTicket"></span></div>
+  <div class="prow prail"><span class="parr">→</span><span data-k="tourSettings"></span></div>
   <div class="pcta"><span class="hero-hand" id="tourHand"></span><span data-k="tourCta"></span></div>
 </div>
 <div class="sheet" id="remindsheet"><div class="sheetcard" id="remindcard"></div></div>
@@ -458,12 +464,14 @@ const I18N={
  heroTitle:{ru:"Ты рулишь, не алгоритм!",lv:"Tu vadi, ne algoritms!",en:"You're in control, not the algorithm!"},
  heroSub:{ru:"Листай и выбирай на свой вкус",lv:"Ritini un izvēlies pēc savas gaumes",en:"Swipe through and pick what you like"},
  heroCta:{ru:"Свайпни вниз, чтобы начать",lv:"Pavelc uz leju, lai sāktu",en:"Swipe down to start"},
- tourTopLbl:{ru:"Сверху:",lv:"Augšā:",en:"Top:"},
- tourTop:{ru:"категории (листай вбок), дата, звук",lv:"kategorijas (velc sānis), datums, skaņa",en:"categories (swipe sideways), date, sound"},
- tourRightLbl:{ru:"Справа:",lv:"Labajā:",en:"Right:"},
- tourRight:{ru:"сохранить, напомнить, поделиться, билеты, язык и избранное",lv:"saglabāt, atgādināt, dalīties, biļetes, valoda un izlase",en:"save, remind, share, tickets, language and favorites"},
- tourVideo:{ru:"Листай ленту · тап по видео скрывает надписи · поверни телефон — сменится ориентация",lv:"Ritini lenti · pieskāriens video paslēpj tekstu · pagriez telefonu — mainīsies orientācija",en:"Swipe the feed · tap the video to hide captions · rotate the phone to switch orientation"},
- tourCta:{ru:"Листай вниз",lv:"Ritini uz leju",en:"Swipe down"},
+ tourDate:{ru:"дата",lv:"datums",en:"date"},
+ tourCats:{ru:"категории",lv:"kategorijas",en:"categories"},
+ tourFav:{ru:"избранное",lv:"izlase",en:"favorites"},
+ tourRemind:{ru:"напоминания",lv:"atgādinājumi",en:"reminders"},
+ tourShare:{ru:"переслать",lv:"pārsūtīt",en:"share"},
+ tourTicket:{ru:"билеты",lv:"biļetes",en:"tickets"},
+ tourSettings:{ru:"настройки и организаторам",lv:"iestatījumi un organizatoriem",en:"settings & for organizers"},
+ tourCta:{ru:"Поехали!",lv:"Sāksim!",en:"Let's go!"},
  installBtn:{ru:"Добавить на экран «Домой»",lv:"Pievienot sākuma ekrānam",en:"Add to Home Screen"},
  installTtl:{ru:"Значок на экране «Домой» — сайт откроется на весь экран, без адресной строки",lv:"Ikona sākuma ekrānā — vietne atvērsies pilnekrānā, bez adreses joslas",en:"An icon on your Home Screen — the site opens full-screen, no address bar"},
  installSafariStep:{ru:"Нажми значок «Поделиться» (квадрат со стрелкой вверх) внизу экрана → «На экран Домой» → Добавить",lv:"Nospied «Dalīties» (kvadrāts ar bultu uz augšu) ekrāna apakšā → «Uz sākuma ekrānu» → Pievienot",en:"Tap Share (square with an up arrow) at the bottom of the screen → \"Add to Home Screen\" → Add"},
@@ -1136,7 +1144,6 @@ function dismissHero(){
   document.body.classList.add("hero-active");
   document.getElementById("heroHand").innerHTML=ICON.scrollHand;
   document.getElementById("tourHand").innerHTML=ICON.scrollHand;
-  document.getElementById("tourRotIcon").innerHTML=ICON.rotate;
   applyStaticI18N();
   startHeroBG();
   // 2 шага одним и тем же .hero (фон/коллаж не трогаем, едет только целиком в конце): шаг 1 — заголовок,

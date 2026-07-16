@@ -418,6 +418,7 @@ function catLabel(c){ if(!c) return LANG==="lv"?"Visi":LANG==="en"?"All":"Все
 const I18N={
  today:{ru:"сегодня",lv:"šodien",en:"today"}, tomorrow:{ru:"завтра",lv:"rīt",en:"tomorrow"},
  orgvideo:{ru:"видео организатора",lv:"organizatora video",en:"organiser video"},
+ venuevideo:{ru:"видео площадки",lv:"norises vietas video",en:"venue video"},   // generic-заглушка: ролик площадки, а НЕ про это событие — «видео организатора» тут было бы враньём
  free:{ru:"Бесплатно",lv:"Bez maksas",en:"Free"}, fav:{ru:"Избранное",lv:"Izlase",en:"Saved"}, from:{ru:"от",lv:"no",en:"from"}, tickets:{ru:"Билеты",lv:"Biļetes",en:"Tickets"},
  more:{ru:"  ещё…",lv:"  vairāk…",en:"  more…"}, collapse:{ru:"  свернуть",lv:"  aizvērt",en:"  collapse"},
  copy:{ru:"Копировать",lv:"Kopēt",en:"Copy"},
@@ -572,7 +573,7 @@ function cardHTML(e,i){
   return `<div class="card ${orient}" data-i="${i}">
     <div class="stage">${stageInner}${rotateHint}</div>
     <div class="shade"></div>
-    ${hasVideo(e)?`<div class="vidcred">${tr("orgvideo")}</div>`:""}
+    ${hasVideo(e)?`<div class="vidcred">${tr(e.video&&e.video.src==="venue_generic"?"venuevideo":"orgvideo")}</div>`:""}
     <div class="info">
       ${OWNER?`<div class="ownersrc">${vidSrc(e)}</div>`:""}
       ${chip}

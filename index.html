@@ -889,12 +889,21 @@ function currentList(){
   const catFilter = favMode ? (e=>fav.has(e.id)) : (e=>curCat===null || (e.cat||"")===curCat);
   // реальные даты: показываем только события, у которых есть сегодняшний или будущий сеанс (прошедшие не показываем)
   const base = ALL.filter(e=> catFilter(e) && futureDates(e).length>0 && hasDesc(e));
-  // ГИБРИД (owner 2026-07-12): ближайшие даты первыми (по НЕДЕЛЯМ), а ВНУТРИ недели — видео вперёд, потом разовые, потом по дате.
-  // Так «что скоро» наверху, но видео поднимается в пределах недельного окна (не обгоняет события на месяцы вперёд).
+  // ВИДЕО-БЛОК ВПЕРЁД (owner 2026-07-22): сначала подряд все видео событий ближайших VIDEO_FIRST_DAYS дней
+  // (по дате), потом всё остальное по прежней схеме. Так лента начинается сплошным видео, а не чередует
+  // видео/статику. Горизонт ограничен НАМЕРЕННО: без него видео события через год встало бы выше события
+  // завтра, и 26 ближайших событий без ролика уехали бы за 193-ю карточку — афиша перестала бы отвечать
+  // на «что сегодня». На 30 днях блок = ~45 карточек, ближайшая статика начинается с 46-й.
+  const VIDEO_FIRST_DAYS = 30;
   const isOneTime = e => futureDates(e).length<=1;
   const t0=new Date(); t0.setHours(0,0,0,0);
-  const wk=e=>{ const d=new Date(String(nearDate(e)).replace(" ","T")); d.setHours(0,0,0,0); return Math.max(0,Math.floor((d-t0)/(7*864e5))); };
-  const key=e=>[ wk(e), hasVideo(e)?0:1, isOneTime(e)?0:1, String(nearDate(e)) ];
+  const dayDiff=e=>{ const d=new Date(String(nearDate(e)).replace(" ","T")); d.setHours(0,0,0,0); return Math.max(0,Math.floor((d-t0)/864e5)); };
+  const wk=e=>Math.floor(dayDiff(e)/7);
+  const inVideoBlock = e => hasVideo(e) && dayDiff(e)<=VIDEO_FIRST_DAYS;
+  // первый ключ 0 = видео-блок: он идёт целиком впереди, внутри — просто по дате
+  const key=e=> inVideoBlock(e)
+    ? [0, String(nearDate(e)), "", "", ""]
+    : [1, wk(e), hasVideo(e)?0:1, isOneTime(e)?0:1, String(nearDate(e))];
   return base.sort((a,b)=>{ const ka=key(a),kb=key(b);
     for(let i=0;i<ka.length;i++){ if(ka[i]<kb[i])return -1; if(ka[i]>kb[i])return 1; } return 0; });
 }

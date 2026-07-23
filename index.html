@@ -58,7 +58,10 @@
   .rotatehint svg{width:26px;height:26px;color:#fff}
   .rotatehint span{position:absolute;top:100%;margin-top:8px;white-space:nowrap;font-family:var(--disp);font-weight:700;
     font-size:9px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink);text-shadow:0 1px 4px rgba(0,0,0,.8)}
-  @media not (orientation:landscape){ .card.horiz .rotatehint{display:flex;top:33.33%} }   /* портрет-экран, гориз-ролик — значок ровно на середине полосы видео: она стоит на верхней трети (см. fitHorizThird) */
+  /* портрет-экран, гориз-ролик: значок ПОД полосой видео, а не поверх неё (owner 2026-07-23:
+     «чтобы можно было всё же видео смотреть и без поворота»). Точное место зависит от пропорций
+     файла — ставит JS (fitHorizThird), здесь только запасное значение на время загрузки. */
+  @media not (orientation:landscape){ .card.horiz .rotatehint{display:flex;top:48%} }
   @media (orientation:landscape){ .card.vert .rotatehint{display:flex} }        /* ландшафт-экран, верт-ролик */
   body.clean .rotatehint{opacity:0;pointer-events:none}
   .card.af video.main{object-fit:cover}   /* автофон-клипы заполняют кадр (постер под ними — общее правило .poster contain) */
@@ -566,7 +569,7 @@ function cardHTML(e,i){
   // нет вообще никакой картинки (редко, ~0.6%) — заливка цветом категории вместо сломанного img
   // если картинка не грузится (сломанная ссылка у источника) — цветная заглушка вместо «битой иконки»
   const onerr=`this.replaceWith(Object.assign(document.createElement('div'),{className:'nocover',style:'background:${col}55'}))`;
-  const stageInner = purl ? `${bgPoster}<img class="poster" src="${purl}" alt="" loading="lazy" onerror="${onerr}">`
+  const stageInner = purl ? `${bgPoster}<img class="poster" src="${purl}" alt="" loading="lazy" onerror="${onerr}" onload="fitPosterThird(this)">`
                            : `<div class="nocover" style="background:${col}55"></div>`;
   // поворот телефона не помогает квадратному видео (1:1 в любой ориентации всё равно с полями) — значок только для настоящей горизонтали
   const rotateHint = (hasVideo(e) && vidOrient(e)==="horiz") ? `<div class="rotatehint" data-act="rotate">${ICON.rotate}<span>${tr("rotate")}</span></div>` : "";
@@ -634,6 +637,35 @@ function fitHorizThird(v){
   if(free<=0.5){ v.style.objectPosition=""; return; }   // полей нет — двигать нечего
   const y=Math.max(0, Math.min(100, (H/3 - h/2)/free*100));
   v.style.objectPosition=`50% ${y.toFixed(2)}%`;
+  placeRotateHint(v.closest(".card"), H/3 + h/2, H);    // низ полосы = центр(H/3) + половина высоты
+}
+// Постер-афиша: та же верхняя треть, что и у видео, но по РАЗМЕРАМ САМОЙ КАРТИНКИ, а не по классу
+// карточки. Класс берётся из ориентации РОЛИКА, и когда ролик вертикальный, а афиша горизонтальная
+// (случай owner-а 2026-07-23: «Elizabete Gaile» — ролик 720×1280, афиша широкая), постер оставался
+// по центру. Вертикальная картинка заполняет кадр целиком — свободного места нет, и функция её
+// не двигает: проверка free<=0.5 отсекает.
+function fitPosterThird(img){
+  if(!img || img.classList.contains("bgp")) return;      // размытая подложка — не трогаем
+  const st=img.closest(".stage"); if(!st) return;
+  const H=st.clientHeight, W=st.clientWidth;
+  const iw=img.naturalWidth, ih=img.naturalHeight;
+  if(!W||!H||!iw||!ih) return;
+  const h=ih*Math.min(W/iw, H/ih);
+  const free=H-h;
+  if(free<=0.5){ img.style.objectPosition=""; return; }
+  const y=Math.max(0, Math.min(100, (H/3 - h/2)/free*100));
+  img.style.objectPosition=`50% ${y.toFixed(2)}%`;
+}
+// Значок «повернуть» ставим ПОД полосой видео, чтобы он её не закрывал (owner 2026-07-23).
+// bottomPx — низ полосы видео; H — высота карточки. Значок 58px, ещё под ним подпись (~20px),
+// поэтому от низа полосы отступаем на пол-значка + зазор, и держимся в пределах экрана.
+function placeRotateHint(card, bottomPx, H){
+  if(!card) return;
+  const hint=card.querySelector(".rotatehint"); if(!hint) return;
+  if(window.matchMedia("(orientation:landscape)").matches){ hint.style.top=""; return; }
+  const GAP=18, HALF=29, TAIL=26;                       // зазор, полвысоты значка, место под подпись
+  const top=Math.min(bottomPx + GAP + HALF, H - HALF - TAIL);
+  hint.style.top=`${(top/H*100).toFixed(2)}%`;
 }
 // ── АВТОФОН: плейлист из кирпичиков. Каждый клип 1.5с из середины → следующий; в конце постер 3с; луп ──
 function mountAutofon(card, e){
@@ -678,7 +710,13 @@ function stopAutofon(card){ const af=card._af; if(!af) return; af.running=false;
   if(af.bufs) af.bufs.forEach(v=>{ try{v.pause();}catch(_){} v.classList.remove("afon"); }); }
 function unmountVideo(card){ card.classList.remove("playing"); stopAutofon(card); card._af=null;
   card.querySelectorAll("video, iframe.main").forEach(v=>{ if(v.tagName==="VIDEO"){v.pause();v.removeAttribute("src");v.load();} v.remove(); }); }
+// Пока идёт поворот экрана, наблюдатель за прокруткой ОТКЛЮЧЁН (см. обработчик resize внизу).
+// Без этого: поворот меняет высоту карточки → тот же scrollTop указывает на соседнюю →
+// наблюдатель переключает активную → мы «довскролливаем» уже к ЧУЖОЙ карточке, и ролик
+// перелистывается сам. Owner 2026-07-23: «поворачиваю экран — видео перелистывается на другое».
+let REORIENTING=false;
 function setActive(i){
+  if(REORIENTING) return;
   if(i===ACTIVE) return;
   // при переключении на другой ролик — сбрасываем РАЗВЁРНУТЫЕ состояния карточки (описание, список дат)
   const prev=document.querySelector(`.card[data-i="${ACTIVE}"]`); if(prev){ prev.classList.remove("open"); prev.classList.remove("datesopen"); }
@@ -1233,7 +1271,7 @@ async function boot(){
 // поворот экрана меняет высоту карточки (100dvh) → тот же scrollTop после поворота указывает на ДРУГУЮ карточку →
 // IntersectionObserver подхватывает не то видео («перескакивает»). Чиним: после поворота довскролливаем
 // обратно к активной карточке (без анимации, без смены видео) — тот же ролик остаётся на экране.
-let _reorientT=null, _railT=null;
+let _reorientT=null, _railT=null, _releaseT=null;
 window.addEventListener("resize",()=>{
   // iOS Safari шлёт resize и когда просто прячется/появляется системная панель при скролле между роликами —
   // не только при повороте. Меряя высоту .top СРАЗУ на каждый resize, можно попасть на кадр посреди анимации
@@ -1242,12 +1280,23 @@ window.addEventListener("resize",()=>{
   clearTimeout(_railT);
   _railT=setTimeout(()=>requestAnimationFrame(()=>{ syncRailTop();
     document.querySelectorAll(".card.horiz video.main").forEach(fitHorizThird);   // высота экрана изменилась — треть уехала, пересчитать
+    document.querySelectorAll(".stage img.poster:not(.bgp)").forEach(fitPosterThird);
   }),150);
+  // Глушим наблюдателя НА ПЕРВОМ ЖЕ resize — до того, как он успеет переключить активную карточку
+  // на соседнюю из-за изменившейся высоты. ACTIVE при этом остаётся тем, что был ДО поворота,
+  // и ниже мы возвращаем скролл именно к нему.
+  REORIENTING=true;
   clearTimeout(_reorientT);
   _reorientT=setTimeout(()=>{
-    if(ACTIVE<0) return;
-    const card=document.querySelector(`.card[data-i="${ACTIVE}"]`);
+    const card=ACTIVE>=0 && document.querySelector(`.card[data-i="${ACTIVE}"]`);
     if(card) document.getElementById("feed").scrollTo({top:card.offsetTop});
+    // Отпускаем наблюдателя чуть позже: сам scrollTo тоже заставляет его сработать, и если снять
+    // глушилку сразу, он успеет переключить карточку на промежуточном положении.
+    // ⚠️ Именно таймером, НЕ requestAnimationFrame: в скрытой вкладке кадры не рисуются вообще,
+    // и через rAF глушилка не снялась бы НИКОГДА — лента навсегда перестала бы менять ролики.
+    // Поймал на проверке 2026-07-23.
+    clearTimeout(_releaseT);
+    _releaseT=setTimeout(()=>{ REORIENTING=false; },200);
   },120);
 });
 boot();

@@ -23,19 +23,41 @@ DEEP = "--codec" in sys.argv
 UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1"
 
 
+def is_image(path, ctype):
+    """Картинка это или нет — решаем по СОДЕРЖИМОМУ, а не по заявленному типу.
+    Songkick (images.sk-static.com) отдаёт живые JPEG как application/octet-stream, иногда вообще
+    без Content-Type. Проверка «в типе есть слово image» объявляла 6 рабочих картинок битыми —
+    сам на это попался 2026-07-23. Магические байты не врут."""
+    if "image" in (ctype or ""):
+        return True
+    try:
+        with open(path, "rb") as f:
+            head = f.read(12)
+    except OSError:
+        return False
+    return (head[:3] == b"\xff\xd8\xff"                       # JPEG
+            or head[:8] == b"\x89PNG\r\n\x1a\n"               # PNG
+            or head[:6] in (b"GIF87a", b"GIF89a")             # GIF
+            or (head[:4] == b"RIFF" and head[8:12] == b"WEBP")# WebP
+            or head[4:12] in (b"ftypavif", b"ftypheic"))      # AVIF/HEIC
+
+
 def probe(url, want_video):
     """Тянем первый килобайт: HEAD поддерживают не все хосты, Range — почти все.
     Повтор обязателен: при 16 потоках часть запросов отваливается по таймауту (код 000),
     и без повтора проверка объявляет живой файл битым — сам на это попался."""
+    tmp = f"/tmp/_probe_{abs(hash(url))}.bin"
     for attempt in (1, 2, 3):
         r = subprocess.run(
-            ["curl", "-sS", "-A", UA, "-r", "0-1023", "-o", "/dev/null",
+            ["curl", "-sS", "-A", UA, "-r", "0-1023", "-o", tmp,
              "-w", "%{http_code} %{content_type}", "--max-time", "25", url],
             capture_output=True, text=True)
         parts = (r.stdout or "").split()
         code = parts[0] if parts else "ERR"
         ctype = parts[1] if len(parts) > 1 else ""
-        ok = code in ("200", "206") and (("video" in ctype) if want_video else ("image" in ctype))
+        ok = code in ("200", "206") and (("video" in ctype) if want_video else is_image(tmp, ctype))
+        if os.path.exists(tmp):
+            os.remove(tmp)
         if ok or code not in ("000", "ERR", "429", "503"):
             return ok, code, ctype        # реальный ответ хоста — верим сразу
         # 429 = r2.dev режет за частоту (дев-адрес Cloudflare лимитирован). Это НЕ битый файл:

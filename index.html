@@ -1171,9 +1171,50 @@ function openSharedEvent(id){
   if(card){ document.getElementById("feed").scrollTo({top:card.offsetTop}); setActive(idx); }
   return true;
 }
+// ── Живые данные из базы Афиши ───────────────────────────────────────────────
+// До 2026-07-23 лента читала big_feed.json — снимок базы от 8 июля. Он не обновлялся,
+// поэтому отставал: 249 событий прода лента не знала, 23 своих показывала после отмены,
+// а замороженные ссылки на картинки протухали (68 битых из 643). Теперь берём прямо из
+// API — то же, чем живёт сайт афиши, включая ролики (поле video появилось в API
+// 2026-07-23). Файл остаётся запасным вариантом на случай, если API недоступен.
+const API = "https://riga-afisha-api.fly.dev/api/events?limit=2000";
+
+function fromApi(e){
+  // dates у API — [{date_start, ticket_url}], у ленты — просто список строк.
+  const ds = (e.dates || []).map(d => d.date_start).filter(Boolean);
+  return {
+    id: e.id,
+    title: e.title, title_ru: e.title_ru, title_lv: e.title_lv, title_en: e.title_en,
+    body: e.description, body_ru: e.description_ru, body_lv: e.description_lv, body_en: e.description_en,
+    venue: e.venue_name, venue_ru: e.venue_name_ru, venue_lv: e.venue_name_lv, venue_en: e.venue_name_en,
+    cat: e.category_label,          // подписи категорий у API и ленты совпадают дословно
+    date: e.date_start,
+    dates: ds.length ? ds : (e.date_start ? [e.date_start] : []),
+    img: e.image_url,
+    price_from: e.price_from,
+    is_free: !!e.is_free,
+    ticket: e.ticket_url,
+    video: e.video || null,
+  };
+}
+
+async function loadEvents(){
+  try{
+    const r = await fetch(API, {cache:"no-store"});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const rows = await r.json();
+    if(!Array.isArray(rows) || !rows.length) throw new Error("пустой ответ");
+    return rows.map(fromApi);
+  }catch(err){
+    // База недоступна — показываем снимок, а не пустой экран.
+    console.warn("API недоступен, беру снимок big_feed.json:", err.message);
+    return await (await fetch("big_feed.json",{cache:"no-store"})).json();
+  }
+}
+
 async function boot(){
   applyStaticI18N();
-  ALL=await (await fetch("big_feed.json",{cache:"no-store"})).json();
+  ALL=await loadEvents();
   buildTabs();
   buildFeed(currentList());
   const sharedId=new URLSearchParams(location.search).get("e");

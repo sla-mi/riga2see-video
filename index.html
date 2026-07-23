@@ -927,12 +927,22 @@ function currentList(){
   const catFilter = favMode ? (e=>fav.has(e.id)) : (e=>curCat===null || (e.cat||"")===curCat);
   // реальные даты: показываем только события, у которых есть сегодняшний или будущий сеанс (прошедшие не показываем)
   const base = ALL.filter(e=> catFilter(e) && futureDates(e).length>0 && hasDesc(e));
-  // ВСЯ СТАТИКА В КОНЕЦ (owner 2026-07-23): сначала ВСЕ ролики по дате, потом ВСЯ статика по дате.
-  // Прежний горизонт в 30 дней убран по прямой просьбе owner-а. Следствие, о котором он в курсе:
-  // события ближайшей недели без ролика (≈53 шт, включая сегодняшние) уезжают за видеоблок (~175
-  // карточек) — видео концерта через год стоит выше события сегодня без ролика.
-  //   ключ [0|1, дата]: 0 = есть видео (весь блок впереди), 1 = статика; внутри каждой группы — по дате.
-  const key=e=> [ hasVideo(e)?0:1, String(nearDate(e)) ];
+  // ПОРЯДОК ЛЕНТЫ (owner, окончательно на 2026-07-23):
+  //   1. ВИДЕОЛЕНТА — события с роликом в пределах VIDEO_FIRST_DAYS дней:
+  //        сначала разовые (по дате), затем ПОВТОРЯЮЩИЕСЯ (по дате) — они замыкают видеоленту.
+  //   2. СТАТИК-ЛЕНТА — всё остальное по прежней недельной схеме.
+  // Горизонт 30 дней принят owner-ом и НЕ убирать: без него видео события через год встаёт выше
+  // события завтра, а ~53 ближайших события без ролика уезжают за 175-ю карточку — афиша перестаёт
+  // отвечать на «что сегодня». (Я убирал его 2026-07-23, неверно поняв «статику в конец», — вернул.)
+  const VIDEO_FIRST_DAYS = 30;
+  const isOneTime = e => futureDates(e).length<=1;      // разовое = один будущий сеанс
+  const t0=new Date(); t0.setHours(0,0,0,0);
+  const dayDiff=e=>{ const d=new Date(String(nearDate(e)).replace(" ","T")); d.setHours(0,0,0,0); return Math.max(0,Math.floor((d-t0)/864e5)); };
+  const wk=e=>Math.floor(dayDiff(e)/7);
+  const inVideoBlock = e => hasVideo(e) && dayDiff(e)<=VIDEO_FIRST_DAYS;
+  const key=e=> inVideoBlock(e)
+    ? [0, isOneTime(e)?0:1, String(nearDate(e)), "", ""]           // видеолента: разовые → повторяющиеся
+    : [1, wk(e), hasVideo(e)?0:1, isOneTime(e)?0:1, String(nearDate(e))];
   return base.sort((a,b)=>{ const ka=key(a),kb=key(b);
     for(let i=0;i<ka.length;i++){ if(ka[i]<kb[i])return -1; if(ka[i]>kb[i])return 1; } return 0; });
 }

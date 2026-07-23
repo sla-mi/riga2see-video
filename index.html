@@ -1185,7 +1185,11 @@ function fromApi(e){
   return {
     id: e.id,
     title: e.title, title_ru: e.title_ru, title_lv: e.title_lv, title_en: e.title_en,
-    body: e.description, body_ru: e.description_ru, body_lv: e.description_lv, body_en: e.description_en,
+    // body — то, по чему лента решает «есть описание» (hasDesc). Общее поле description у прода
+    // часто ПУСТОЕ, а текст лежит только в переводах: так пряталось 112 событий из 913, у которых
+    // описание было на всех трёх языках. Берём первое непустое.
+    body: e.description || e.description_ru || e.description_en || e.description_lv,
+    body_ru: e.description_ru, body_lv: e.description_lv, body_en: e.description_en,
     venue: e.venue_name, venue_ru: e.venue_name_ru, venue_lv: e.venue_name_lv, venue_en: e.venue_name_en,
     cat: e.category_label,          // подписи категорий у API и ленты совпадают дословно
     date: e.date_start,

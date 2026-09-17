@@ -1,0 +1,273 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta charset="utf-8">
+<title>Нотная дорожка</title>
+<style>
+:root{--bg:#0f1114;--panel:#1a1d23;--grid:#2a2f38;--grid2:#20242b;--text:#e9e6df;--muted:#8b93a1;--accent:#e9a23b;--accent-soft:rgba(233,162,59,.25);--line:#f4f4f4;--good:#46b36d;--flat:#5b8def;--sharp:#e5544d;--btn:#e9e6df;--btnfg:#14171c;--chip:#252a33;color-scheme:dark}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#14171c;--panel:#1d2128;--grid:#2a2f38;--grid2:#20242b;--text:#e9e6df;--muted:#8b93a1;--accent:#e9a23b;--accent-soft:rgba(233,162,59,.25);--line:#f4f4f4;--good:#46b36d;--flat:#5b8def;--sharp:#e5544d;--btn:#e9e6df;--btnfg:#14171c;--chip:#252a33}}
+:root[data-theme="dark"]{--bg:#14171c;--panel:#1d2128;--grid:#2a2f38;--grid2:#20242b;--text:#e9e6df;--muted:#8b93a1;--accent:#e9a23b;--accent-soft:rgba(233,162,59,.25);--line:#f4f4f4;--good:#46b36d;--flat:#5b8def;--sharp:#e5544d;--btn:#e9e6df;--btnfg:#14171c;--chip:#252a33}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,"SF Pro Text",Segoe UI,Roboto,sans-serif;padding:10px 16px;padding-block:10px;display:flex;flex-direction:column;gap:10px;font-variant-numeric:tabular-nums;-webkit-user-select:none;user-select:none}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+h1{font-size:17px;margin:0;font-weight:600;letter-spacing:.01em}
+h1 small{color:var(--muted);font-weight:400;margin-left:6px}
+label.ctl{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px}
+select,input[type=range]{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--grid);border-radius:8px;padding:5px 8px}
+input[type=range]{width:90px;padding:0}
+button{font:inherit;font-weight:600;border:0;border-radius:10px;padding:9px 16px;background:var(--btn);color:var(--btnfg);cursor:pointer}
+button.ghost{background:var(--chip);color:var(--text)}
+button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#stage{position:relative;flex:1;min-height:300px;background:var(--panel);border-radius:14px;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+#live{position:absolute;right:12px;top:10px;font-size:22px;font-weight:700;padding:4px 12px;border-radius:10px;background:var(--chip);min-width:74px;text-align:center}
+#meter{position:absolute;left:12px;bottom:10px;width:120px;height:8px;border-radius:4px;background:var(--chip);overflow:hidden}
+#meter i{display:block;height:100%;width:0;background:var(--good)}
+#msg{position:absolute;left:0;right:0;top:40%;text-align:center;font-size:20px;color:var(--muted);pointer-events:none}
+#lyrics{display:none}
+#lyrics b{color:var(--accent)}
+#result{display:none;flex-direction:column;gap:8px;padding:10px 12px;background:var(--panel);border-radius:14px}
+#result.show{display:flex}
+.stats{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--muted);font-size:14px}
+.stats b{color:var(--text);font-size:18px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{padding:3px 7px;border-radius:7px;font-size:13px;line-height:1.15;text-align:center;background:var(--chip)}
+.chip small{display:block;font-size:10px;opacity:.85}
+#scrubrow{display:flex;align-items:center;gap:8px}
+#scrubrow[hidden]{display:none}
+#scrubrow input[type=range]{flex:1;width:auto}
+#scrubrow span{color:var(--muted);font-size:13px;min-width:56px;text-align:right}
+#scrubrow button{padding:6px 12px}
+.chip{cursor:pointer}
+.chip.cur{outline:2px solid var(--line)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style></head><body>
+<header>
+  <h1>Нотная дорожка <small id="songName">Go Let It Out · Oasis</small></h1>
+  <label class="ctl">часть <select id="section"><option value="all">вся песня</option></select></label>
+  <label class="ctl">минус <select id="backing"><option value="guitar">своя гитара (запись)</option><option value="synth">аккорды + бит</option><option value="none">только тон</option></select></label>
+  <label class="ctl">темп <select id="tempo"><option value="84">84 (песня)</option><option value="70">70</option><option value="60">60</option><option value="50">50</option></select></label>
+  <label class="ctl">тон в ухе <input id="vol" type="range" min="0" max="100" value="60"></label>
+  <label class="ctl">аккорды <input id="chvol" type="range" min="0" max="100" value="55"></label>
+  <label class="ctl">бит <input id="btvol" type="range" min="0" max="100" value="40"></label>
+  <label class="ctl">задержка <select id="lat"><option value="0">0 мс</option><option value="100">100</option><option value="150">150</option><option value="200">200</option><option value="250">250</option><option value="300">300</option></select></label>
+  <label class="ctl"><input id="loop" type="checkbox"> повторять</label>
+  <label class="ctl">микрофон <select id="mic"><option value="">по умолчанию</option></select></label>
+  <button id="start">Старт</button>
+  <button id="mictest" class="ghost">Проверить микрофон</button>
+  <button id="stop" class="ghost" hidden>Стоп</button>
+</header>
+<audio id="gtr" preload="auto" src="glo_gtr.m4a"></audio>
+<div id="stage"><canvas id="cv"></canvas><div id="live">—</div><div id="meter"><i></i></div><div id="msg">Нажми «Старт» или пробел, разреши микрофон. 4 щелчка — и поехали. Пробел — стоп.</div></div>
+<div id="lyrics"></div>
+<div id="scrubrow" hidden><button id="prev" class="ghost" title="← предыдущий слог">◀</button><input id="scrub" type="range" min="0" max="1000" value="0"><button id="next" class="ghost" title="→ следующий слог">▶</button><span id="scrubT">0.0 с</span></div>
+<div id="result">
+  <div class="stats"><span>слогов <b id="rN">0</b></span><span>попал <b id="rIn10">—</b></span><span>почти <b id="rIn25">—</b></span><span>ниже <b id="rLow">—</b></span><span>выше <b id="rHigh">—</b></span></div>
+  <div class="legend"><span><i style="background:var(--good)"></i>попал</span><span><i style="background:var(--flat)"></i>ниже</span><span><i style="background:var(--sharp)"></i>выше</span><span><i style="background:var(--chip);border:1px solid var(--grid)"></i>нет голоса</span></div>
+  <div class="chips" id="chips"></div>
+</div>
+<script>
+const SONG = {"title": "Go Let It Out", "artist": "Oasis", "bpm": 84, "items": [{"syl": "Paint", "midi": 43, "b": 0.5, "line": 1, "sec": "Куплет 1"}, {"syl": "no", "midi": 45, "b": 0.5, "line": 1, "sec": "Куплет 1"}, {"syl": "il-", "midi": 43, "b": 0.5, "line": 1, "sec": "Куплет 1"}, {"syl": "-lu-", "midi": 47, "b": 1.0, "line": 1, "sec": "Куплет 1"}, {"syl": "-sion", "midi": 45, "b": 1.0, "line": 1, "sec": "Куплет 1"}, {"syl": "Try", "midi": 47, "b": 0.25, "line": 1, "sec": "Куплет 1"}, {"syl": "to", "midi": 45, "b": 0.25, "line": 1, "sec": "Куплет 1"}, {"syl": "click", "midi": 47, "b": 0.5, "line": 2, "sec": "Куплет 1"}, {"syl": "with", "midi": 48, "b": 0.25, "line": 2, "sec": "Куплет 1"}, {"syl": "What", "midi": 47, "b": 0.5, "line": 2, "sec": "Куплет 1"}, {"syl": "you", "midi": 45, "b": 0.25, "line": 2, "sec": "Куплет 1"}, {"syl": "got", "midi": 45, "b": 0.5, "line": 2, "sec": "Куплет 1"}, {"rest": true, "b": 2.0, "line": 2, "sec": "Куплет 1"}, {"syl": "Taste", "midi": 43, "b": 0.5, "line": 3, "sec": "Куплет 1"}, {"syl": "e-", "midi": 45, "b": 0.5, "line": 3, "sec": "Куплет 1"}, {"syl": "-very", "midi": 43, "b": 0.5, "line": 3, "sec": "Куплет 1"}, {"syl": "po-", "midi": 47, "b": 1.0, "line": 3, "sec": "Куплет 1"}, {"syl": "-tion", "midi": 45, "b": 0.75, "line": 3, "sec": "Куплет 1"}, {"syl": "'Cause", "midi": 45, "b": 0.25, "line": 3, "sec": "Куплет 1"}, {"syl": "if", "midi": 47, "b": 0.25, "line": 3, "sec": "Куплет 1"}, {"syl": "you", "midi": 45, "b": 0.25, "line": 3, "sec": "Куплет 1"}, {"syl": "like", "midi": 47, "b": 0.5, "line": 4, "sec": "Куплет 1"}, {"syl": "Your-", "midi": 48, "b": 0.25, "line": 4, "sec": "Куплет 1"}, {"syl": "-self", "midi": 47, "b": 0.5, "line": 4, "sec": "Куплет 1"}, {"syl": "a", "midi": 45, "b": 0.25, "line": 4, "sec": "Куплет 1"}, {"syl": "lot", "midi": 45, "b": 0.5, "line": 4, "sec": "Куплет 1"}, {"rest": true, "b": 0.5, "line": 4, "sec": "Куплет 1"}, {"syl": "Go", "midi": 48, "b": 0.5, "line": 4, "sec": "Куплет 1"}, {"syl": "let", "midi": 47, "b": 0.25, "line": 4, "sec": "Куплет 1"}, {"syl": "it", "midi": 45, "b": 0.25, "line": 4, "sec": "Куплет 1"}, {"syl": "out", "midi": 45, "b": 2.5, "line": 4, "sec": "Куплет 1"}, {"rest": true, "b": 0.5, "line": 5, "sec": "Куплет 1"}, {"syl": "Go", "midi": 48, "b": 0.5, "line": 5, "sec": "Куплет 1"}, {"syl": "let", "midi": 47, "b": 0.25, "line": 5, "sec": "Куплет 1"}, {"syl": "it", "midi": 45, "b": 0.25, "line": 5, "sec": "Куплет 1"}, {"syl": "in", "midi": 45, "b": 2.5, "line": 5, "sec": "Куплет 1"}, {"rest": true, "b": 0.5, "line": 6, "sec": "Куплет 1"}, {"syl": "Go", "midi": 48, "b": 0.5, "line": 6, "sec": "Куплет 1"}, {"syl": "let", "midi": 47, "b": 0.25, "line": 6, "sec": "Куплет 1"}, {"syl": "it", "midi": 45, "b": 0.25, "line": 6, "sec": "Куплет 1"}, {"syl": "out", "midi": 45, "b": 2.5, "line": 6, "sec": "Куплет 1"}, {"rest": true, "b": 6.0, "line": 6, "sec": "Куплет 1"}, {"syl": "Life", "midi": 43, "b": 0.5, "line": 7, "sec": "Куплет 2"}, {"syl": "is", "midi": 45, "b": 0.5, "line": 7, "sec": "Куплет 2"}, {"syl": "pre-", "midi": 43, "b": 0.5, "line": 7, "sec": "Куплет 2"}, {"syl": "-co-", "midi": 47, "b": 1.0, "line": 7, "sec": "Куплет 2"}, {"syl": "-cious", "midi": 45, "b": 1.0, "line": 7, "sec": "Куплет 2"}, {"syl": "in", "midi": 47, "b": 0.25, "line": 7, "sec": "Куплет 2"}, {"syl": "A", "midi": 45, "b": 0.25, "line": 7, "sec": "Куплет 2"}, {"syl": "most", "midi": 47, "b": 0.5, "line": 8, "sec": "Куплет 2"}, {"syl": "pe-", "midi": 48, "b": 0.25, "line": 8, "sec": "Куплет 2"}, {"syl": "-cu-", "midi": 47, "b": 0.5, "line": 8, "sec": "Куплет 2"}, {"syl": "-liar", "midi": 45, "b": 0.25, "line": 8, "sec": "Куплет 2"}, {"syl": "way", "midi": 45, "b": 1.5, "line": 8, "sec": "Куплет 2"}, {"rest": true, "b": 1.0, "line": 8, "sec": "Куплет 2"}, {"syl": "Sis-", "midi": 43, "b": 0.5, "line": 9, "sec": "Куплет 2"}, {"syl": "-ter", "midi": 45, "b": 0.5, "line": 9, "sec": "Куплет 2"}, {"syl": "psy-", "midi": 43, "b": 0.5, "line": 9, "sec": "Куплет 2"}, {"syl": "-cho-", "midi": 47, "b": 1.0, "line": 9, "sec": "Куплет 2"}, {"syl": "-sis", "midi": 45, "b": 1.0, "line": 9, "sec": "Куплет 2"}, {"syl": "Don't", "midi": 47, "b": 0.5, "line": 9, "sec": "Куплет 2"}, {"syl": "got", "midi": 47, "b": 0.5, "line": 10, "sec": "Куплет 2"}, {"syl": "a", "midi": 48, "b": 0.25, "line": 10, "sec": "Куплет 2"}, {"syl": "lot", "midi": 47, "b": 0.5, "line": 10, "sec": "Куплет 2"}, {"syl": "to", "midi": 45, "b": 0.25, "line": 10, "sec": "Куплет 2"}, {"syl": "say", "midi": 45, "b": 0.75, "line": 10, "sec": "Куплет 2"}, {"syl": "She", "midi": 45, "b": 0.25, "line": 10, "sec": "Куплет 2"}, {"syl": "go", "midi": 48, "b": 0.5, "line": 10, "sec": "Куплет 2"}, {"syl": "let", "midi": 47, "b": 0.25, "line": 10, "sec": "Куплет 2"}, {"syl": "it", "midi": 45, "b": 0.25, "line": 10, "sec": "Куплет 2"}, {"syl": "out", "midi": 45, "b": 2.5, "line": 10, "sec": "Куплет 2"}, {"rest": true, "b": 0.25, "line": 11, "sec": "Куплет 2"}, {"syl": "She", "midi": 45, "b": 0.25, "line": 11, "sec": "Куплет 2"}, {"syl": "go", "midi": 48, "b": 0.5, "line": 11, "sec": "Куплет 2"}, {"syl": "get", "midi": 47, "b": 0.25, "line": 11, "sec": "Куплет 2"}, {"syl": "it", "midi": 45, "b": 0.25, "line": 11, "sec": "Куплет 2"}, {"syl": "in", "midi": 45, "b": 2.5, "line": 11, "sec": "Куплет 2"}, {"rest": true, "b": 0.25, "line": 12, "sec": "Куплет 2"}, {"syl": "She", "midi": 45, "b": 0.25, "line": 12, "sec": "Куплет 2"}, {"syl": "go", "midi": 48, "b": 0.5, "line": 12, "sec": "Куплет 2"}, {"syl": "let", "midi": 47, "b": 0.25, "line": 12, "sec": "Куплет 2"}, {"syl": "it", "midi": 45, "b": 0.25, "line": 12, "sec": "Куплет 2"}, {"syl": "out", "midi": 45, "b": 2.5, "line": 12, "sec": "Куплет 2"}, {"rest": true, "b": 2.0, "line": 12, "sec": "Куплет 2"}, {"rest": true, "b": 2.25, "line": 13, "sec": "Куплет 2"}, {"syl": "She", "midi": 45, "b": 0.25, "line": 13, "sec": "Куплет 2"}, {"syl": "go", "midi": 48, "b": 0.5, "line": 13, "sec": "Куплет 2"}, {"syl": "let", "midi": 47, "b": 0.25, "line": 13, "sec": "Куплет 2"}, {"syl": "it", "midi": 45, "b": 0.25, "line": 13, "sec": "Куплет 2"}, {"syl": "out", "midi": 45, "b": 2.5, "line": 13, "sec": "Куплет 2"}, {"rest": true, "b": 0.25, "line": 14, "sec": "Куплет 2"}, {"syl": "She", "midi": 45, "b": 0.25, "line": 14, "sec": "Куплет 2"}, {"syl": "go", "midi": 48, "b": 0.5, "line": 14, "sec": "Куплет 2"}, {"syl": "get", "midi": 47, "b": 0.25, "line": 14, "sec": "Куплет 2"}, {"syl": "it", "midi": 45, "b": 0.25, "line": 14, "sec": "Куплет 2"}, {"syl": "in", "midi": 45, "b": 2.5, "line": 14, "sec": "Куплет 2"}, {"rest": true, "b": 0.25, "line": 15, "sec": "Куплет 2"}, {"syl": "She", "midi": 45, "b": 0.25, "line": 15, "sec": "Куплет 2"}, {"syl": "go", "midi": 48, "b": 0.5, "line": 15, "sec": "Куплет 2"}, {"syl": "let", "midi": 47, "b": 0.25, "line": 15, "sec": "Куплет 2"}, {"syl": "it", "midi": 45, "b": 0.25, "line": 15, "sec": "Куплет 2"}, {"syl": "out", "midi": 45, "b": 2.5, "line": 15, "sec": "Куплет 2"}, {"rest": true, "b": 6.0, "line": 15, "sec": "Куплет 2"}, {"rest": true, "b": 1.0, "line": 16, "sec": "Припев"}, {"syl": "Is", "midi": 50, "b": 0.25, "line": 16, "sec": "Припев"}, {"syl": "it", "midi": 50, "b": 0.25, "line": 16, "sec": "Припев"}, {"syl": "a-", "midi": 50, "b": 0.25, "line": 16, "sec": "Припев"}, {"syl": "-ny", "midi": 50, "b": 0.25, "line": 16, "sec": "Припев"}, {"syl": "won-", "midi": 48, "b": 0.5, "line": 16, "sec": "Припев"}, {"syl": "-der", "midi": 48, "b": 0.5, "line": 16, "sec": "Припев"}, {"syl": "why", "midi": 48, "b": 0.5, "line": 16, "sec": "Припев"}, {"syl": "Prin-", "midi": 49, "b": 1.0, "line": 16, "sec": "Припев"}, {"syl": "-ces", "midi": 49, "b": 0.5, "line": 16, "sec": "Припев"}, {"syl": "and", "midi": 49, "b": 0.5, "line": 16, "sec": "Припев"}, {"syl": "kings", "midi": 50, "b": 2.5, "line": 16, "sec": "Припев"}, {"rest": true, "b": 0.5, "line": 17, "sec": "Припев"}, {"syl": "Are", "midi": 50, "b": 0.5, "line": 17, "sec": "Припев"}, {"syl": "clowns", "midi": 50, "b": 0.5, "line": 17, "sec": "Припев"}, {"syl": "that", "midi": 50, "b": 0.5, "line": 17, "sec": "Припев"}, {"syl": "ca-", "midi": 48, "b": 0.5, "line": 17, "sec": "Припев"}, {"syl": "-per", "midi": 48, "b": 0.5, "line": 17, "sec": "Припев"}, {"syl": "In", "midi": 48, "b": 0.5, "line": 17, "sec": "Припев"}, {"syl": "their", "midi": 48, "b": 0.5, "line": 17, "sec": "Припев"}, {"syl": "saw-", "midi": 48, "b": 0.5, "line": 17, "sec": "Припев"}, {"syl": "-dust", "midi": 48, "b": 0.5, "line": 17, "sec": "Припев"}, {"rest": true, "b": 0.5, "line": 17, "sec": "Припев"}, {"syl": "rings", "midi": 50, "b": 2.5, "line": 17, "sec": "Припев"}, {"rest": true, "b": 1.0, "line": 18, "sec": "Припев"}, {"syl": "Or-", "midi": 50, "b": 0.25, "line": 18, "sec": "Припев"}, {"syl": "-di-", "midi": 50, "b": 0.25, "line": 18, "sec": "Припев"}, {"syl": "-na-", "midi": 50, "b": 0.25, "line": 18, "sec": "Припев"}, {"syl": "-ry", "midi": 50, "b": 0.25, "line": 18, "sec": "Припев"}, {"syl": "peo-", "midi": 48, "b": 0.5, "line": 18, "sec": "Припев"}, {"syl": "-ple", "midi": 48, "b": 0.5, "line": 18, "sec": "Припев"}, {"syl": "That", "midi": 48, "b": 0.5, "line": 18, "sec": "Припев"}, {"syl": "are", "midi": 48, "b": 0.5, "line": 18, "sec": "Припев"}, {"syl": "like", "midi": 48, "b": 0.5, "line": 18, "sec": "Припев"}, {"syl": "you", "midi": 48, "b": 0.5, "line": 18, "sec": "Припев"}, {"syl": "and", "midi": 48, "b": 0.5, "line": 18, "sec": "Припев"}, {"syl": "me", "midi": 50, "b": 1.5, "line": 18, "sec": "Припев"}, {"syl": "We're", "midi": 48, "b": 0.5, "line": 18, "sec": "Припев"}, {"syl": "the", "midi": 50, "b": 0.5, "line": 18, "sec": "Припев"}, {"syl": "kee-", "midi": 53, "b": 0.5, "line": 19, "sec": "Припев"}, {"syl": "-pers", "midi": 50, "b": 0.5, "line": 19, "sec": "Припев"}, {"syl": "Of", "midi": 53, "b": 0.5, "line": 19, "sec": "Припев"}, {"syl": "their", "midi": 50, "b": 0.5, "line": 19, "sec": "Припев"}, {"syl": "des-", "midi": 53, "b": 0.5, "line": 19, "sec": "Припев"}, {"syl": "-ti-", "midi": 53, "b": 1.0, "line": 19, "sec": "Припев"}, {"syl": "-ny", "midi": 50, "b": 3.5, "line": 19, "sec": "Припев"}, {"syl": "We're", "midi": 48, "b": 0.5, "line": 19, "sec": "Припев"}, {"syl": "the", "midi": 50, "b": 0.5, "line": 19, "sec": "Припев"}, {"syl": "kee-", "midi": 53, "b": 0.5, "line": 20, "sec": "Припев"}, {"syl": "-pers", "midi": 50, "b": 0.5, "line": 20, "sec": "Припев"}, {"syl": "Of", "midi": 53, "b": 0.5, "line": 20, "sec": "Припев"}, {"syl": "their", "midi": 50, "b": 0.5, "line": 20, "sec": "Припев"}, {"syl": "des-", "midi": 53, "b": 0.5, "line": 20, "sec": "Припев"}, {"syl": "-ti-", "midi": 53, "b": 1.0, "line": 20, "sec": "Припев"}, {"syl": "-ny", "midi": 50, "b": 4.5, "line": 20, "sec": "Припев"}]};
+const NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const nm=m=>NAMES[m%12]+(Math.floor(m/12)-1);
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1;
+function resize(){DPR=window.devicePixelRatio||1;W=cv.clientWidth;H=cv.clientHeight;cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);draw();}
+window.addEventListener('resize',resize);
+// секции
+const secs=[...new Set(SONG.items.map(i=>i.sec))];
+secs.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;$('section').appendChild(o);});
+// настройки
+try{const st=JSON.parse(localStorage.getItem('roll')||'{}');if(st.tempo)$('tempo').value=st.tempo;if(st.vol!=null)$('vol').value=st.vol;if(st.section)$('section').value=st.section;if(st.loop)$('loop').checked=true;}catch(e){}
+function saveSt(){try{localStorage.setItem('roll',JSON.stringify({tempo:$('tempo').value,vol:$('vol').value,section:$('section').value,loop:$('loop').checked}));}catch(e){}}
+['tempo','vol','section','loop'].forEach(id=>$(id).addEventListener('change',()=>{saveSt();if(!running)buildEvents();draw();}));
+// события
+let events=[],total=0,lo=40,hi=56,PPS=130,PLAYX=0.3,secStart=0;
+const GTR={bpm:89.1,offset:6.39,grid:[6.385, 7.059, 7.779, 8.475, 9.172, 9.868, 10.565, 11.238, 11.935, 12.608, 13.305, 14.002, 14.698, 15.395, 16.115, 16.811, 17.508, 18.204, 18.901, 19.574, 20.248, 20.968, 21.618, 22.314, 23.011, 23.708, 24.381, 25.078, 25.751, 26.424, 27.121, 27.794, 28.468, 29.164, 29.861, 30.557, 31.277, 31.951, 32.67, 33.344, 34.017, 34.714, 35.41, 36.107, 36.78, 37.454, 38.127, 38.801, 39.451, 40.147, 40.821, 41.494, 42.144, 42.794, 43.468, 44.164, 44.838, 45.511, 46.184, 46.858, 47.531, 48.205, 48.878, 49.528, 50.202, 50.852, 51.548, 52.198, 52.872, 53.545, 54.195, 54.869, 55.542, 56.216, 56.889, 57.562, 58.236, 58.932, 59.582, 60.256, 60.929, 61.603, 62.299, 62.996, 63.669, 64.342, 64.993, 65.643, 66.316, 67.013, 67.686, 68.336, 69.01, 69.66, 70.287, 70.937, 71.61, 72.284, 72.934, 73.607, 74.257, 74.931, 75.581, 76.231, 76.881, 77.578, 78.251, 78.925, 79.598, 80.271, 80.945, 81.595, 82.268, 82.942, 83.592, 84.265, 84.939, 85.612, 86.285, 86.982, 87.632]};   // запись Clip 1: время каждой доли от начала куплета 1 (доля 0 = такт 6); темп плавает 83–96
+function gT(b){const g=GTR.grid;if(b<=0)return g[0]+b*(g[1]-g[0]);const i=Math.floor(b);if(i>=g.length-1)return g[g.length-1]+(b-(g.length-1))*(g[g.length-1]-g[g.length-2]);return g[i]+(b-i)*(g[i+1]-g[i]);}
+const WIN=2.0;                      // окно поиска цели ±с — ритм не важен
+['backing'].forEach(id=>{try{const st=JSON.parse(localStorage.getItem('roll')||'{}');if(st.backing)$(id).value=st.backing;}catch(e){}
+  $(id).addEventListener('change',()=>{try{const st=JSON.parse(localStorage.getItem('roll')||'{}');st.backing=$(id).value;localStorage.setItem('roll',JSON.stringify(st));}catch(e){}buildEvents();draw();});});
+const useGtr=()=>$('backing').value==='guitar';
+const CH={A7:[45,52,55,61],D:[50,57,62],F:[41,48,53,57],G:[43,50,55,59],C9:[48,55,60,62]};
+const CHORDS=[];(function(){const bar=(n,c)=>CHORDS.push({b:(n-6)*4,d:4,c});const half=(n,c1,c2)=>{CHORDS.push({b:(n-6)*4,d:2,c:c1});CHORDS.push({b:(n-6)*4+2,d:2,c:c2});};
+  for(const n of [6,7,8,9])bar(n,'A7');bar(10,'D');half(11,'F','G');bar(12,'A7');bar(13,'A7');
+  for(const n of [14,15,16,17])bar(n,'A7');bar(18,'D');half(19,'F','G');bar(20,'A7');bar(21,'A7');bar(22,'D');half(23,'F','G');bar(24,'A7');bar(25,'A7');
+  for(const n of [26,28,30]){half(n,'D','F');half(n+1,'A7','C9');}bar(32,'G');bar(33,'D');bar(34,'G');bar(35,'D');})();
+function buildEvents(){
+  const bpm=useGtr()?GTR.bpm:+$('tempo').value,beat=60/bpm,sec=$('section').value;$('tempo').disabled=useGtr();
+  let items=SONG.items.filter(i=>sec==='all'||i.sec===sec);
+  // доля начала секции в целой песне (для аккордов)
+  let before=0;for(const i of SONG.items){if(sec==='all'||i.sec===sec)break;before+=i.b;}
+  // обрезать паузы в начале/конце секции
+  while(items.length&&items[0].rest){before+=items[0].b;items.shift();}while(items.length&&items[items.length-1].rest)items.pop();
+  secStart=before;
+  let t=0;events=[];
+  if(useGtr()){let b=secStart;const base=gT(secStart);
+    for(const it of items){if(!it.rest)events.push({syl:it.syl,midi:it.midi,t:gT(b)-base,dur:gT(b+it.b)-gT(b),line:it.line});b+=it.b;}
+    total=gT(b)-base;}
+  else{for(const it of items){const d=it.b*beat;if(!it.rest)events.push({syl:it.syl,midi:it.midi,t,dur:d,line:it.line});t+=d;}
+    total=t;}const ms=events.map(e=>e.midi);lo=Math.min(...ms)-3;hi=Math.max(...ms)+3;
+}
+buildEvents();
+// строки текста
+const lineText=(ln)=>{const parts=events.filter(e=>e.line===ln).map(e=>e.syl);let s='';for(const p of parts){if(p.startsWith('-'))s+=p.slice(1);else s+=(s?' ':'')+p;}return s.replace(/-$/g,'').replace(/-\s/g,' ');};
+// аудио
+let review=false,rt=0;
+let ac,analyser,buf,stream,running=false,t0=0,samples=[],oscs=[],gainNode,raf,srcNode,gtrT0=0;
+async function listMics(){try{const devs=await navigator.mediaDevices.enumerateDevices();const sel=$('mic');const cur=sel.value;sel.innerHTML='<option value="">по умолчанию</option>';
+  devs.filter(d=>d.kind==='audioinput').forEach(d=>{const o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||('микрофон '+(sel.length));sel.appendChild(o);});
+  let saved='';try{saved=JSON.parse(localStorage.getItem('roll')||'{}').mic||'';}catch(e){}
+  sel.value=[...sel.options].some(o=>o.value===(cur||saved))?(cur||saved):'';}catch(e){}}
+$('mic').addEventListener('change',()=>{try{const st=JSON.parse(localStorage.getItem('roll')||'{}');st.mic=$('mic').value;localStorage.setItem('roll',JSON.stringify(st));}catch(e){}
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}});
+function ensureAudio(){if(ac)return;ac=new (window.AudioContext||window.webkitAudioContext)();gainNode=ac.createGain();gainNode.connect(ac.destination);}
+let chGain,btGain;
+function setVol(){if(gainNode)gainNode.gain.value=(+$('vol').value/100)*0.5;if(chGain)chGain.gain.value=(+$('chvol').value/100)*0.35;if(btGain)btGain.gain.value=(+$('btvol').value/100)*0.6;}
+['vol','chvol','btvol'].forEach(id=>$(id).addEventListener('input',setVol));
+$('lat').addEventListener('change',()=>{try{const st=JSON.parse(localStorage.getItem('roll')||'{}');st.lat=$('lat').value;localStorage.setItem('roll',JSON.stringify(st));}catch(e){}});
+try{const st=JSON.parse(localStorage.getItem('roll')||'{}');if(st.lat)$('lat').value=st.lat;if(st.chvol!=null)$('chvol').value=st.chvol;if(st.btvol!=null)$('btvol').value=st.btvol;}catch(e){}
+['chvol','btvol'].forEach(id=>$(id).addEventListener('change',()=>{try{const st=JSON.parse(localStorage.getItem('roll')||'{}');st[id]=$(id).value;localStorage.setItem('roll',JSON.stringify(st));}catch(e){}}));
+function ensureBus(){if(chGain)return;chGain=ac.createGain();chGain.connect(ac.destination);btGain=ac.createGain();btGain.connect(ac.destination);}
+function chord(notes,at,dur){notes.forEach((m,i)=>{const o=ac.createOscillator(),g=ac.createGain();o.type='triangle';o.frequency.value=440*Math.pow(2,(m-69)/12);const a=at+i*0.02;g.gain.setValueAtTime(0,a);g.gain.linearRampToValueAtTime(0.5,a+0.03);g.gain.exponentialRampToValueAtTime(0.12,a+dur*0.9);g.gain.linearRampToValueAtTime(0,at+dur);o.connect(g);g.connect(chGain);o.start(a);o.stop(at+dur+0.05);oscs.push(o);});}
+let noiseBuf;function noise(){if(noiseBuf)return noiseBuf;const n=ac.sampleRate*0.2,b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;noiseBuf=b;return b;}
+function kick(at){const o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.setValueAtTime(150,at);o.frequency.exponentialRampToValueAtTime(45,at+0.12);g.gain.setValueAtTime(0.9,at);g.gain.exponentialRampToValueAtTime(0.001,at+0.25);o.connect(g);g.connect(btGain);o.start(at);o.stop(at+0.3);oscs.push(o);}
+function hat(at,soft){const src=ac.createBufferSource();src.buffer=noise();const f=ac.createBiquadFilter();f.type='highpass';f.frequency.value=7000;const g=ac.createGain();g.gain.setValueAtTime(soft?0.08:0.16,at);g.gain.exponentialRampToValueAtTime(0.001,at+0.05);src.connect(f);f.connect(g);g.connect(btGain);src.start(at);src.stop(at+0.06);oscs.push(src);}
+function snare(at){const src=ac.createBufferSource();src.buffer=noise();const f=ac.createBiquadFilter();f.type='bandpass';f.frequency.value=1800;f.Q.value=0.7;const g=ac.createGain();g.gain.setValueAtTime(0.35,at);g.gain.exponentialRampToValueAtTime(0.001,at+0.15);src.connect(f);f.connect(g);g.connect(btGain);src.start(at);src.stop(at+0.2);oscs.push(src);}
+function scheduleBacking(t0abs,beat,fromBeat,toBeat){
+  // бит: бочка 1,3; малый 2,4; хэт восьмыми
+  for(let b=Math.floor(fromBeat);b<toBeat;b++){const at=t0abs+(b-fromBeat)*beat;if(at<ac.currentTime)continue;const inBar=((b%4)+4)%4;if(inBar===0||inBar===2)kick(at);else snare(at);hat(at,false);hat(at+beat/2,true);}
+  for(const c of CHORDS){const a=Math.max(c.b,fromBeat),e=Math.min(c.b+c.d,toBeat);if(e<=a)continue;
+    // удар на каждой доле аккорда, слабее на 2 и 4
+    for(let b=Math.ceil(a);b<e;b++){const at=t0abs+(b-fromBeat)*beat;if(at<ac.currentTime)continue;const n=CH[c.c];chord(n,at,Math.min(beat*0.98,(e-b)*beat));}}}
+function tone(midi,at,dur){const o=ac.createOscillator(),g=ac.createGain();o.type='triangle';o.frequency.value=440*Math.pow(2,(midi-69)/12);g.gain.setValueAtTime(0,at);g.gain.linearRampToValueAtTime(1,at+0.02);g.gain.setValueAtTime(1,at+dur-0.05);g.gain.linearRampToValueAtTime(0,at+dur);o.connect(g);g.connect(gainNode);o.start(at);o.stop(at+dur+0.02);oscs.push(o);}
+function click(at){const o=ac.createOscillator(),g=ac.createGain();o.type='square';o.frequency.value=1200;g.gain.setValueAtTime(0.25,at);g.gain.exponentialRampToValueAtTime(0.001,at+0.05);o.connect(g);g.connect(ac.destination);o.start(at);o.stop(at+0.06);oscs.push(o);}
+// детектор высоты (автокорреляция)
+let lastRms=0;
+function detect(b,sr){let n=b.length,rms=0;for(let i=0;i<n;i++)rms+=b[i]*b[i];rms=Math.sqrt(rms/n);lastRms=rms;if(rms<0.003)return -1;
+  let r1=0,r2=n-1,th=0.2;for(let i=0;i<n/2;i++)if(Math.abs(b[i])<th){r1=i;break;}for(let i=1;i<n/2;i++)if(Math.abs(b[n-i])<th){r2=n-i;break;}
+  const s=b.slice(r1,r2);n=s.length;const c=new Float32Array(n);for(let i=0;i<n;i++){let v=0;for(let j=0;j<n-i;j++)v+=s[j]*s[j+i];c[i]=v;}
+  let d=0;while(d<n-1&&c[d]>c[d+1])d++;let mx=-1,mp=-1;for(let i=d;i<n;i++)if(c[i]>mx){mx=c[i];mp=i;}
+  if(mp<=0||mx<0.3*c[0])return -1;let T=mp;const x1=c[mp-1]||0,x2=c[mp],x3=c[mp+1]||0,a=(x1+x3-2*x2)/2,bb=(x3-x1)/2;if(a)T=mp-bb/(2*a);
+  const f=sr/T;return (f>60&&f<700)?f:-1;}
+function fold(m,target){if(target==null)return m;let d=m-target;while(d>6){m-=12;d-=12;}while(d<-6){m+=12;d+=12;}return m;}
+function targetAt(t){for(const e of events)if(t>=e.t&&t<e.t+e.dur)return e;return null;}
+let lastMatch=null;
+function assign(s){s.tg=matchTarget(s.t,s.m);if(s.tg)(s.tg.ss||(s.tg.ss=[])).push((fold(s.m,s.tg.midi)-s.tg.midi)*100);}
+function medC(e){const a=e.ss;if(!a||a.length<2)return null;const b=a.slice().sort((x,y)=>x-y);return Math.round(b[Math.floor(b.length/2)]);}
+function matchTarget(t,m){ // цель: среди нот в окне ±WIN — ближайшая по высоте; предпочитаем прежнюю, если ещё годится
+  const cands=events.filter(e=>e.t+e.dur>t-WIN&&e.t<t+WIN);if(!cands.length)return null;
+  const dev=e=>{const mm=fold(m,e.midi);return Math.abs(mm-e.midi)*100;};
+  const now=cands.find(e=>e!==lastMatch&&t>=e.t&&t<e.t+e.dur&&dev(e)<=50);if(now){lastMatch=now;return now;}   // слог, идущий прямо сейчас и близкий по высоте, важнее удержания
+  if(lastMatch&&cands.includes(lastMatch)&&dev(lastMatch)<=150&&t<lastMatch.t+lastMatch.dur+0.25)return lastMatch;   // держим прежнюю цель, пока её время не вышло (иначе соседние слоги одной высоты слипаются)
+  let best=null,bd=1e9;for(const e of cands){const d=dev(e)+Math.abs(e.t+e.dur/2-t)*8;if(d<bd){bd=d;best=e;}}
+  if(dev(best)>250)return null;lastMatch=best;return best;}
+async function openMic(){
+  if(stream)return true;const want=$('mic').value;const cons={echoCancellation:false,noiseSuppression:false,autoGainControl:false};if(want)cons.deviceId={exact:want};
+    try{stream=await navigator.mediaDevices.getUserMedia({audio:cons});}catch(e){$('msg').textContent='Микрофон не разрешён ('+e.name+'). В браузере: значок замка у адреса → Микрофон → Разрешить. На Mac ещё: Системные настройки → Конфиденциальность → Микрофон → браузер.';return;}
+    await listMics();
+    if(srcNode){try{srcNode.disconnect();}catch(e){}}
+    srcNode=ac.createMediaStreamSource(stream);analyser=ac.createAnalyser();analyser.fftSize=2048;buf=new Float32Array(2048);srcNode.connect(analyser);
+    const tr=stream.getAudioTracks()[0];if(tr){const lb=(tr.label||'').toLowerCase();if(/airpod|bluetooth|hands-free|hfp/.test(lb))$('msg').textContent='Микрофон — '+tr.label+': по Bluetooth звук плохой, точность упадёт. Лучше выбрать встроенный микрофон, а наушники оставить только на звук.';}
+  return true;}
+let testing=false,peakRms=0;
+async function micTest(){ensureAudio();await ac.resume();if(!(await openMic()))return;
+  testing=true;samples=[];peakRms=0;review=false;$('scrubrow').hidden=true;t0=ac.currentTime;$('result').classList.remove('show');$('msg').textContent='Спой любую ноту — точки должны появиться слева от линии.';$('start').hidden=true;$('stop').hidden=false;$('mictest').hidden=true;
+  (function tl(){if(!testing)return;analyser.getFloatTimeDomainData(buf);const f=detect(buf,ac.sampleRate);const t=ac.currentTime-t0;if(f>0)samples.push({t,m:69+12*Math.log2(f/440)});peakRms=Math.max(peakRms,lastRms);draw(t);
+    if(t>2&&peakRms<0.003)$('msg').textContent='Сигнала нет (уровень '+(20*Math.log10(peakRms+1e-6)).toFixed(0)+' дБ). Проверь, тот ли микрофон выбран, и Системные настройки → Звук → Вход.';else if(peakRms>=0.003)$('msg').textContent='';
+    raf=requestAnimationFrame(tl);})();}
+$('mictest').onclick=micTest;
+async function start(){
+  ensureAudio();await ac.resume();setVol();
+  if(!(await openMic()))return;
+  buildEvents();samples=[];oscs=[];review=false;$('scrubrow').hidden=true;$('result').classList.remove('show');$('msg').textContent='';
+  ensureBus();setVol();lastMatch=null;
+  const mode=$('backing').value;
+  if(mode==='guitar'){
+    const a=$('gtr');const base=gT(secStart);const startAt=Math.max(0,gT(secStart-2));   // за 2 доли до части
+    a.currentTime=startAt;try{await a.play();}catch(e){$('msg').textContent='Запись не запустилась: '+e.message;return;}
+    const now=ac.currentTime;t0=now-(startAt-base);gtrT0=now-startAt;
+    for(const e of events)tone(e.midi,t0+e.t,e.dur);
+    running=true;$('start').hidden=true;$('stop').hidden=false;loop();return;}
+  const beat=60/+$('tempo').value,now=ac.currentTime+0.1,lead=4*beat;
+  for(let i=0;i<4;i++)click(now+i*beat);
+  for(const e of events)tone(e.midi,now+lead+e.t,e.dur);
+  if(mode==='synth')scheduleBacking(now+lead,beat,secStart,secStart+total/beat+0.001);
+  t0=now+lead;running=true;$('start').hidden=true;$('stop').hidden=false;loop();
+}
+function stop(finished){const wasTest=testing;testing=false;running=false;cancelAnimationFrame(raf);try{$('gtr').pause();}catch(e){}$('mictest').hidden=false;if(wasTest){$('start').hidden=false;$('stop').hidden=true;$('msg').textContent='';return;}for(const o of oscs){try{o.stop();}catch(e){}}oscs=[];$('start').hidden=false;$('stop').hidden=true;score();review=true;$('scrubrow').hidden=false;setRT(0);
+  if(finished&&$('loop').checked)setTimeout(()=>{if(!running)start();},1800);}
+$('start').onclick=start;$('stop').onclick=()=>stop(false);
+function loop(){if(!running)return;analyser.getFloatTimeDomainData(buf);const f=detect(buf,ac.sampleRate);
+  let t=ac.currentTime-t0;const a=$('gtr');if(useGtr()&&!a.paused){t=a.currentTime-gT(secStart);}
+  if(f>0)samples.push({t:t-(+$('lat').value)/1000,m:69+12*Math.log2(f/440)});
+  draw(t);if(t>total+0.8)stop(true);else raf=requestAnimationFrame(loop);}
+function colorFor(c){return Math.abs(c)<=10?getVar('--good'):(c<0?getVar('--flat'):getVar('--sharp'));}
+const cs=getComputedStyle(document.documentElement);const getVar=v=>cs.getPropertyValue(v).trim();
+function draw(t){if(t==null)t=running?ac.currentTime-t0:(review?rt:-1.5);
+  ctx.clearRect(0,0,W,H);const rows=hi-lo,rh=H/rows,px=W*PLAYX;const y=m=>H-(m-lo+0.5)*rh;
+  // сетка
+  for(let m=lo;m<=hi;m++){const yy=y(m);ctx.fillStyle=(m%12===0||m%12===2||m%12===4||m%12===5||m%12===7||m%12===9||m%12===11)?getVar('--grid2'):'transparent';ctx.fillRect(0,yy-rh/2,W,rh);ctx.strokeStyle=getVar('--grid');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,yy-rh/2);ctx.lineTo(W,yy-rh/2);ctx.stroke();
+    if([0,2,4,5,7,9,11].includes(m%12)){ctx.fillStyle=getVar('--muted');ctx.font='12px -apple-system,sans-serif';ctx.textBaseline='middle';ctx.fillText(nm(m),6,yy);}}
+  // цели
+  ctx.font='13px -apple-system,sans-serif';
+  for(const e of events){const x=px+(e.t-t)*PPS,w=e.dur*PPS;if(x+w<0||x>W)continue;const yy=y(e.midi);
+    const sc=(review||e.t<t)?medC(e):null;const col=sc==null?null:colorFor(sc);
+    ctx.fillStyle=col?col+'55':getVar('--accent-soft');ctx.fillRect(x,yy-rh*0.45,w,rh*0.9);ctx.strokeStyle=col||getVar('--accent');ctx.lineWidth=col?2:1.5;ctx.strokeRect(x,yy-rh*0.45,w,rh*0.9);
+    if(w>22){ctx.fillStyle=getVar('--text');ctx.textBaseline='middle';ctx.fillText(e.syl.replace(/^-/,''),x+4,yy);}}
+  // текст под боксами: слово стоит под своей нотой, бежит вместе с ней
+  const ty=H-22;ctx.font='600 16px -apple-system,sans-serif';ctx.textBaseline='middle';let lastEnd=-1e9;
+  for(let i=0;i<events.length;i++){const e=events[i];if(e.syl.startsWith('-'))continue;let word=e.syl.replace(/-$/,'');for(let j=i+1;j<events.length&&events[j].syl.startsWith('-');j++)word+=events[j].syl.replace(/^-/,'').replace(/-$/,'');
+    let x=px+(e.t-t)*PPS;if(x<lastEnd+6)x=lastEnd+6;const w=ctx.measureText(word).width;if(x>W||x+w<0){lastEnd=x+w;continue;}
+    const sung=e.t<=t,now=t>=e.t&&t<e.t+e.dur+0.15;ctx.fillStyle=now?getVar('--accent'):(sung?getVar('--text'):getVar('--muted'));ctx.fillText(word,x,ty);lastEnd=x+w;}
+  // голос
+  let cur=null,curTg=null;
+  if(review){for(let i=0;i<samples.length;i++){const s=samples[i];const x=px+(s.t-t)*PPS;if(x<0||x>px+2)continue;if(s.tg===undefined)assign(s);const tg=s.tg;const m=fold(s.m,tg?tg.midi:null);
+    const c=tg?(m-tg.midi)*100:null;ctx.fillStyle=c==null?getVar('--muted'):colorFor(c);ctx.fillRect(x-1.5,y(m)-2,3,4);if(t-s.t<0.12){cur=c;curTg=tg;}}}
+  else{ // комета: сглаженный хвост ~0.7 с + голова на линии
+    const tail=[];for(let i=samples.length-1;i>=0;i--){const s=samples[i];if(t-s.t>0.7)break;tail.push(s);}
+    tail.reverse();for(const s of tail)if(s.tg===undefined)assign(s); /* цели назначаются строго по времени, иначе удержание прежней цели идёт задом наперёд */
+    if(tail.length){const last=tail[tail.length-1];const tg=last.tg;const mh=fold(last.m,tg?tg.midi:null);
+      // сглаживание: медиана последних 5 точек
+      const sm=i=>{const a=[];for(let k=Math.max(0,i-4);k<=i;k++)a.push(fold(tail[k].m,tg?tg.midi:null));a.sort((p,q)=>p-q);return a[Math.floor(a.length/2)];};
+      const c=tg?(sm(tail.length-1)-tg.midi)*100:null;const col=c==null?getVar('--muted'):colorFor(c);
+      for(let i=1;i<tail.length;i++){const s=tail[i],pv=tail[i-1];if(s.t-pv.t>0.15)continue;const k=i/tail.length;ctx.strokeStyle=col;ctx.globalAlpha=0.15+0.75*k;ctx.lineWidth=1+9*k;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(px+(pv.t-t)*PPS,y(sm(i-1)));ctx.lineTo(px+(s.t-t)*PPS,y(sm(i)));ctx.stroke();}
+      ctx.globalAlpha=1;if(t-last.t<0.15){const yy=y(sm(tail.length-1));ctx.fillStyle=col;ctx.beginPath();ctx.arc(px,yy,8,0,Math.PI*2);ctx.fill();ctx.fillStyle=getVar('--text');ctx.font='600 13px -apple-system,sans-serif';ctx.textBaseline='middle';ctx.fillText(nm(Math.round(mh)).replace(/\d/,''),px+13,yy);cur=c;curTg=tg;}}}
+  // линия воспроизведения
+  ctx.strokeStyle=getVar('--line');ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,H);ctx.stroke();
+  const mt=$('meter').firstElementChild;const db=20*Math.log10(lastRms+1e-6);mt.style.width=Math.max(0,Math.min(100,(db+60)/60*100))+'%';mt.style.background=lastRms<0.003?getVar('--muted'):getVar('--good');
+  // живое отклонение + какая нота должна быть
+  const lv=$('live');if(cur==null){lv.textContent='—';lv.style.color=getVar('--muted');}else{lv.textContent=(curTg?curTg.syl.replace(/^-/,'')+' '+nm(curTg.midi).replace(/\d/,''):'')+(Math.abs(cur)<=10?' ✓':(cur<0?' ↓':' ↑'));lv.style.color=colorFor(cur);}
+  // текст строки
+  const tg=targetAt(Math.max(t,0));const ln=tg?tg.line:(events.find(e=>e.t>t)||{}).line;
+  if(ln){const parts=events.filter(e=>e.line===ln);let html='';for(const p of parts){const s=p.syl.replace(/^-/,'').replace(/-$/,'');const sep=p.syl.startsWith('-')?'':' ';html+=sep+(p===tg?'<b>'+s+'</b>':s);}$('lyrics').innerHTML=html.trim();}
+}
+function score(){const chips=$('chips');chips.innerHTML='';const errs=[];
+  for(const s of samples)if(s.tg===undefined)assign(s);
+  for(const e of events){const c=medC(e);const el=document.createElement('span');el.className='chip';el.onclick=()=>{if(review)setRT(e.t);};e.chip=el;const s=e.syl.replace(/^-/,'').replace(/-$/,'');
+    if(c==null){el.innerHTML=s+'<small>·</small>';}else{errs.push(c);const col=colorFor(c);el.style.background=col+'33';el.style.color=col;el.innerHTML=s+'<small>'+(Math.abs(c)<=10?'✓':(c<0?'↓':'↑'))+'</small>';}
+    chips.appendChild(el);}
+  const n=errs.length;$('rN').textContent=n+'/'+events.length;
+  if(n){$('rIn10').textContent=Math.round(100*errs.filter(c=>Math.abs(c)<=10).length/n)+'%';$('rIn25').textContent=Math.round(100*errs.filter(c=>Math.abs(c)<=25).length/n)+'%';$('rLow').textContent=Math.round(100*errs.filter(c=>c<-10).length/n)+'%';$('rHigh').textContent=Math.round(100*errs.filter(c=>c>10).length/n)+'%';}
+  else{$('rIn10').textContent='—';$('rIn25').textContent='—';$('rLow').textContent='—';$('rHigh').textContent='—';}
+  $('result').classList.add('show');$('msg').textContent=n?'':'Голоса не слышно — проверь микрофон.';}
+// просмотр после пения: перемотка
+function setRT(v){rt=Math.max(0,Math.min(total,v));$('scrub').value=total?Math.round(rt/total*1000):0;$('scrubT').textContent=rt.toFixed(1)+' с';
+  const tg=targetAt(rt);for(const e of events)if(e.chip)e.chip.classList.toggle('cur',e===tg);draw(rt);}
+function stepSyl(dir){const ts=events.map(e=>e.t);let v;if(dir>0)v=ts.find(x=>x>rt+0.05);else{const p=ts.filter(x=>x<rt-0.05);v=p.length?p[p.length-1]:0;}if(v==null)v=total;setRT(v);}
+$('scrub').addEventListener('input',()=>setRT(+$('scrub').value/1000*total));
+$('prev').onclick=()=>stepSyl(-1);$('next').onclick=()=>stepSyl(1);
+(function(){let dx=null,r0=0;const st=$('stage');
+  st.addEventListener('pointerdown',e=>{if(!review)return;dx=e.clientX;r0=rt;st.setPointerCapture(e.pointerId);});
+  st.addEventListener('pointermove',e=>{if(dx==null)return;setRT(r0-(e.clientX-dx)/PPS);});
+  const up=()=>{dx=null;};st.addEventListener('pointerup',up);st.addEventListener('pointercancel',up);})();
+document.addEventListener('keydown',e=>{const tag=(e.target.tagName||'').toLowerCase();
+  if(e.code==='Space'){e.preventDefault();if(document.activeElement)document.activeElement.blur();if(running||testing)stop(false);else start();return;}
+  if(!review||tag==='select'||tag==='input')return;
+  if(e.code==='ArrowLeft'){e.preventDefault();e.shiftKey?setRT(rt-0.25):stepSyl(-1);}
+  else if(e.code==='ArrowRight'){e.preventDefault();e.shiftKey?setRT(rt+0.25):stepSyl(1);}
+  else if(e.code==='Home'){e.preventDefault();setRT(0);}else if(e.code==='End'){e.preventDefault();setRT(total);}});
+resize();listMics();
+</script>
+
+</body></html>

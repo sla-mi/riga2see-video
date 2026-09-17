@@ -128,7 +128,7 @@ async function listMics(){try{const devs=await navigator.mediaDevices.enumerateD
 // выбор наушников: куда играть тон/минус/аккорды. Safari этого не умеет — тогда только через системные настройки звука
 const canSink=('setSinkId' in AudioContext.prototype)||('setSinkId' in HTMLMediaElement.prototype);
 if(/iPhone|iPad/.test(navigator.userAgent))$('spk').parentElement.hidden=true;   // iOS сам решает, куда играть (AirPods подключены → в них); список Speaker/Receiver бесполезен
-if(!canSink){$('spk').disabled=true;$('spk').title='Этот браузер не умеет выбирать выход — задай наушники в системных настройках звука (в Chrome — можно здесь)';}
+if(!canSink){$('spk').hidden=true;const n=document.createElement('span');n.textContent='решает система';n.title='Safari/iPad не даёт странице выбирать выход: звук идёт туда, куда направила система (интерфейс, AirPods…)';$('spk').parentElement.appendChild(n);}
 async function applySink(){const id=$('spk').value;try{if(ac&&ac.setSinkId)await ac.setSinkId(id||'');}catch(e){}try{const a=$('gtr');if(a.setSinkId)await a.setSinkId(id||'');}catch(e){}}
 $('spk').addEventListener('change',()=>{try{const st=JSON.parse(localStorage.getItem('roll')||'{}');st.spk=$('spk').value;localStorage.setItem('roll',JSON.stringify(st));}catch(e){}applySink();});
 $('mic').addEventListener('change',()=>{try{const st=JSON.parse(localStorage.getItem('roll')||'{}');st.mic=$('mic').value;localStorage.setItem('roll',JSON.stringify(st));}catch(e){}

@@ -227,7 +227,7 @@ function draw(t){if(t==null)t=running?ac.currentTime-t0:(review?rt:-1.5);
     ctx.fillStyle=col?col+'55':getVar('--accent-soft');ctx.fillRect(x,yy-rh*0.45,w,rh*0.9);ctx.strokeStyle=col||getVar('--accent');ctx.lineWidth=col?2:1.5;ctx.strokeRect(x,yy-rh*0.45,w,rh*0.9);
     if(w>22){ctx.fillStyle=getVar('--text');ctx.textBaseline='middle';ctx.fillText(e.syl.replace(/^-/,''),x+4,yy);}}
   // текст под боксами: слово стоит под своей нотой, бежит вместе с ней
-  const ty=H-22;ctx.font='600 16px -apple-system,sans-serif';ctx.textBaseline='middle';let lastEnd=-1e9;
+  const ty=H-26;ctx.font='600 24px -apple-system,sans-serif';ctx.textBaseline='middle';let lastEnd=-1e9;
   for(let i=0;i<events.length;i++){const e=events[i];if(e.syl.startsWith('-'))continue;let word=e.syl.replace(/-$/,'');for(let j=i+1;j<events.length&&events[j].syl.startsWith('-');j++)word+=events[j].syl.replace(/^-/,'').replace(/-$/,'');
     let x=px+(e.t-t)*PPS;if(x<lastEnd+6)x=lastEnd+6;const w=ctx.measureText(word).width;if(x>W||x+w<0){lastEnd=x+w;continue;}
     const sung=e.t<=t,now=t>=e.t&&t<e.t+e.dur+0.15;ctx.fillStyle=now?getVar('--accent'):(sung?getVar('--text'):getVar('--muted'));ctx.fillText(word,x,ty);lastEnd=x+w;}

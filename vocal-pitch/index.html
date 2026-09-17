@@ -52,6 +52,7 @@ canvas{display:block;width:100%;height:100%}
   <label class="ctl">задержка <select id="lat"><option value="0">0 мс</option><option value="100">100</option><option value="150">150</option><option value="200">200</option><option value="250">250</option><option value="300">300</option></select></label>
   <label class="ctl"><input id="loop" type="checkbox"> повторять</label>
   <label class="ctl">микрофон <select id="mic"><option value="">по умолчанию</option></select></label>
+  <label class="ctl">наушники <select id="spk"><option value="">по умолчанию</option></select></label>
   <button id="start">Старт</button>
   <button id="mictest" class="ghost">Проверить микрофон</button>
   <button id="stop" class="ghost" hidden>Стоп</button>
@@ -118,10 +119,20 @@ let ac,analyser,buf,stream,running=false,t0=0,samples=[],oscs=[],gainNode,raf,sr
 async function listMics(){try{const devs=await navigator.mediaDevices.enumerateDevices();const sel=$('mic');const cur=sel.value;sel.innerHTML='<option value="">по умолчанию</option>';
   devs.filter(d=>d.kind==='audioinput').forEach(d=>{const o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||('микрофон '+(sel.length));sel.appendChild(o);});
   let saved='';try{saved=JSON.parse(localStorage.getItem('roll')||'{}').mic||'';}catch(e){}
-  sel.value=[...sel.options].some(o=>o.value===(cur||saved))?(cur||saved):'';}catch(e){}}
+  sel.value=[...sel.options].some(o=>o.value===(cur||saved))?(cur||saved):'';
+  // выходы (наушники): браузер отдаёт список только после разрешения микрофона
+  const sp=$('spk');const curS=sp.value;sp.innerHTML='<option value="">по умолчанию</option>';
+  devs.filter(d=>d.kind==='audiooutput'&&d.deviceId&&d.deviceId!=='default').forEach(d=>{const o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||('выход '+(sp.length));sp.appendChild(o);});
+  let savedS='';try{savedS=JSON.parse(localStorage.getItem('roll')||'{}').spk||'';}catch(e){}
+  sp.value=[...sp.options].some(o=>o.value===(curS||savedS))?(curS||savedS):'';}catch(e){}}
+// выбор наушников: куда играть тон/минус/аккорды. Safari этого не умеет — тогда только через системные настройки звука
+const canSink=('setSinkId' in AudioContext.prototype)||('setSinkId' in HTMLMediaElement.prototype);
+if(!canSink){$('spk').disabled=true;$('spk').title='Этот браузер не умеет выбирать выход — задай наушники в системных настройках звука (в Chrome — можно здесь)';}
+async function applySink(){const id=$('spk').value;try{if(ac&&ac.setSinkId)await ac.setSinkId(id||'');}catch(e){}try{const a=$('gtr');if(a.setSinkId)await a.setSinkId(id||'');}catch(e){}}
+$('spk').addEventListener('change',()=>{try{const st=JSON.parse(localStorage.getItem('roll')||'{}');st.spk=$('spk').value;localStorage.setItem('roll',JSON.stringify(st));}catch(e){}applySink();});
 $('mic').addEventListener('change',()=>{try{const st=JSON.parse(localStorage.getItem('roll')||'{}');st.mic=$('mic').value;localStorage.setItem('roll',JSON.stringify(st));}catch(e){}
   if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}});
-function ensureAudio(){if(ac)return;ac=new (window.AudioContext||window.webkitAudioContext)();gainNode=ac.createGain();gainNode.connect(ac.destination);}
+function ensureAudio(){if(ac)return;ac=new (window.AudioContext||window.webkitAudioContext)();gainNode=ac.createGain();gainNode.connect(ac.destination);applySink();}
 let chGain,btGain;
 function setVol(){if(gainNode)gainNode.gain.value=(+$('vol').value/100)*0.5;if(chGain)chGain.gain.value=(+$('chvol').value/100)*0.35;if(btGain)btGain.gain.value=(+$('btvol').value/100)*0.6;}
 ['vol','chvol','btvol'].forEach(id=>$(id).addEventListener('input',setVol));
@@ -165,7 +176,7 @@ function matchTarget(t,m){ // цель: среди нот в окне ±WIN — 
 async function openMic(){
   if(stream)return true;const want=$('mic').value;const cons={echoCancellation:false,noiseSuppression:false,autoGainControl:false};if(want)cons.deviceId={exact:want};
     try{stream=await navigator.mediaDevices.getUserMedia({audio:cons});}catch(e){$('msg').textContent='Микрофон не разрешён ('+e.name+'). В браузере: значок замка у адреса → Микрофон → Разрешить. На Mac ещё: Системные настройки → Конфиденциальность → Микрофон → браузер.';return;}
-    await listMics();
+    await listMics();applySink();
     if(srcNode){try{srcNode.disconnect();}catch(e){}}
     srcNode=ac.createMediaStreamSource(stream);analyser=ac.createAnalyser();analyser.fftSize=2048;buf=new Float32Array(2048);srcNode.connect(analyser);
     const tr=stream.getAudioTracks()[0];if(tr){const lb=(tr.label||'').toLowerCase();if(/airpod|bluetooth|hands-free|hfp/.test(lb))$('msg').textContent='Микрофон — '+tr.label+': по Bluetooth звук плохой, точность упадёт. Лучше выбрать встроенный микрофон, а наушники оставить только на звук.';}

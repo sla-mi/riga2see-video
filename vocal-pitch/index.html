@@ -55,6 +55,7 @@ canvas{display:block;width:100%;height:100%}
   <label class="ctl">наушники <select id="spk"><option value="">по умолчанию</option></select></label>
   <button id="start">Старт</button>
   <button id="mictest" class="ghost">Проверить микрофон</button>
+  <button id="sndtest" class="ghost" title="Секунда тона без микрофона — проверить, куда играет звук">Тест звука</button>
   <button id="stop" class="ghost" hidden>Стоп</button>
 </header>
 <audio id="gtr" preload="auto" src="https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/pitch/glo_gtr.m4a"></audio>   <!-- минус с R2: там верный тип и перемотка (Range), у easyflow-статики их нет -->
@@ -189,6 +190,9 @@ async function micTest(){ensureAudio();await ac.resume();if(!(await openMic()))r
     if(t>2&&peakRms<0.003)$('msg').textContent='Сигнала нет (уровень '+(20*Math.log10(peakRms+1e-6)).toFixed(0)+' дБ). Проверь, тот ли микрофон выбран, и Системные настройки → Звук → Вход.';else if(peakRms>=0.003)$('msg').textContent='';
     raf=requestAnimationFrame(tl);})();}
 $('mictest').onclick=micTest;
+// тест звука: тон 1 с + тот же минус на 2 с, микрофон не трогаем — видно, куда система направила выход
+$('sndtest').onclick=async()=>{ensureAudio();await ac.resume();setVol();const now=ac.currentTime;tone(57,now,0.5);tone(64,now+0.55,0.5);
+  const a=$('gtr');try{a.currentTime=8;await a.play();setTimeout(()=>a.pause(),2500);$('msg').textContent='Тон и 2 секунды гитары. Не слышно в наушниках — выход не на них: на iPad/iPhone смени в Пункте управления (значок AirPlay у музыки), на Mac — «наушники» здесь.';}catch(e){$('msg').textContent='Тон сыграл, запись не запустилась: '+e.message;}};
 async function start(){
   ensureAudio();await ac.resume();setVol();
   if(!(await openMic()))return;

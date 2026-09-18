@@ -112,7 +112,7 @@ function buildEvents(){
 // строки текста
 const lineText=(ln)=>{const parts=events.filter(e=>e.line===ln).map(e=>e.syl);let s='';for(const p of parts){if(p.startsWith('-'))s+=p.slice(1);else s+=(s?' ':'')+p;}return s.replace(/-$/g,'').replace(/-\s/g,' ');};
 // аудио
-let review=false,rt=0;
+let review=false,rt=0,lastT=0;
 let ac,analyser,buf,stream,running=false,t0=0,samples=[],oscs=[],gainNode,raf,srcNode,gtrT0=0;
 async function listMics(){try{const devs=await navigator.mediaDevices.enumerateDevices();const sel=$('mic');const cur=sel.value;sel.innerHTML='<option value="">по умолчанию</option>';
   devs.filter(d=>d.kind==='audioinput').forEach(d=>{const o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||('микрофон '+(sel.length));sel.appendChild(o);});
@@ -177,7 +177,7 @@ async function openMic(){
     try{stream=await navigator.mediaDevices.getUserMedia({audio:cons});}catch(e){$('msg').textContent='Микрофон не разрешён ('+e.name+'). В браузере: значок замка у адреса → Микрофон → Разрешить. На Mac ещё: Системные настройки → Конфиденциальность → Микрофон → браузер.';return;}
     await listMics();applySink();
     if(srcNode){try{srcNode.disconnect();}catch(e){}}
-    srcNode=ac.createMediaStreamSource(stream);analyser=ac.createAnalyser();analyser.fftSize=2048;buf=new Float32Array(2048);srcNode.connect(analyser);
+    srcNode=ac.createMediaStreamSource(stream);analyser=ac.createAnalyser();analyser.fftSize=1024;buf=new Float32Array(1024);srcNode.connect(analyser);
     const tr=stream.getAudioTracks()[0];if(tr){const lb=(tr.label||'').toLowerCase();if(/airpod|bluetooth|hands-free|hfp/.test(lb))$('msg').textContent='Микрофон — '+tr.label+': по Bluetooth звук плохой, точность упадёт. Лучше выбрать встроенный микрофон, а наушники оставить только на звук.';}
   return true;}
 let testing=false,peakRms=0;
@@ -214,12 +214,13 @@ async function start(){
   if(mode==='synth')scheduleBacking(now+lead,beat,secStart+from/beat,secStart+total/beat+0.001);
   running=true;$('start').hidden=true;$('stop').hidden=false;loop();
 }
-function stop(finished){const wasTest=testing;testing=false;running=false;cancelAnimationFrame(raf);try{$('gtr').pause();}catch(e){}$('mictest').hidden=false;if(wasTest){$('start').hidden=false;$('stop').hidden=true;$('msg').textContent='';return;}for(const o of oscs){try{o.stop();}catch(e){}}oscs=[];$('start').hidden=false;$('stop').hidden=true;score();review=true;$('scrubrow').hidden=false;setRT(0);
+function stop(finished){const wasTest=testing;testing=false;running=false;cancelAnimationFrame(raf);try{$('gtr').pause();}catch(e){}$('mictest').hidden=false;if(wasTest){$('start').hidden=false;$('stop').hidden=true;$('msg').textContent='';return;}for(const o of oscs){try{o.stop();}catch(e){}}oscs=[];$('start').hidden=false;$('stop').hidden=true;score();review=true;$('scrubrow').hidden=false;setRT(finished?0:Math.max(0,lastT));
   if(finished&&$('loop').checked)setTimeout(()=>{if(!running)start();},1800);}
 $('start').onclick=start;$('stop').onclick=()=>stop(false);
 function loop(){if(!running)return;analyser.getFloatTimeDomainData(buf);const f=detect(buf,ac.sampleRate);
   let t=ac.currentTime-t0;const a=$('gtr');if(useGtr()&&!a.paused){t=a.currentTime-gT(secStart);}
-  if(f>0)samples.push({t:t-(+$('lat').value)/1000,m:69+12*Math.log2(f/440)});
+  const lat=analyser.fftSize/2/ac.sampleRate+(ac.baseLatency||0)+(+$('lat').value)/1000;   // середина буфера + задержка входа
+  if(f>0)samples.push({t:t-lat,m:69+12*Math.log2(f/440)});lastT=t;
   draw(t);if(t>total+0.8)stop(true);else raf=requestAnimationFrame(loop);}
 // Пороги по стандарту 18.09 (ref_vocal_pitch_standard): попал ±25 ц / почти ±40 ц, дальше — мимо (слышно всем). (100 ц = полутон.)
 const HIT=25,NEAR=40;
@@ -256,7 +257,7 @@ function draw(t){if(t==null)t=running?ac.currentTime-t0:(review?rt:-1.5);
     tail.reverse();for(const s of tail)if(s.tg===undefined)assign(s); /* цели назначаются строго по времени, иначе удержание прежней цели идёт задом наперёд */
     if(tail.length){const last=tail[tail.length-1];const tg=last.tg;const mh=fold(last.m,tg?tg.midi:null);
       // сглаживание: медиана последних 5 точек
-      const sm=i=>{const a=[];for(let k=Math.max(0,i-4);k<=i;k++)a.push(fold(tail[k].m,tg?tg.midi:null));a.sort((p,q)=>p-q);return a[Math.floor(a.length/2)];};
+      const sm=i=>{const a=[];for(let k=Math.max(0,i-2);k<=i;k++)a.push(fold(tail[k].m,tg?tg.midi:null));a.sort((p,q)=>p-q);return a[Math.floor(a.length/2)];};
       const c=tg?(sm(tail.length-1)-tg.midi)*100:null;const col=c==null?getVar('--muted'):colorFor(c,tg.dur);
       for(let i=1;i<tail.length;i++){const s=tail[i],pv=tail[i-1];if(s.t-pv.t>0.15)continue;const k=i/tail.length;ctx.strokeStyle=col;ctx.globalAlpha=0.15+0.75*k;ctx.lineWidth=1+9*k;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(px+(pv.t-t)*PPS,y(sm(i-1)));ctx.lineTo(px+(s.t-t)*PPS,y(sm(i)));ctx.stroke();}
       ctx.globalAlpha=1;if(t-last.t<0.15){const yy=y(sm(tail.length-1));ctx.fillStyle=col;ctx.beginPath();ctx.arc(px,yy,8,0,Math.PI*2);ctx.fill();ctx.fillStyle=getVar('--text');ctx.font='600 13px -apple-system,sans-serif';ctx.textBaseline='middle';ctx.fillText(nm(Math.round(mh)).replace(/\d/,''),px+13,yy);cur=c;curTg=tg;}}}

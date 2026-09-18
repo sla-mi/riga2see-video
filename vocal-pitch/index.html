@@ -112,7 +112,13 @@ function buildEvents(){
 // строки текста
 const lineText=(ln)=>{const parts=events.filter(e=>e.line===ln).map(e=>e.syl);let s='';for(const p of parts){if(p.startsWith('-'))s+=p.slice(1);else s+=(s?' ':'')+p;}return s.replace(/-$/g,'').replace(/-\s/g,' ');};
 // аудио
-let review=false,rt=0,lastT=0;
+let review=false,rt=0,lastT=0,rec=null,recChunks=[],recFrom=0;
+// запись голоса каждого дубля → сервер (стандарт 18.09: голос хранить, минус — нет)
+function recStart(from){recChunks=[];recFrom=from;try{const mt=['audio/webm;codecs=opus','audio/mp4','audio/webm'].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m));rec=new MediaRecorder(stream,mt?{mimeType:mt,audioBitsPerSecond:64000}:{audioBitsPerSecond:64000});rec.ondataavailable=e=>{if(e.data.size)recChunks.push(e.data);};rec.start(1000);}catch(e){rec=null;}}
+function recStop(){return new Promise(res=>{if(!rec||rec.state==='inactive'){res(null);return;}rec.onstop=()=>{const b=new Blob(recChunks,{type:rec.mimeType});res(b);};rec.stop();});}
+async function saveTake(blob,card){if(!blob||blob.size<20000)return;const fd=new FormData();fd.append('audio',blob,'take');fd.append('card',JSON.stringify(card));
+  try{const r=await fetch('/vocal-pitch/api/take',{method:'POST',body:fd});const j=await r.json();$('hist').insertAdjacentHTML('afterbegin','<span title="'+(j.key||'')+'">дубль сохранён ('+Math.round(blob.size/1024)+' КБ)</span>');}
+  catch(e){const u=URL.createObjectURL(blob);$('hist').insertAdjacentHTML('afterbegin','<span>сервер не принял запись — <a href="'+u+'" download="take.webm">скачать</a></span>');}}
 let ac,analyser,buf,stream,running=false,t0=0,samples=[],oscs=[],gainNode,raf,srcNode,gtrT0=0;
 async function listMics(){try{const devs=await navigator.mediaDevices.enumerateDevices();const sel=$('mic');const cur=sel.value;sel.innerHTML='<option value="">по умолчанию</option>';
   devs.filter(d=>d.kind==='audioinput').forEach(d=>{const o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||('микрофон '+(sel.length));sel.appendChild(o);});
@@ -206,15 +212,18 @@ async function start(){
     a.currentTime=startAt;try{await a.play();}catch(e){$('msg').textContent='Запись не запустилась: '+e.message;return;}
     const now=ac.currentTime;t0=now-(startAt-base);gtrT0=now-startAt;
     for(const e of events)if(e.t+e.dur>from)tone(e.midi,t0+e.t,e.dur);
-    running=true;$('start').hidden=true;$('stop').hidden=false;loop();return;}
+    recStart(from);running=true;$('start').hidden=true;$('stop').hidden=false;loop();return;}
   const beat=60/+$('tempo').value,now=ac.currentTime+0.1,lead=4*beat;
   for(let i=0;i<4;i++)click(now+i*beat);
   t0=now+lead-from;
   for(const e of events)if(e.t+e.dur>from)tone(e.midi,t0+e.t,e.dur);
   if(mode==='synth')scheduleBacking(now+lead,beat,secStart+from/beat,secStart+total/beat+0.001);
-  running=true;$('start').hidden=true;$('stop').hidden=false;loop();
+  recStart(from);running=true;$('start').hidden=true;$('stop').hidden=false;loop();
 }
 function stop(finished){const wasTest=testing;testing=false;running=false;cancelAnimationFrame(raf);try{$('gtr').pause();}catch(e){}$('mictest').hidden=false;if(wasTest){$('start').hidden=false;$('stop').hidden=true;$('msg').textContent='';return;}for(const o of oscs){try{o.stop();}catch(e){}}oscs=[];$('start').hidden=false;$('stop').hidden=true;score();review=true;$('scrubrow').hidden=false;setRT(finished?0:Math.max(0,lastT));
+  recStop().then(b=>{const gr=events.map(e=>{const g=grade(e);return g?[e.syl,g.k,g.med]:null;});const n=gr.filter(Boolean).length;const cnt=k=>gr.filter(x=>x&&x[1]===k).length;
+    saveTake(b,{ts:new Date().toISOString(),song:SONG.slug,title:SONG.title,sec:$('section').value,mode:$('backing').value,bpm:useGtr()?'guitar':$('tempo').value,tr:TR,from:Math.round(recFrom*10)/10,to:Math.round(lastT*10)/10,
+      mic:($('mic').selectedOptions[0]||{}).textContent||'',device:navigator.userAgent.slice(0,80),n,good:cnt('good'),near:cnt('near'),miss:cnt('flat')+cnt('sharp'),flat:cnt('flat'),sharp:cnt('sharp'),rule:'±25/±40, атака 120 мс, медиана',syllables:gr});});
   if(finished&&$('loop').checked)setTimeout(()=>{if(!running)start();},1800);}
 $('start').onclick=start;$('stop').onclick=()=>stop(false);
 function loop(){if(!running)return;analyser.getFloatTimeDomainData(buf);const f=detect(buf,ac.sampleRate);

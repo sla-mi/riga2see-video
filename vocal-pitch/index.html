@@ -5,6 +5,7 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#14171c;--panel:#1d2128;--grid:#2a2f38;--grid2:#20242b;--text:#e9e6df;--muted:#8b93a1;--accent:#e9a23b;--accent-soft:rgba(233,162,59,.25);--line:#f4f4f4;--good:#46b36d;--flat:#5b8def;--sharp:#e5544d;--btn:#e9e6df;--btnfg:#14171c;--chip:#252a33}}
 :root[data-theme="dark"]{--bg:#14171c;--panel:#1d2128;--grid:#2a2f38;--grid2:#20242b;--text:#e9e6df;--muted:#8b93a1;--accent:#e9a23b;--accent-soft:rgba(233,162,59,.25);--line:#f4f4f4;--good:#46b36d;--flat:#5b8def;--sharp:#e5544d;--btn:#e9e6df;--btnfg:#14171c;--chip:#252a33}
 html,body{height:100%}
+[hidden]{display:none!important}
 body{background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,"SF Pro Text",Segoe UI,Roboto,sans-serif;padding:10px 16px;padding-block:10px;display:flex;flex-direction:column;gap:10px;font-variant-numeric:tabular-nums;-webkit-user-select:none;user-select:none}
 header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
 h1{font-size:17px;margin:0;font-weight:600;letter-spacing:.01em}
@@ -30,7 +31,7 @@ canvas{display:block;width:100%;height:100%}
 .chips{display:flex;flex-wrap:wrap;gap:4px}
 .chip{padding:3px 7px;border-radius:7px;font-size:13px;line-height:1.15;text-align:center;background:var(--chip)}
 .chip small{display:block;font-size:10px;opacity:.85}
-#scrubrow{display:flex;align-items:center;gap:8px}
+#scrubrow{display:flex;align-items:center;gap:8px;position:absolute;left:12px;right:12px;top:8px;padding:6px 10px;border-radius:12px;background:color-mix(in srgb,var(--panel) 85%,transparent)}
 #scrubrow[hidden]{display:none}
 #scrubrow input[type=range]{flex:1;width:auto}
 #scrubrow span{color:var(--muted);font-size:13px;min-width:56px;text-align:right}
@@ -44,13 +45,14 @@ canvas{display:block;width:100%;height:100%}
 <header>
   <h1>Нотная дорожка</h1>
   <label class="ctl">песня <select id="song"></select></label>
-  <label class="ctl">часть <select id="section"><option value="all">вся песня</option></select></label>
-  <label class="ctl">минус <select id="backing"><option value="guitar">своя гитара (запись)</option><option value="synth">аккорды + бит</option><option value="none">только тон</option></select></label>
+  <select id="section" hidden><option value="all">вся песня</option></select>
+  <label class="ctl">минус <select id="backing"><option value="synth" selected>аккорды + бит</option><option value="guitar">своя гитара (запись)</option><option value="none">только мелодия</option></select></label>
   <label class="ctl">темп <select id="tempo"><option value="84" id="tempoSong">84 (песня)</option><option value="70">70</option><option value="60">60</option><option value="50">50</option></select></label>
-  <label class="ctl">тон в ухе <input id="vol" type="range" min="0" max="100" value="60"></label>
-  <label class="ctl">аккорды <input id="chvol" type="range" min="0" max="100" value="55"></label>
-  <label class="ctl">бит <input id="btvol" type="range" min="0" max="100" value="40"></label>
-  <label class="ctl">задержка <select id="lat"><option value="0">0 мс</option><option value="100">100</option><option value="150">150</option><option value="200">200</option><option value="250">250</option><option value="300">300</option></select></label>
+  <span class="ctl">громкость:</span>
+  <label class="ctl">мелодия <input id="vol" type="range" min="0" max="100" value="60"></label>
+  <label class="ctl">аккомпанемент <input id="chvol" type="range" min="0" max="100" value="55"></label>
+  <label class="ctl">ритм <input id="btvol" type="range" min="0" max="100" value="40"></label>
+  <label class="ctl" hidden>задержка <select id="lat"><option value="0">0 мс</option><option value="100">100</option><option value="150">150</option><option value="200">200</option><option value="250">250</option><option value="300">300</option></select></label>
   <label class="ctl"><input id="loop" type="checkbox"> повторять</label>
   <label class="ctl">микрофон <select id="mic"><option value="">по умолчанию</option></select></label>
   <label class="ctl">наушники <select id="spk"><option value="">по умолчанию</option></select></label>
@@ -60,9 +62,8 @@ canvas{display:block;width:100%;height:100%}
   <button id="stop" class="ghost" hidden>Стоп</button>
 </header>
 <audio id="gtr" preload="auto"></audio>   <!-- минус-запись песни (адрес в songs/*.json → gtr.url; лежит на R2: там верный тип и перемотка) -->
-<div id="stage"><canvas id="cv"></canvas><div id="live">—</div><div id="meter"><i></i></div><div id="msg">Нажми «Старт» или пробел, разреши микрофон. 4 щелчка — и поехали. Пробел — стоп.</div></div>
+<div id="stage"><canvas id="cv"></canvas><div id="scrubrow" hidden><button id="prev" class="ghost" title="← предыдущий слог">◀</button><input id="scrub" type="range" min="0" max="1000" value="0"><button id="next" class="ghost" title="→ следующий слог">▶</button><span id="scrubT">0.0 с</span></div><div id="live">—</div><div id="meter"><i></i></div><div id="msg">Нажми «Старт» или пробел, разреши микрофон. 4 щелчка — и поехали. Пробел — стоп.</div></div>
 <div id="lyrics"></div>
-<div id="scrubrow" hidden><button id="prev" class="ghost" title="← предыдущий слог">◀</button><input id="scrub" type="range" min="0" max="1000" value="0"><button id="next" class="ghost" title="→ следующий слог">▶</button><span id="scrubT">0.0 с</span></div>
 <div id="result">
   <div class="stats"><span>слогов <b id="rN">0</b></span><span>попал <b id="rIn10">—</b></span><span>почти <b id="rIn25">—</b></span><span>ниже <b id="rLow">—</b></span><span>выше <b id="rHigh">—</b></span></div>
   <div class="legend"><span><i style="background:var(--good)"></i>попал</span><span><i style="background:var(--near)"></i>почти / коснулся</span><span><i style="background:var(--flat)"></i>ниже</span><span><i style="background:var(--sharp)"></i>выше</span><span><i style="background:var(--chip);border:1px solid var(--grid)"></i>нет голоса</span></div>
@@ -80,7 +81,7 @@ function resize(){DPR=window.devicePixelRatio||1;W=cv.clientWidth;H=cv.clientHei
 window.addEventListener('resize',resize);
 // секции
 // настройки
-try{const st=JSON.parse(localStorage.getItem('roll')||'{}');if(st.tempo)$('tempo').value=st.tempo;if(st.vol!=null)$('vol').value=st.vol;if(st.section)$('section').value=st.section;if(st.loop)$('loop').checked=true;}catch(e){}
+try{const st=JSON.parse(localStorage.getItem('roll')||'{}');if(st.tempo)$('tempo').value=st.tempo;if(st.vol!=null)$('vol').value=st.vol;if(st.loop)$('loop').checked=true;}catch(e){}
 function saveSt(){try{localStorage.setItem('roll',JSON.stringify({tempo:$('tempo').value,vol:$('vol').value,section:$('section').value,loop:$('loop').checked}));}catch(e){}}
 ['tempo','vol','section','loop'].forEach(id=>$(id).addEventListener('change',()=>{saveSt();if(!running)buildEvents();draw();}));
 // события
@@ -88,8 +89,8 @@ let events=[],total=0,lo=40,hi=56,PPS=130,PLAYX=0.3,secStart=0;
 let SONG=null,GTR=null,CH={},CHORDS=[];
 function gT(b){const g=GTR.grid;if(b<=0)return g[0]+b*(g[1]-g[0]);const i=Math.floor(b);if(i>=g.length-1)return g[g.length-1]+(b-(g.length-1))*(g[g.length-1]-g[g.length-2]);return g[i]+(b-i)*(g[i+1]-g[i]);}
 const WIN=2.0;                      // окно поиска цели ±с — ритм не важен
-['backing'].forEach(id=>{try{const st=JSON.parse(localStorage.getItem('roll')||'{}');if(st.backing)$(id).value=st.backing;}catch(e){}
-  $(id).addEventListener('change',()=>{try{const st=JSON.parse(localStorage.getItem('roll')||'{}');st.backing=$(id).value;localStorage.setItem('roll',JSON.stringify(st));}catch(e){}buildEvents();draw();});});
+['backing'].forEach(id=>{try{const st=JSON.parse(localStorage.getItem('roll')||'{}');if(st.backing2)$(id).value=st.backing2;}catch(e){}
+  $(id).addEventListener('change',()=>{try{const st=JSON.parse(localStorage.getItem('roll')||'{}');st.backing2=$(id).value;localStorage.setItem('roll',JSON.stringify(st));}catch(e){}buildEvents();draw();});});
 const useGtr=()=>$('backing').value==='guitar'&&!!GTR;
 function buildEvents(){
   const bpm=useGtr()?GTR.bpm:+$('tempo').value,beat=60/bpm,sec=$('section').value;$('tempo').disabled=useGtr();

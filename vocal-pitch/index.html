@@ -278,8 +278,7 @@ function score(){const chips=$('chips');chips.innerHTML='';const errs=[];
   if(n){const g=100*errs.filter(x=>x==='good').length/n;$('rIn10').textContent=Math.round(g)+'%';$('rIn25').textContent=pct('near');$('rLow').textContent=pct('flat');$('rHigh').textContent=pct('sharp');
     $('rMiss').textContent=Math.round(100*errs.filter(x=>x==='flat'||x==='sharp').length/n)+'%';
     $('rLvl').textContent=g>=90?'профи':g>=85?'почти профи':g>=80?'уверенно чисто':g>=70?'хорошо':g>=60?'прилично для любителя':'пока тренируем';}
-  else{$('rMiss').textContent='—';$('rLvl').textContent='';}
-  else{$('rIn10').textContent='—';$('rIn25').textContent='—';$('rLow').textContent='—';$('rHigh').textContent='—';}
+  else{$('rMiss').textContent='—';$('rLvl').textContent='';$('rIn10').textContent='—';$('rIn25').textContent='—';$('rLow').textContent='—';$('rHigh').textContent='—';}
   $('result').classList.add('show');$('msg').textContent=n?'':'Голоса не слышно — проверь микрофон.';
   // история: последние дубли (в этом браузере), чтобы видеть «лучше/хуже, чем вчера»
   try{const H=JSON.parse(localStorage.getItem('hist')||'[]');if(n>=8)H.push({d:Date.now(),song:SONG.slug||$('song').value,sec:$('section').value,n,good:errs.filter(x=>x==='good').length,near:errs.filter(x=>x==='near').length,mode:$('backing').value,bpm:useGtr()?'гит':$('tempo').value});

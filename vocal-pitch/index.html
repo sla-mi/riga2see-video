@@ -117,7 +117,7 @@ let review=false,rt=0,lastT=0,rec=null,recChunks=[],recFrom=0;
 function recStart(from){recChunks=[];recFrom=from;try{const mt=['audio/webm;codecs=opus','audio/mp4','audio/webm'].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m));rec=new MediaRecorder(stream,mt?{mimeType:mt,audioBitsPerSecond:64000}:{audioBitsPerSecond:64000});rec.ondataavailable=e=>{if(e.data.size)recChunks.push(e.data);};rec.start(1000);}catch(e){rec=null;}}
 function recStop(){return new Promise(res=>{if(!rec||rec.state==='inactive'){res(null);return;}rec.onstop=()=>{const b=new Blob(recChunks,{type:rec.mimeType});res(b);};rec.stop();});}
 async function saveTake(blob,card){if(!blob||blob.size<20000)return;const fd=new FormData();fd.append('audio',blob,'take');fd.append('card',JSON.stringify(card));
-  try{const r=await fetch('/vocal-pitch/api/take',{method:'POST',body:fd});const j=await r.json();$('hist').insertAdjacentHTML('afterbegin','<span title="'+(j.key||'')+'">дубль сохранён ('+Math.round(blob.size/1024)+' КБ)</span>');}
+  try{const r=await fetch('/vocal-api/take',{method:'POST',body:fd});const j=await r.json();$('hist').insertAdjacentHTML('afterbegin','<span title="'+(j.key||'')+'">дубль сохранён ('+Math.round(blob.size/1024)+' КБ)</span>');}
   catch(e){const u=URL.createObjectURL(blob);$('hist').insertAdjacentHTML('afterbegin','<span>сервер не принял запись — <a href="'+u+'" download="take.webm">скачать</a></span>');}}
 let ac,analyser,buf,stream,running=false,t0=0,samples=[],oscs=[],gainNode,raf,srcNode,gtrT0=0;
 async function listMics(){try{const devs=await navigator.mediaDevices.enumerateDevices();const sel=$('mic');const cur=sel.value;sel.innerHTML='<option value="">по умолчанию</option>';
@@ -215,6 +215,10 @@ async function start(){
     recStart(from);running=true;$('start').hidden=true;$('stop').hidden=false;loop();return;}
   const beat=60/+$('tempo').value,now=ac.currentTime+0.1,lead=4*beat;
   for(let i=0;i<4;i++)click(now+i*beat);
+  // вступление: на отсчёте звучит аккорд, с которого начинается фрагмент (или тоника), и первая нота мелодии — чтобы знать, откуда петь
+  {const fb=secStart+from/beat;const c0=CHORDS.slice().reverse().find(c=>c.b<=fb+0.01)||CHORDS[0];const first=events.find(e=>e.t+e.dur>from);
+    if(mode!=='none'&&c0&&CH[c0.c])chord(CH[c0.c].map(m=>m+TR),now,lead*0.95);
+    if(first)tone(first.midi,now+2*beat,2*beat*0.9);}
   t0=now+lead-from;
   for(const e of events)if(e.t+e.dur>from)tone(e.midi,t0+e.t,e.dur);
   if(mode==='synth')scheduleBacking(now+lead,beat,secStart+from/beat,secStart+total/beat+0.001);

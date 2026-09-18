@@ -39,6 +39,7 @@ canvas{display:block;width:100%;height:100%}
   <label class="ctl">song <select id="song"></select></label>
   <label class="ctl">backing <select id="backing"><option value="synth" selected>accompaniment</option><option value="guitar">own guitar (recording)</option><option value="none">melody only</option></select></label>
   <label class="ctl">key <select id="tr"></select></label>
+  <label class="ctl">voice <select id="oct"><option value="-12">low (−1 oct)</option><option value="0" selected>as written</option><option value="12">high (+1 oct)</option></select></label>
   <label class="ctl">tempo <select id="tempo"><option value="84" id="tempoSong">84 (song)</option><option value="70">70</option><option value="60">60</option><option value="50">50</option></select></label>
   <span class="ctl">volume:</span>
   <label class="ctl">melody <input id="vol" type="range" min="0" max="100" value="60"></label>
@@ -78,7 +79,7 @@ if(ST.tempo)$('tempo').value=ST.tempo;if(ST.vol!=null)$('vol').value=ST.vol;if(S
 ['vol','chvol','vcvol'].forEach(id=>{$(id).addEventListener('input',setVol);$(id).addEventListener('change',()=>{ST[id]=$(id).value;saveST();});});
 $('backing').addEventListener('change',()=>{if(useGtr()){TR=0;$('tr').value=0;}$('tr').disabled=useGtr();if(mode==='idle'){buildEvents();draw();}});
 // ---------- song / events ----------
-let SONG=null,GTR=null,CH={},CHORDS=[],TR=0;
+let SONG=null,GTR=null,CH={},CHORDS=[],TR=0,OCT=0;   // TR: key shift (melody + accompaniment); OCT: melody register only (a female voice sings an octave up over the same chords)
 let events=[],total=0,lo=40,hi=56,PPS=130,PLAYX=0.3,secStart=0;
 const FEEL=0.1;      // boxes sit 0.1 s after the beat: a live voice always trails the beat a bit
 const WIN=1.0;       // pitch-based search window when no syllable is sounding (rests, rubato)
@@ -90,9 +91,9 @@ function buildEvents(){
   while(items.length&&items[0].rest){before+=items[0].b;items.shift();}while(items.length&&items[items.length-1].rest)items.pop();
   secStart=before;let t=0;events=[];
   if(useGtr()){let b=secStart;const base=gT(secStart);
-    for(const it of items){if(!it.rest)events.push({syl:it.syl,midi:it.midi+TR+((GTR.tune||0)/100),t:gT(b)-base,dur:gT(b+it.b)-gT(b),line:it.line});b+=it.b;}
+    for(const it of items){if(!it.rest)events.push({syl:it.syl,midi:it.midi+TR+OCT+((GTR.tune||0)/100),t:gT(b)-base,dur:gT(b+it.b)-gT(b),line:it.line});b+=it.b;}
     total=gT(b)-base;}
-  else{for(const it of items){const d=it.b*beat;if(!it.rest)events.push({syl:it.syl,midi:it.midi+TR,t:t+FEEL,dur:d,line:it.line});t+=d;}total=t+FEEL;}
+  else{for(const it of items){const d=it.b*beat;if(!it.rest)events.push({syl:it.syl,midi:it.midi+TR+OCT,t:t+FEEL,dur:d,line:it.line});t+=d;}total=t+FEEL;}
   const ms=events.map(e=>Math.round(e.midi));lo=Math.min(...ms)-3;hi=Math.max(...ms)+3;
   lyricTotal=events.reduce((a,e)=>a+e.dur,0);
 }
@@ -308,10 +309,11 @@ Object.keys(SONGS).forEach(k=>{const o=document.createElement('option');o.value=
   t.addEventListener('change',()=>{TR=+t.value;ST.tr=ST.tr||{};ST.tr[SONG.slug]=TR;saveST();if(mode==='idle'){buildEvents();draw();}});})();
 function loadSong(k){SONG=SONGS[k]||SONGS[Object.keys(SONGS)[0]];GTR=SONG.gtr||null;CH=SONG.chordNotes||{};CHORDS=SONG.chords||[];document.title='Pitch Track — '+SONG.title;
   [...$('tr').options].forEach(o=>{const i=+o.value;const kn=SONG.keyRoot==null?'':NAMES[((SONG.keyRoot+i)%12+12)%12]+(SONG.keyMinor?'m':'');o.textContent=i===0?(kn?kn+' ('+(SONG.keyNote||'original')+')':'original'):(kn?kn+' ('+(i>0?'+':'')+i+')':(i>0?'+':'')+i);});
-  TR=+((ST.tr||{})[SONG.slug]||0);$('tr').value=TR;$('tr').disabled=useGtr();
+  TR=+((ST.tr||{})[SONG.slug]||0);$('tr').value=TR;$('tr').disabled=useGtr();OCT=+((ST.oct||{})[SONG.slug]||0);$('oct').value=OCT;
   $('tempoSong').value=SONG.bpm;$('tempoSong').textContent=SONG.bpm+' (song)';if(![...$('tempo').options].some(o=>o.value===$('tempo').value))$('tempo').value=SONG.bpm;
   const bk=$('backing');bk.querySelector('[value=guitar]').disabled=!GTR;bk.querySelector('[value=synth]').textContent=CHORDS.length?'accompaniment':'beat only';if(bk.value==='guitar'&&!GTR)bk.value=CHORDS.length?'synth':'none';
   $('gtr').src=GTR?GTR.url:'';clearTake();review=false;$('scrubrow').hidden=true;$('result').classList.remove('show');buildEvents();setMode('idle');draw();loadTakes();}
+$('oct').addEventListener('change',()=>{OCT=+$('oct').value;ST.oct=ST.oct||{};ST.oct[SONG.slug]=OCT;saveST();if(mode==='idle'){buildEvents();draw();}});
 $('song').addEventListener('change',()=>{ST.song=$('song').value;saveST();if(mode==='idle')loadSong($('song').value);});
 if(ST.song&&SONGS[ST.song])$('song').value=ST.song;
 loadSong($('song').value);resize();listMics();

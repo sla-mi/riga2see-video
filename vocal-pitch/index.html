@@ -187,6 +187,7 @@ canvas{display:block;width:100%;height:100%}
     <label class="ctl">key <select id="tr"></select></label>
     <label class="ctl">voice <select id="oct"><option value="-12">low (−1 oct)</option><option value="0" selected>as written</option><option value="12">high (+1 oct)</option></select></label>
     <label class="ctl">sound delay <span class="ctlv"><input id="sync" type="range" min="0" max="320" step="10" value="0"><b id="syncV">0 ms</b></span></label>
+    <label class="ctl" title="Shifts your recorded voice against the accompaniment when you press Play">voice in playback <span class="ctlv"><input id="voff" type="range" min="-400" max="200" step="10" value="0"><b id="voffV">0 ms</b></span></label>
     <label class="ctl">tempo <select id="tempo"><option value="84" id="tempoSong">84 (song)</option><option value="70">70</option><option value="60">60</option><option value="50">50</option></select></label>
   </div>
   <div class="grp setSong"><b>Volume</b>
@@ -223,6 +224,7 @@ const NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const nm=m=>NAMES[m%12]+(Math.floor(m/12)-1);
 const $=id=>document.getElementById(id);
 var view='song';   // 'song' | 'drone' — объявлено до resize(), иначе TDZ
+var VOFF=0;        // сдвиг записанного голоса при воспроизведении (с)
 var SY=0;          // задержка выхода (с): на неё сдвигаем картинку, иначе полоса идёт впереди звука. Объявлять ЗДЕСЬ — используется в настройках выше по коду
 const cv=$('cv'),ctx=cv.getContext('2d');
 let W=0,H=0,DPR=1;
@@ -238,6 +240,11 @@ $('sync').value=ST.sync!=null?ST.sync:100;   // 100 мс по умолчанию
 function syncApply(){SY=+$('sync').value/1000;$('syncV').textContent=$('sync').value+' ms';}
 $('sync').addEventListener('input',syncApply);
 $('sync').addEventListener('change',()=>{ST.sync=$('sync').value;saveST();});
+$('voff').value=ST.voff!=null?ST.voff:0;
+function voffApply(){VOFF=+$('voff').value/1000;$('voffV').textContent=(+$('voff').value>0?'+':'')+$('voff').value+' ms';}
+$('voff').addEventListener('input',voffApply);
+$('voff').addEventListener('change',()=>{ST.voff=$('voff').value;saveST();});
+voffApply();
 syncApply();
 $('backing').addEventListener('change',()=>{if(useGtr()){TR=0;$('tr').value=0;}$('tr').disabled=useGtr();if(mode==='idle'){buildEvents();draw();}});
 // ---------- song / events ----------
@@ -267,7 +274,7 @@ const songT=()=>ac.currentTime-t0-SY;   // «время песни»: звук �
 function toast(t){const el=$('toast');if(!t){el.hidden=true;return;}el.textContent=t;el.hidden=false;clearTimeout(el._t);el._t=setTimeout(()=>{el.hidden=true;},9000);}
 function ensureAudio(){if(ac)return;ac=new (window.AudioContext||window.webkitAudioContext)();
 gainNode=ac.createGain();gainNode.connect(ac.destination);chGain=ac.createGain();chGain.connect(ac.destination);btGain=ac.createGain();btGain.connect(ac.destination);applySink();setVol();}
-function setVol(){if(gainNode)gainNode.gain.value=(+$('vol').value/100)*0.5;if(chGain)chGain.gain.value=(+$('chvol').value/100)*0.35;if(btGain)btGain.gain.value=(+$('chvol').value/100)*0.45;for(const s of segs)if(s.el)s.el.volume=+$('vcvol').value/100;}
+function setVol(){if(vcGain)vcGain.gain.value=+$('vcvol').value/100;if(gainNode)gainNode.gain.value=(+$('vol').value/100)*0.5;if(chGain)chGain.gain.value=(+$('chvol').value/100)*0.35;if(btGain)btGain.gain.value=(+$('chvol').value/100)*0.45;for(const s of segs)if(s.el)s.el.volume=+$('vcvol').value/100;}
 async function listMics(){try{const devs=await navigator.mediaDevices.enumerateDevices();const sel=$('mic');const cur=sel.value;sel.innerHTML='<option value="">default</option>';
   devs.filter(d=>d.kind==='audioinput'&&d.deviceId).forEach(d=>{const o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||('mic '+sel.length);sel.appendChild(o);});
   sel.value=[...sel.options].some(o=>o.value===(cur||ST.mic||''))?(cur||ST.mic||''):'';
@@ -390,7 +397,9 @@ async function openMic(){
 // take = samples (pitch points) + segs [{fromT, dur, blob|url, el}] ; fromT = melody time at audio position 0
 let segs=[],takeId=null,rec=null,recChunks=[],recSeg=null;
 function recStart(){recChunks=[];try{const mt=['audio/webm;codecs=opus','audio/mp4','audio/webm'].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m));rec=new MediaRecorder(stream,mt?{mimeType:mt,audioBitsPerSecond:64000}:{audioBitsPerSecond:64000});rec.ondataavailable=e=>{if(e.data.size)recChunks.push(e.data);};rec.start(1000);recSeg={fromT:songT(),startAc:ac.currentTime};}catch(e){rec=null;recSeg=null;}}
-function recStop(){return new Promise(res=>{if(!rec||rec.state==='inactive'){res(null);return;}rec.onstop=()=>{const b=new Blob(recChunks,{type:rec.mimeType});const s=recSeg;s.dur=ac.currentTime-s.startAc;s.blob=b;s.el=new Audio(URL.createObjectURL(b));s.el.preload='auto';s.el.volume=+$('vcvol').value/100;segs.push(s);res(s);};rec.stop();});}
+function recStop(){return new Promise(res=>{if(!rec||rec.state==='inactive'){res(null);return;}rec.onstop=async()=>{const b=new Blob(recChunks,{type:rec.mimeType});const s=recSeg;s.dur=ac.currentTime-s.startAc;s.blob=b;s.el=new Audio(URL.createObjectURL(b));s.el.preload='auto';s.el.volume=+$('vcvol').value/100;segs.push(s);
+    try{s.abuf=await ac.decodeAudioData(await b.arrayBuffer());}catch(e){}
+    res(s);};rec.stop();});}
 function coverage(){let cov=0;for(const e of events){let c=0;for(const s of segs){const a=Math.max(e.t,s.fromT),b=Math.min(e.t+e.dur,s.fromT+s.dur);if(b>a)c+=b-a;}cov+=Math.min(c,e.dur);}return lyricTotal?cov/lyricTotal:0;}
 function clearTake(){for(const s of segs){try{s.el&&s.el.pause();}catch(e){}}segs=[];samples=[];takeId=null;for(const e of events)e.ss=[];lastMatch=null;$('takes').value='';}
 // ---------- modes: idle / rec / play ----------
@@ -399,17 +408,30 @@ const setMode=m=>{mode=m;$('modeTag').textContent=m==='rec'?'● REC':m==='play'
   const b=$('rec');b.textContent=m==='idle'?'●':'■';b.classList.toggle('active',m!=='idle');
   b.classList.toggle('rec',m==='idle');b.classList.toggle('ghost',m!=='idle');b.title=m==='idle'?'Record':'Stop';
   $('play').classList.toggle('active',m==='play');$('play').disabled=!(segs.length||m==='play');};
+function scheduleVoice(from){   // голос кладём в ту же звуковую сетку, что и аккомпанемент — без рывков старта <audio>
+  if(!vcGain){vcGain=ac.createGain();vcGain.connect(ac.destination);}
+  vcGain.gain.value=+$('vcvol').value/100;
+  for(const s of segs){
+    if(!s.abuf)continue;
+    const fs=s.fromT-VOFF,end=fs+(s.dur||s.abuf.duration);
+    if(end<=from)continue;
+    const at=t0+Math.max(fs,from),off=Math.max(0,from-fs);
+    if(off>=s.abuf.duration)continue;
+    const src=ac.createBufferSource();src.buffer=s.abuf;const g=ac.createGain();g.gain.value=1;
+    src.connect(g);g.connect(vcGain);src.start(Math.max(ac.currentTime,at),off);track(src,g);}}
 function scheduleFrom(from,withVoice){   // count-in + melody + accompaniment (+ voice segments) from melody time `from`
   ensureAudio();setVol();oscs=[];const modeB=$('backing').value;
   if(useGtr()){const a=$('gtr');const base=gT(secStart);const startAt=Math.max(0,base+from-(gT(secStart+2)-base));a.currentTime=startAt;a.play().catch(()=>{});
     const now=ac.currentTime;t0=now-(startAt-base);
-    for(const e of events)if(e.t+e.dur>from)tone(e.midi,t0+e.t,e.dur);return;}
+    for(const e of events)if(e.t+e.dur>from)tone(e.midi,t0+e.t,e.dur);
+    if(withVoice)scheduleVoice(from);return;}
   const beat=60/+$('tempo').value,now=ac.currentTime+0.1,lead=4*beat;
   for(let i=0;i<4;i++)click(now+i*beat);
   {const fb=secStart+from/beat;const c0=CHORDS.slice().reverse().find(c=>c.b<=fb+0.01)||CHORDS[0];const first=events.find(e=>e.t+e.dur>from);
     if(modeB!=='none'&&c0&&CH[c0.c])chord(CH[c0.c].map(m=>m+TR),now,lead*0.95);if(first)tone(first.midi,now+2*beat,2*beat*0.9);}
   t0=now+lead-from;
   sched={beat,withVoice,synth:modeB==='synth',until:from};scheduleWindow(from+6);
+  if(withVoice)scheduleVoice(from);
 }
 let sched=null;
 function scheduleWindow(untilT){   // дозапланировать мелодию/аккомпанемент на отрезок [sched.until, untilT) времени песни
@@ -436,7 +458,8 @@ function loop(){if(mode==='idle')return;
   if(mode==='rec'){analyser.getFloatTimeDomainData(buf);const f=detect(buf,ac.sampleRate);const lat=analyser.fftSize/2/ac.sampleRate+(ac.baseLatency||0);
     const pm=stablePitch(f);const rs=resoNow(pm>0);
     if(pm>0){const s={t:t-lat,m:pm,r:rs,db:20*Math.log10(lastRms+1e-6)};samples.push(s);assign(s);}}
-  if(mode==='play'){for(const s of segs){const inside=t>=s.fromT&&t<s.fromT+s.dur;if(inside){const pos=t-s.fromT;if(s.el.paused){s.el.currentTime=pos;s.el.play().catch(()=>{});}else if(Math.abs(s.el.currentTime-pos)>0.2)s.el.currentTime=pos;}else if(!s.el.paused)s.el.pause();}}
+  if(mode==='play'){for(const s of segs){if(s.abuf||!s.el)continue;   // без декодированного буфера — старый способ через <audio>
+    const fs=s.fromT-VOFF,inside=t>=fs&&t<fs+s.dur;if(inside){const pos=t-fs;if(s.el.paused){s.el.currentTime=pos;s.el.play().catch(()=>{});}else if(Math.abs(s.el.currentTime-pos)>0.2)s.el.currentTime=pos;}else if(!s.el.paused)s.el.pause();}}
   if(sched&&t+4>sched.until)scheduleWindow(t+8);
   lastT=t;draw(t);if(t>total+0.8)finish(true);else raf=requestAnimationFrame(loop);}
 async function pauseRun(){   // Space while running: stop everything, keep position; Space again resumes the same mode from here
@@ -662,7 +685,7 @@ async function saveTake(){const c=card();const fd=new FormData();segs.forEach((s
 async function loadTakes(){try{const r=await fetch('/vocal-api/takes?song='+encodeURIComponent(SONG.slug));const L0=await r.json();   // мусорные дубли (меньше 10 % песни или почти без нот) в списке не показываем
   const L=L0.filter(t=>t.n>=8&&(t.coverage==null||t.coverage>=10));takesList=L;const sel=$('takes');sel.innerHTML='<option value="">— new —</option>';
   takeTrend(L);
-  for(const t of L){const o=document.createElement('option');o.value=t.card_key;const d=new Date(t.ts.replace(/^(\d+-\d+-\d+) (\d+)-(\d+)-(\d+)$/,'$1T$2:$3:$4'));o.textContent=d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' · '+(t.coverage!=null?t.coverage+'% · ':'')+(t.n?Math.round(100*t.good/t.n)+'%':'')+(t.coverage!=null&&t.coverage<80?' \u00b7 partial':'');sel.appendChild(o);}}catch(e){}}
+  for(const t of L){const o=document.createElement('option');o.value=t.card_key;const d=new Date(t.ts.replace(/^(\d+-\d+-\d+) (\d+)-(\d+)-(\d+)$/,'$1T$2:$3:$4'));o.textContent=d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' · '+(t.coverage!=null?t.coverage+'% · ':'')+(t.n?Math.round(100*t.good/t.n)+'%':'')+(t.coverage!=null&&t.coverage<80?' \u00b7 partial':'')+(t.audio===false?' \u00b7 no audio':'');sel.appendChild(o);}}catch(e){}}
 let lastTakeHit=null;
 function takeTrend(L){   // прогресс по песне: только полные дубли (\u226580 % текста) сопоставимы
   const full=L.filter(t=>t.n&&(t.coverage==null||t.coverage>=80)).slice(0,8).reverse();
@@ -676,8 +699,10 @@ function takeTrend(L){   // прогресс по песне: только по�
     '<span>best <b>'+best+'%</b></span>'+(part?'<span>+'+part+' partial</span>':'');}
 $('takes').addEventListener('change',async()=>{if(mode!=='idle')return;const k=$('takes').value;if(!k){clearTake();review=false;$('scrubrow').hidden=true;$('result').classList.remove('show');setMode('idle');draw();return;}
   try{const c=await (await fetch('/vocal-api/card?key='+encodeURIComponent(k),{cache:'no-cache'})).json();clearTake();takeId=c.id;$('takes').value=k;
-    if(c.tr!=null&&c.tr!==TR){TR=c.tr;$('tr').value=TR;}if(c.oct!=null&&c.oct!==OCT){OCT=c.oct;$('oct').value=OCT;}if(c.bpm&&c.bpm!=='guitar'){$('tempo').value=c.bpm;}$('backing').value=c.mode||'synth';buildEvents();
+    if(c.tr!=null&&c.tr!==TR){TR=c.tr;$('tr').value=TR;}if(c.oct!=null&&c.oct!==OCT){OCT=c.oct;$('oct').value=OCT;}if(c.bpm&&c.bpm!=='guitar'){if(![...$('tempo').options].some(o=>o.value===String(c.bpm))){const o=document.createElement('option');o.value=String(c.bpm);o.textContent=c.bpm+' (take)';$('tempo').appendChild(o);}$('tempo').value=String(c.bpm);}$('backing').value=c.mode||'synth';buildEvents();
     samples=(c.samples||[]).map(a=>({t:a[0],m:a[1],r:a[2]==null?null:a[2],db:a[3]==null?null:a[3]}));segs=(c.segments||[]).map((s,i)=>{const el=new Audio(R2+encodeURI(s.key||''));el.preload='auto';el.volume=+$('vcvol').value/100;return {fromT:s.fromT,dur:s.dur,el,url:s.key};});
+    for(const sg of segs)if(sg.url)fetch('/vocal-api/audio?key='+encodeURIComponent(sg.url)).then(r=>r.arrayBuffer()).then(a=>ac&&ac.decodeAudioData(a)).then(bufr=>{sg.abuf=bufr;}).catch(()=>{});
+    if(!segs.length)toast('This take has only the score — it was recorded before the app started saving audio.');
     review=true;$('scrubrow').hidden=false;score();setRT(0);lastMode='play';setMode('idle');}catch(e){$('msg').textContent='Could not load that take.';}});
 // ---------- songs / key ----------
 Object.keys(SONGS).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=SONGS[k].title+' · '+SONGS[k].artist;$('song').appendChild(o);});

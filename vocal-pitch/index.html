@@ -69,6 +69,11 @@ canvas{display:block;width:100%;height:100%}
 .chip small{display:block;font-size:10px;opacity:.85}.chip.cur{outline:2px solid var(--line)}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+#focus{display:flex;flex-direction:column;gap:6px}
+#focus .row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:14px}
+#focus .row>b{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em;min-width:74px}
+#focus .tag{padding:3px 9px;border-radius:8px;font-size:13px;background:var(--chip);white-space:nowrap}
+#focus .warn{color:var(--near)}
 </style></head><body>
 <header>
   <button id="tabSong" class="ghost tab on">Song</button><button id="tabDrone" class="ghost tab">Drone</button>
@@ -122,6 +127,7 @@ canvas{display:block;width:100%;height:100%}
 <div id="result">
   <div class="stats"><span>hit <b id="rIn">—</b> <em id="rLvl"></em></span><span>near <b id="rNear">—</b></span><span>off <b id="rMiss">—</b></span><span>flat <b id="rLow">—</b></span><span>sharp <b id="rHigh">—</b></span><span>syllables <b id="rN">0</b></span><span>recorded <b id="rCov">—</b></span></div>
   <div class="legend"><span><i style="background:var(--good)"></i>hit (±25, long notes ±15)</span><span><i style="background:var(--near)"></i>near</span><span><i style="background:var(--flat)"></i>flat</span><span><i style="background:var(--sharp)"></i>sharp</span><span><i style="background:var(--chip);border:1px solid var(--grid)"></i>no voice</span></div>
+  <div id="focus"></div>
   <div class="chips" id="chips"></div>
   <div id="hist" class="stats"></div>
 </div>
@@ -352,7 +358,41 @@ function score(){const chips=$('chips');chips.innerHTML='';const errs=[];reassig
     $('rLvl').textContent=g>=90?'pro':g>=85?'almost pro':g>=80?'confidently clean':g>=70?'good':g>=60?'decent for an amateur':'keep training';}
   else{['rIn','rNear','rLow','rHigh','rMiss'].forEach(id=>$(id).textContent='—');$('rLvl').textContent='';}
   $('rCov').textContent=Math.round(100*coverage())+'%';
+  focusReport(n);
   $('result').classList.add('show');$('msg').textContent=n?'':'No voice heard — check the mic.';}
+// ---------- на чём фокусироваться: где ошибок больше, где меньше ----------
+function focusReport(n){
+  const box=$('focus');box.innerHTML='';if(!n)return;
+  const scored=events.map((e,i)=>({e,i,g:grade(e)})).filter(x=>x.g);
+  const st=a=>{if(!a.length)return null;const hit=100*a.filter(x=>x.g.k==='good').length/a.length;
+    const md=a.map(x=>Math.abs(x.g.med)).sort((p,q)=>p-q)[Math.floor(a.length/2)];return {hit:Math.round(hit),md:Math.round(md),n:a.length};};
+  const mids=scored.map(x=>x.e.midi).sort((p,q)=>p-q),midMid=mids[Math.floor(mids.length/2)];
+  const groups=[
+    {k:'long notes',a:scored.filter(x=>x.e.dur>=0.8)},
+    {k:'short notes',a:scored.filter(x=>x.e.dur<0.45)},
+    {k:'high notes',a:scored.filter(x=>x.e.midi>midMid)},
+    {k:'low notes',a:scored.filter(x=>x.e.midi<=midMid)},
+    {k:'after a jump',a:scored.filter(x=>x.i>0&&Math.abs(x.e.midi-events[x.i-1].midi)>=4)},
+    {k:'stepwise',a:scored.filter(x=>x.i>0&&Math.abs(x.e.midi-events[x.i-1].midi)<4)},
+  ].map(g=>({...g,s:st(g.a)})).filter(g=>g.s&&g.s.n>=8);
+  groups.sort((p,q)=>p.s.hit-q.s.hit);
+  const tag=(t,col)=>'<span class="tag" style="background:'+col+'22;color:'+col+'">'+t+'</span>';
+  if(groups.length){const worst=groups.slice(0,2),best=groups[groups.length-1];
+    box.insertAdjacentHTML('beforeend','<div class="row"><b>work on</b>'+worst.map(g=>tag(g.k+' \u2014 '+g.s.hit+'% hit, \u00b1'+g.s.md+' \u00a2',getVar('--sharp'))).join('')+'</div>');
+    box.insertAdjacentHTML('beforeend','<div class="row"><b>solid</b>'+tag(best.k+' \u2014 '+best.s.hit+'% hit',getVar('--good'))+'</div>');}
+  const fl=scored.filter(x=>x.g.k==='flat').length,sh=scored.filter(x=>x.g.k==='sharp').length;
+  const bias=Math.round(100*(fl-sh)/scored.length);
+  if(Math.abs(bias)>=12)box.insertAdjacentHTML('beforeend','<div class="row"><b>bias</b>'+
+    tag(bias>0?'mostly flat \u2014 lift and support the note':'mostly sharp \u2014 ease off the push',getVar(bias>0?'--flat':'--sharp'))+'</div>');
+  const bad=scored.filter(x=>x.g.k==='flat'||x.g.k==='sharp').sort((p,q)=>Math.abs(q.g.med)-Math.abs(p.g.med)).slice(0,8);
+  if(bad.length){const row=document.createElement('div');row.className='row';row.innerHTML='<b>worst</b>';
+    for(const x of bad){const el=document.createElement('span');el.className='tag';const c=x.g.col;
+      el.style.background=c+'22';el.style.color=c;el.textContent=x.e.syl.replace(/^-/,'').replace(/-$/,'')+' '+(x.g.med>0?'+':'')+x.g.med+' \u00a2';
+      el.onclick=()=>{if(review&&mode==='idle')setRT(x.e.t);};row.appendChild(el);}
+    box.appendChild(row);}
+  const cov=Math.round(100*coverage());
+  if(cov<80)box.insertAdjacentHTML('beforeend','<div class="row"><b>note</b><span class="tag warn">partial take \u2014 '+cov+
+    '% of the lyrics recorded; compare only with takes of similar length</span></div>');}
 // ---------- review: scrubbing ----------
 function setRT(v){rt=Math.max(0,Math.min(total,v));$('scrub').value=total?Math.round(rt/total*1000):0;$('scrubT').textContent=rt.toFixed(1)+' s';
   const tg=targetAt(rt);for(const e of events)if(e.chip)e.chip.classList.toggle('cur',e===tg);draw(rt);}
@@ -374,7 +414,7 @@ async function saveTake(){const c=card();const fd=new FormData();segs.forEach((s
   try{const r=await fetch('/vocal-api/take',{method:'POST',body:fd});const j=await r.json();if(!j.ok)throw new Error(j.detail||'no');$('hist').insertAdjacentHTML('afterbegin','<span>take saved</span>');loadTakes();}
   catch(e){$('hist').insertAdjacentHTML('afterbegin','<span>server did not accept the take — '+segs.map((s,i)=>s.blob?'<a href="'+URL.createObjectURL(s.blob)+'" download="take'+i+'.webm">download '+(i+1)+'</a>':'').join(' ')+'</span>');}}
 async function loadTakes(){try{const r=await fetch('/vocal-api/takes?song='+encodeURIComponent(SONG.slug));const L=await r.json();const sel=$('takes');sel.innerHTML='<option value="">— new —</option>';
-  for(const t of L){const o=document.createElement('option');o.value=t.card_key;const d=new Date(t.ts.replace(/^(\d+-\d+-\d+) (\d+)-(\d+)-(\d+)$/,'$1T$2:$3:$4'));o.textContent=d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' · '+(t.coverage!=null?t.coverage+'% · ':'')+(t.n?Math.round(100*t.good/t.n)+'%':'');sel.appendChild(o);}}catch(e){}}
+  for(const t of L){const o=document.createElement('option');o.value=t.card_key;const d=new Date(t.ts.replace(/^(\d+-\d+-\d+) (\d+)-(\d+)-(\d+)$/,'$1T$2:$3:$4'));o.textContent=d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' · '+(t.coverage!=null?t.coverage+'% · ':'')+(t.n?Math.round(100*t.good/t.n)+'%':'')+(t.coverage!=null&&t.coverage<80?' \u00b7 partial':'');sel.appendChild(o);}}catch(e){}}
 $('takes').addEventListener('change',async()=>{if(mode!=='idle')return;const k=$('takes').value;if(!k){clearTake();review=false;$('scrubrow').hidden=true;$('result').classList.remove('show');setMode('idle');draw();return;}
   try{const c=await (await fetch(R2+k,{cache:'no-cache'})).json();clearTake();takeId=c.id;$('takes').value=k;
     if(c.tr!=null&&c.tr!==TR){TR=c.tr;$('tr').value=TR;}if(c.bpm&&c.bpm!=='guitar'){$('tempo').value=c.bpm;}$('backing').value=c.mode||'synth';buildEvents();

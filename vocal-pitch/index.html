@@ -187,6 +187,7 @@ canvas{display:block;width:100%;height:100%}
     <label class="ctl">key <select id="tr"></select></label>
     <label class="ctl">voice <select id="oct"><option value="-12">low (−1 oct)</option><option value="0" selected>as written</option><option value="12">high (+1 oct)</option></select></label>
     <label class="ctl">sound delay <span class="ctlv"><input id="sync" type="range" min="0" max="320" step="10" value="0"><b id="syncV">0 ms</b></span></label>
+    <label class="ctl" title="Only for listening: EQ, compression and reverb on your voice. Does not touch the recording or the score">voice sound <select id="fx"><option value="off">dry</option><option value="soft" selected>soft</option><option value="studio">studio</option><option value="hall">hall</option></select></label>
     <label class="ctl" title="Shifts your recorded voice against the accompaniment when you press Play">voice in playback <span class="ctlv"><input id="voff" type="range" min="-400" max="200" step="10" value="0"><b id="voffV">0 ms</b></span></label>
     <label class="ctl">tempo <select id="tempo"><option value="84" id="tempoSong">84 (song)</option><option value="70">70</option><option value="60">60</option><option value="50">50</option></select></label>
   </div>
@@ -242,6 +243,8 @@ $('sync').addEventListener('input',syncApply);
 $('sync').addEventListener('change',()=>{ST.sync=$('sync').value;saveST();});
 $('voff').value=ST.voff!=null?ST.voff:0;
 function voffApply(){VOFF=+$('voff').value/1000;$('voffV').textContent=(+$('voff').value>0?'+':'')+$('voff').value+' ms';}
+$('fx').addEventListener('change',()=>{ST.fx=$('fx').value;saveST();fxApply();});
+if(ST.fx)$('fx').value=ST.fx;
 $('voff').addEventListener('input',voffApply);
 $('voff').addEventListener('change',()=>{ST.voff=$('voff').value;saveST();});
 voffApply();
@@ -408,9 +411,38 @@ const setMode=m=>{mode=m;$('modeTag').textContent=m==='rec'?'● REC':m==='play'
   const b=$('rec');b.textContent=m==='idle'?'●':'■';b.classList.toggle('active',m!=='idle');
   b.classList.toggle('rec',m==='idle');b.classList.toggle('ghost',m!=='idle');b.title=m==='idle'?'Record':'Stop';
   $('play').classList.toggle('active',m==='play');$('play').disabled=!(segs.length||m==='play');};
+// Обработка голоса ТОЛЬКО для прослушивания: по измеренному профилю (project_vocal_recs_brief) —
+// срез ниже 95 Гц, минус бубнение 280, плюс провал 950 и певческая форманта 2.8 кГц, мягкий компрессор, короткий реверб.
+let FX=null;
+function irBuffer(sec,decay,pre){
+  const sr=ac.sampleRate,n=Math.round(sr*sec),p=Math.round(sr*pre),b=ac.createBuffer(2,n+p,sr);
+  for(let ch=0;ch<2;ch++){const d=b.getChannelData(ch);let prev=0;
+    for(let i=0;i<n;i++){const t=i/sr,e=Math.pow(1-i/n,decay)*Math.exp(-t*3.2);
+      const v=(Math.random()*2-1)*e;prev=prev*0.55+v*0.45;d[p+i]=prev;}}
+  return b;}
+function buildFX(){
+  const hp=ac.createBiquadFilter();hp.type='highpass';hp.frequency.value=95;hp.Q.value=0.7;
+  const mud=ac.createBiquadFilter();mud.type='peaking';mud.frequency.value=280;mud.Q.value=1.0;mud.gain.value=-2.5;
+  const fill=ac.createBiquadFilter();fill.type='peaking';fill.frequency.value=950;fill.Q.value=0.9;fill.gain.value=2.5;
+  const pres=ac.createBiquadFilter();pres.type='peaking';pres.frequency.value=2800;pres.Q.value=1.1;pres.gain.value=3;
+  const air=ac.createBiquadFilter();air.type='highshelf';air.frequency.value=9000;air.gain.value=2;
+  const comp=ac.createDynamicsCompressor();comp.threshold.value=-20;comp.knee.value=8;comp.ratio.value=3.5;comp.attack.value=0.008;comp.release.value=0.09;
+  const make=ac.createGain();make.gain.value=1.4;
+  const dry=ac.createGain(),wet=ac.createGain(),send=ac.createGain();
+  const rev=ac.createConvolver();rev.buffer=irBuffer(1.1,2.2,0.025);
+  hp.connect(mud);mud.connect(fill);fill.connect(pres);pres.connect(air);air.connect(comp);comp.connect(make);
+  make.connect(dry);make.connect(send);send.connect(rev);rev.connect(wet);
+  FX={input:hp,dry,wet,bypass:ac.createGain()};
+  dry.connect(vcGain);wet.connect(vcGain);FX.bypass.connect(vcGain);
+  fxApply();}
+function fxApply(){
+  if(!FX)return;const m=$('fx').value;
+  const w={off:0,soft:0.10,studio:0.16,hall:0.30}[m]!=null?{off:0,soft:0.10,studio:0.16,hall:0.30}[m]:0.10;
+  FX.wet.gain.value=w;FX.dry.gain.value=m==='off'?0:1;FX.bypass.gain.value=m==='off'?1:0;}
 function scheduleVoice(from){   // голос кладём в ту же звуковую сетку, что и аккомпанемент — без рывков старта <audio>
   if(!vcGain){vcGain=ac.createGain();vcGain.connect(ac.destination);}
   vcGain.gain.value=+$('vcvol').value/100;
+  if(!FX)buildFX();
   for(const s of segs){
     if(!s.abuf)continue;
     const fs=s.fromT-VOFF,end=fs+(s.dur||s.abuf.duration);
@@ -418,7 +450,7 @@ function scheduleVoice(from){   // голос кладём в ту же звук
     const at=t0+Math.max(fs,from),off=Math.max(0,from-fs);
     if(off>=s.abuf.duration)continue;
     const src=ac.createBufferSource();src.buffer=s.abuf;const g=ac.createGain();g.gain.value=1;
-    src.connect(g);g.connect(vcGain);src.start(Math.max(ac.currentTime,at),off);track(src,g);}}
+    src.connect(g);g.connect($('fx').value==='off'?FX.bypass:FX.input);src.start(Math.max(ac.currentTime,at),off);track(src,g);}}
 function scheduleFrom(from,withVoice){   // count-in + melody + accompaniment (+ voice segments) from melody time `from`
   ensureAudio();setVol();oscs=[];const modeB=$('backing').value;
   if(useGtr()){const a=$('gtr');const base=gT(secStart);const startAt=Math.max(0,base+from-(gT(secStart+2)-base));a.currentTime=startAt;a.play().catch(()=>{});

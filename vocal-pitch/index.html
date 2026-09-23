@@ -413,7 +413,9 @@ let mode='idle',lastMode='rec',review=false,rt=0,lastT=0,runFrom=0;
 const setMode=m=>{mode=m;$('modeTag').textContent=m==='rec'?'● REC':m==='play'?'▶ PLAY':(review?'review':'idle');
   const b=$('rec');b.textContent=m==='idle'?'●':'■';b.classList.toggle('active',m!=='idle');
   b.classList.toggle('rec',m==='idle');b.classList.toggle('ghost',m!=='idle');b.title=m==='idle'?'Record':'Stop';
-  $('play').classList.toggle('active',m==='play');$('play').disabled=!(segs.length||m==='play');};
+  const p=$('play');p.textContent=m==='play'?'■':'▶';p.title=m==='play'?'Stop':'Play back';
+  p.classList.toggle('active',m==='play');p.disabled=(m==='rec')||!(segs.length||m==='play');
+  b.disabled=(m==='play');};
 // Обработка голоса ТОЛЬКО для прослушивания: по измеренному профилю (project_vocal_recs_brief) —
 // срез ниже 95 Гц, минус бубнение 280, плюс провал 950 и певческая форманта 2.8 кГц, мягкий компрессор, короткий реверб.
 let FX=null;
@@ -487,6 +489,11 @@ async function startRec(){
   setMode('rec');lastMode='rec';loop();}
 async function startPlay(){
   ensureAudio();await ac.resume();if(!segs.length)return;
+  if(segs.some(s=>!s.abuf&&s.url)){toast('Loading the recording…');      // дожидаемся звука: иначе играл бы медленный путь через <audio> и «уезжал» темп
+    for(const s of segs){
+      if(!s.raw&&!s.abuf&&s.url){try{s.raw=await (await fetch('/vocal-api/audio?key='+encodeURIComponent(s.url))).arrayBuffer();}catch(e){}}
+      if(s.raw&&!s.abuf){try{s.abuf=await ac.decodeAudioData(s.raw.slice(0));}catch(e){}}}
+    toast('');}
   for(const s of segs)if(!s.abuf&&s.raw){try{s.abuf=await ac.decodeAudioData(s.raw.slice(0));}catch(e){}}
   const from=(review&&rt>0.3&&rt<total-0.5)?rt:0;review=false;$('scrubrow').hidden=true;$('msg').textContent='';runFrom=from;
   scheduleFrom(from,true);setMode('play');lastMode='play';loop();}
@@ -512,7 +519,7 @@ async function finish(ended){   // song ended or Stop: final results, save the t
     else if(CUR.cov<10)toast('take not saved \u2014 only '+CUR.cov+'% of the song');
     else saveTake();}}
 $('rec').onclick=()=>{if(mode==='idle')startRec();else finish(false);};
-$('play').onclick=()=>{if(mode==='idle')startPlay();};
+$('play').onclick=()=>{if(mode==='play')finish(false);else if(mode==='idle')startPlay();};
 document.addEventListener('keydown',e=>{const tag=(e.target.tagName||'').toLowerCase();
   if(e.code==='Space'){e.preventDefault();if(document.activeElement)document.activeElement.blur();if(view==='drone'){DR.on?droneStop():droneStart();return;}if(testing){stopTest();return;}
     if(mode!=='idle')pauseRun();else if(lastMode==='play'&&segs.length)startPlay();else startRec();return;}

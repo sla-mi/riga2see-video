@@ -219,8 +219,8 @@ function detect(b,sr){let n=b.length,rms=0;for(let i=0;i<n;i++)rms+=b[i]*b[i];rm
   const f=sr/T;return (f>60&&f<700)?f:-1;}
 let freqBuf=null,lastReso=null;
 // певческий резонанс: «звенит» голос или глухой. есть ≥ −3 дБ, нет ≤ −8 дБ (пороги из analyze_takes)
-function resoNow(){
-  if(!analyser)return null;
+function resoNow(voiced){
+  if(!analyser||!voiced||lastRms<0.01){lastReso=null;return null;}
   if(!freqBuf||freqBuf.length!==analyser.frequencyBinCount)freqBuf=new Float32Array(analyser.frequencyBinCount);
   analyser.getFloatFrequencyData(freqBuf);
   const sr=ac.sampleRate,n=freqBuf.length,hz=i=>i*sr/2/n;let lo=0,hi=0;
@@ -322,7 +322,7 @@ async function startPlay(){
 function loop(){if(mode==='idle')return;
   let t=ac.currentTime-t0;const a=$('gtr');if(useGtr()&&!a.paused)t=a.currentTime-gT(secStart);
   if(mode==='rec'){analyser.getFloatTimeDomainData(buf);const f=detect(buf,ac.sampleRate);const lat=analyser.fftSize/2/ac.sampleRate+(ac.baseLatency||0);
-    const pm=stablePitch(f);const rs=resoNow();
+    const pm=stablePitch(f);const rs=resoNow(pm>0);
     if(pm>0){const s={t:t-lat,m:pm,r:rs,db:20*Math.log10(lastRms+1e-6)};samples.push(s);assign(s);}}
   if(mode==='play'){for(const s of segs){const inside=t>=s.fromT&&t<s.fromT+s.dur;if(inside){const pos=t-s.fromT;if(s.el.paused){s.el.currentTime=pos;s.el.play().catch(()=>{});}else if(Math.abs(s.el.currentTime-pos)>0.2)s.el.currentTime=pos;}else if(!s.el.paused)s.el.pause();}}
   if(sched&&t+4>sched.until)scheduleWindow(t+8);
@@ -567,7 +567,7 @@ function droneLoop(){
   const now=Date.now()/1000;
   if(analyser){analyser.getFloatTimeDomainData(buf);const f=detect(buf,ac.sampleRate);
     const tg=droneTargetMidi();let cNow=null;
-    const pm=stablePitch(f);const rs=resoNow();
+    const pm=stablePitch(f);const rs=resoNow(pm>0);
     if(pm>0){const m=pm;DR.samples.push({t:now,m,r:rs});
       cNow=(fold(m,tg)-tg)*100;const a=Math.abs(cNow);
       DR.stat.n++;if(a<=HIT)DR.stat.good++;else if(a<=NEAR)DR.stat.near++;}

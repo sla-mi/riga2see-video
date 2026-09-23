@@ -11,7 +11,9 @@
 :root{--bg:#0f1114;--panel:#1a1d23;--grid:#2a2f38;--grid2:#20242b;--text:#e9e6df;--muted:#8b93a1;--accent:#e9a23b;--accent-soft:rgba(233,162,59,.25);--line:#f4f4f4;--good:#46b36d;--near:#d4c13c;--flat:#5b8def;--sharp:#e5544d;--btn:#e9e6df;--btnfg:#14171c;--chip:#252a33;--rec:#e5544d;color-scheme:dark}
 html,body{height:100%}
 body{background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,"SF Pro Text",Segoe UI,Roboto,sans-serif;padding:calc(10px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));display:flex;flex-direction:column;gap:10px;font-variant-numeric:tabular-nums;-webkit-user-select:none;user-select:none}
-header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+#songCtl{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+#songCtl select{flex:1 1 40%;min-width:120px;max-width:260px}
 #settings{display:flex;flex-wrap:wrap;gap:8px 28px;padding:10px 14px;background:var(--panel);border-radius:14px}
 #settings[hidden]{display:none}
 .grp{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}.grp b{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em;margin-right:4px}
@@ -80,14 +82,14 @@ canvas{display:block;width:100%;height:100%}
 </style></head><body>
 <header>
   <button id="tabSong" class="ghost tab on">Songs</button><button id="tabDrone" class="ghost tab">Drone</button>
-  <span id="songCtl" style="display:contents">
-    <label class="ctl">song <select id="song"></select></label>
-    <label class="ctl">takes <select id="takes"><option value="">— new —</option></select></label>
-    <button id="rec" class="rec round" title="Record / Stop">●</button>
-    <button id="play" class="ghost round" disabled title="Play back">▶</button>
-  </span>
-  <button id="gear" class="ghost" title="Settings">⚙</button>
+  <button id="gear" class="ghost tab" title="Settings">⚙</button>
 </header>
+<div id="songCtl">
+  <select id="song"></select>
+  <select id="takes" title="earlier takes"><option value="">— new —</option></select>
+  <button id="rec" class="rec round" title="Record / Stop">●</button>
+  <button id="play" class="ghost round" disabled title="Play back">▶</button>
+</div>
 <div id="toast" hidden></div>
 <div id="dronebar" hidden>
   <div class="grp">
@@ -261,9 +263,7 @@ function box(x,y,w,h,col,target){
   ctx.fillStyle=g;ctx.fillRect(x,y,w,h);
   ctx.fillStyle='rgba(255,255,255,.14)';ctx.fillRect(x,y,w,1.5);
   ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(x,y+h-1.5,w,1.5);
-  ctx.strokeStyle=col||'rgba(255,255,255,'+(target?.42:.18)+')';ctx.lineWidth=col?2.5:1;
-  ctx.strokeRect(x+0.5,y+0.5,Math.max(1,w-1),h-1);
-  if(col){ctx.fillStyle=col;ctx.fillRect(x,y,3.5,h);}}
+  if(col){ctx.fillStyle=col+'44';ctx.fillRect(x,y,w,h);ctx.fillStyle=col;ctx.fillRect(x,y,4,h);}}
 // ---------- mic ----------
 async function openMic(){
   if(stream)return true;const want=$('mic').value;const cons={echoCancellation:$('aec').checked,noiseSuppression:false,autoGainControl:false};   // AEC: the browser subtracts its own output (accompaniment) from the mic — the pad's B was showing up as a 'second note' on low notesif(want)cons.deviceId={exact:want};
@@ -496,9 +496,9 @@ function takeTrend(L){   // прогресс по песне: только по�
       return '<span style="color:'+c+'"><b>'+v+'%</b></span>';}).join('<span>\u2192</span>')+
     '<span>best <b>'+best+'%</b></span>'+(part?'<span>+'+part+' partial</span>':'');}
 $('takes').addEventListener('change',async()=>{if(mode!=='idle')return;const k=$('takes').value;if(!k){clearTake();review=false;$('scrubrow').hidden=true;$('result').classList.remove('show');setMode('idle');draw();return;}
-  try{const c=await (await fetch(R2+k,{cache:'no-cache'})).json();clearTake();takeId=c.id;$('takes').value=k;
+  try{const c=await (await fetch(R2+encodeURI(k),{cache:'no-cache'})).json();clearTake();takeId=c.id;$('takes').value=k;
     if(c.tr!=null&&c.tr!==TR){TR=c.tr;$('tr').value=TR;}if(c.bpm&&c.bpm!=='guitar'){$('tempo').value=c.bpm;}$('backing').value=c.mode||'synth';buildEvents();
-    samples=(c.samples||[]).map(([t,m])=>({t,m}));segs=(c.segments||[]).map((s,i)=>{const el=new Audio(R2+(s.key||''));el.preload='auto';el.volume=+$('vcvol').value/100;return {fromT:s.fromT,dur:s.dur,el,url:s.key};});
+    samples=(c.samples||[]).map(([t,m])=>({t,m}));segs=(c.segments||[]).map((s,i)=>{const el=new Audio(R2+encodeURI(s.key||''));el.preload='auto';el.volume=+$('vcvol').value/100;return {fromT:s.fromT,dur:s.dur,el,url:s.key};});
     review=true;$('scrubrow').hidden=false;score();setRT(0);lastMode='play';setMode('idle');}catch(e){$('msg').textContent='Could not load that take.';}});
 // ---------- songs / key ----------
 Object.keys(SONGS).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=SONGS[k].title+' · '+SONGS[k].artist;$('song').appendChild(o);});
@@ -694,7 +694,7 @@ function droneStats(){
 function setView(v){
   view=v;const song=v==='song';
   $('tabSong').classList.toggle('on',song);$('tabDrone').classList.toggle('on',!song);
-  $('songCtl').style.display=song?'contents':'none';$('dronebar').hidden=song;$('dstats').hidden=song;$('dlist').hidden=song;
+  $('songCtl').style.display=song?'flex':'none';$('dronebar').hidden=song;$('dstats').hidden=song;$('dlist').hidden=song;
   $('setDrone').hidden=song;document.querySelectorAll('.setSong').forEach(e=>{const keep=!!e.querySelector('#mic');e.hidden=!song&&!keep;});   // в дроне из песенных настроек оставляем только устройства
   $('result').style.display=song?'':'none';$('dbig').hidden=song;$('dsub').hidden=song;
   if(song){droneStop();$('msg').textContent='';draw();}

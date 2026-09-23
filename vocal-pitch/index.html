@@ -82,6 +82,13 @@ canvas{display:block;width:100%;height:100%}
 #meter{position:absolute;right:14px;bottom:26px;width:110px;height:6px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden}
 #meter i{display:block;height:100%;width:0;background:var(--good);border-radius:3px}
 #meterLbl{position:absolute;right:14px;bottom:36px;font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+#cal{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(12,12,14,.82);-webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);z-index:5}
+.calBox{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px;text-align:center}
+.calBox b{font-size:40px;font-weight:700;letter-spacing:-.02em}
+.calBox span{color:var(--muted);font-size:15px;max-width:300px}
+#calTap{width:168px;height:168px;border-radius:50%;background:var(--glass);box-shadow:inset 0 0 0 2px var(--hair);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;letter-spacing:.08em;color:var(--muted);cursor:pointer;user-select:none}
+#calTap.hit{background:rgba(48,209,88,.28);color:#fff}
+.calBtns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 #msg{position:absolute;left:0;right:0;top:44%;text-align:center;font-size:19px;color:var(--muted);pointer-events:none;padding:0 24px}
 #modeTag{position:absolute;right:12px;top:12px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 11px;border-radius:9px;background:rgba(44,44,46,.7);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
 #dbig{position:absolute;left:0;right:0;top:14px;text-align:center;font-size:46px;font-weight:700;letter-spacing:-.02em}
@@ -200,12 +207,19 @@ canvas{display:block;width:100%;height:100%}
     <label class="ctl">headphones <select id="spk"><option value="">default</option></select></label>
     <label class="ctl" title="Suppresses the app's own sound in the mic. On iOS it also ducks playback while you sing — keep it off with headphones."><input type="checkbox" id="aec"> echo cancel</label>
     <button id="mictest" class="ghost">Mic check</button>
-    <button id="synctest" class="ghost" title="Plays clicks and listens to them — measures how late the sound reaches you">Measure delay</button>
+    <button id="caltap" class="ghost" title="Works with headphones: tap along with the click">Set delay by tapping</button>
+    <button id="synctest" class="ghost" title="Only for phone speaker + phone mic: plays clicks and listens to them">Measure with mic</button>
     <button id="sndtest" class="ghost" title="A tone and 2 s of backing, no mic — shows where the sound goes">Sound test</button>
   </div>
 </div>
 <audio id="gtr" preload="auto"></audio>
-<div id="stage"><canvas id="cv"></canvas><div id="modeTag">idle</div><div id="scrubrow" hidden><button id="prev" class="ghost" title="← previous syllable">◀</button><input id="scrub" type="range" min="0" max="1000" value="0"><button id="next" class="ghost" title="→ next syllable">▶</button><span id="scrubT">0.0 s</span></div><div id="dbig" hidden></div><div id="dsub" hidden></div><div id="meter" title="microphone level"><i></i></div><div id="meterLbl">mic</div><div id="msg">tap to start</div></div>
+<div id="stage"><canvas id="cv"></canvas><div id="modeTag">idle</div><div id="scrubrow" hidden><button id="prev" class="ghost" title="← previous syllable">◀</button><input id="scrub" type="range" min="0" max="1000" value="0"><button id="next" class="ghost" title="→ next syllable">▶</button><span id="scrubT">0.0 s</span></div><div id="dbig" hidden></div><div id="dsub" hidden></div><div id="meter" title="microphone level"><i></i></div><div id="meterLbl">mic</div><div id="msg">tap to start</div>
+<div id="cal" hidden><div class="calBox">
+  <b id="calBig">tap on the beat</b>
+  <span id="calSub">a click is playing — tap along with what you HEAR</span>
+  <div id="calTap">TAP</div>
+  <div class="calBtns"><button id="calApply">apply</button><button id="calAgain" class="ghost">again</button><button id="calClose" class="ghost">close</button></div>
+</div></div></div>
 <div id="result">
   <div class="hero"><b id="rIn">—</b><span class="unit">in tune</span><span id="rDelta" class="delta"></span></div>
   <div id="rank"></div>
@@ -262,7 +276,8 @@ function buildEvents(){
 let lyricTotal=0;
 // ---------- audio ----------
 let ac,analyser,buf,stream,t0=0,samples=[],oscs=[],gainNode,raf,srcNode,chGain,btGain,vcGain,lastRms=0;
-const mt=()=>ac.currentTime-t0-SY;
+const songT=()=>ac.currentTime-t0-SY;   // «время песни»: звук приходит позже картинки
+// ⚠️ имя mt НЕ использовать — оно занято локально в recStart (мим-тип) и в draw (элемент метра)
 function toast(t){const el=$('toast');if(!t){el.hidden=true;return;}el.textContent=t;el.hidden=false;clearTimeout(el._t);el._t=setTimeout(()=>{el.hidden=true;},9000);}
 function ensureAudio(){if(ac)return;ac=new (window.AudioContext||window.webkitAudioContext)();
   if(ST.sync==null&&ac.outputLatency>0.02){$('sync').value=Math.round(ac.outputLatency*1000/10)*10;syncApply();}   // если браузер сам знает задержку выхода
@@ -371,7 +386,7 @@ async function openMic(){
 // ---------- take: recorded voice segments ----------
 // take = samples (pitch points) + segs [{fromT, dur, blob|url, el}] ; fromT = melody time at audio position 0
 let segs=[],takeId=null,rec=null,recChunks=[],recSeg=null;
-function recStart(){recChunks=[];try{const mt=['audio/webm;codecs=opus','audio/mp4','audio/webm'].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m));rec=new MediaRecorder(stream,mt?{mimeType:mt,audioBitsPerSecond:64000}:{audioBitsPerSecond:64000});rec.ondataavailable=e=>{if(e.data.size)recChunks.push(e.data);};rec.start(1000);recSeg={fromT:mt(),startAc:ac.currentTime};}catch(e){rec=null;recSeg=null;}}
+function recStart(){recChunks=[];try{const mt=['audio/webm;codecs=opus','audio/mp4','audio/webm'].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m));rec=new MediaRecorder(stream,mt?{mimeType:mt,audioBitsPerSecond:64000}:{audioBitsPerSecond:64000});rec.ondataavailable=e=>{if(e.data.size)recChunks.push(e.data);};rec.start(1000);recSeg={fromT:songT(),startAc:ac.currentTime};}catch(e){rec=null;recSeg=null;}}
 function recStop(){return new Promise(res=>{if(!rec||rec.state==='inactive'){res(null);return;}rec.onstop=()=>{const b=new Blob(recChunks,{type:rec.mimeType});const s=recSeg;s.dur=ac.currentTime-s.startAc;s.blob=b;s.el=new Audio(URL.createObjectURL(b));s.el.preload='auto';s.el.volume=+$('vcvol').value/100;segs.push(s);res(s);};rec.stop();});}
 function coverage(){let cov=0;for(const e of events){let c=0;for(const s of segs){const a=Math.max(e.t,s.fromT),b=Math.min(e.t+e.dur,s.fromT+s.dur);if(b>a)c+=b-a;}cov+=Math.min(c,e.dur);}return lyricTotal?cov/lyricTotal:0;}
 function clearTake(){for(const s of segs){try{s.el&&s.el.pause();}catch(e){}}segs=[];samples=[];takeId=null;for(const e of events)e.ss=[];lastMatch=null;$('takes').value='';}
@@ -414,7 +429,7 @@ async function startPlay(){
   const from=(review&&rt>0.3&&rt<total-0.5)?rt:0;review=false;$('scrubrow').hidden=true;$('msg').textContent='';runFrom=from;
   scheduleFrom(from,true);setMode('play');lastMode='play';loop();}
 function loop(){if(mode==='idle')return;
-  let t=mt();const a=$('gtr');if(useGtr()&&!a.paused)t=a.currentTime-gT(secStart)-SY;
+  let t=songT();const a=$('gtr');if(useGtr()&&!a.paused)t=a.currentTime-gT(secStart)-SY;
   if(mode==='rec'){analyser.getFloatTimeDomainData(buf);const f=detect(buf,ac.sampleRate);const lat=analyser.fftSize/2/ac.sampleRate+(ac.baseLatency||0);
     const pm=stablePitch(f);const rs=resoNow(pm>0);
     if(pm>0){const s={t:t-lat,m:pm,r:rs,db:20*Math.log10(lastRms+1e-6)};samples.push(s);assign(s);}}
@@ -469,16 +484,45 @@ async function syncTest(){   // сколько миллисекунд звук �
     for(const f of fr)if(f.t>=c-0.02&&f.t<c+0.45&&(!best||f.e>best.e))best=f;
     if(best&&best.e>Math.max(0.01,base*3))ds.push(best.t-c);}
   $('synctest').classList.remove('active');$('msg').textContent='';
-  if(ds.length<3){toast('Could not hear the clicks — turn the volume up and try again, or set the delay by ear.');return;}
+  if(ds.length<3){toast('Did not hear the clicks. With headphones the mic cannot hear them at all — use “Set delay by tapping”.');return;}
   ds.sort((a,b)=>a-b);const rt=ds[Math.floor(ds.length/2)];
   const ms=Math.max(0,Math.min(320,Math.round(rt*1000/10)*10));
   $('sync').value=ms;syncApply();ST.sync=String(ms);saveST();
   toast('Sound delay '+ms+' ms (measured '+Math.round(rt*1000)+' ms there and back'+
     (ac.outputLatency?', browser says '+Math.round(ac.outputLatency*1000)+' ms out':'')+'). Nudge the slider if the line still feels early.');}
 $('synctest').onclick=syncTest;
+// калибровка по тапу: работает в наушниках, микрофон не нужен
+const CAL={on:false,clicks:[],taps:[],end:0};
+function calValue(){if(CAL.taps.length<4)return null;const a=CAL.taps.slice().sort((x,y)=>x-y);
+  const m=a[Math.floor(a.length/2)];return Math.max(0,Math.min(320,Math.round(m*1000/10)*10));}
+function calStart(){
+  ensureAudio();ac.resume();killSound();
+  CAL.on=true;CAL.clicks=[];CAL.taps=[];
+  const n=16,gap=0.8,t0a=ac.currentTime+0.9;
+  for(let i=0;i<n;i++){click(t0a+i*gap);CAL.clicks.push(t0a+i*gap);}
+  CAL.end=t0a+(n-1)*gap;
+  $('cal').hidden=false;$('calBig').textContent='tap on the beat';$('calSub').textContent='0 taps';
+  (function tick(){if(!CAL.on)return;if(ac.currentTime>CAL.end+0.7){calFinish();return;}requestAnimationFrame(tick);})();}
+function calFinish(){CAL.on=false;const v=calValue();
+  $('calBig').textContent=v==null?'too few taps':v+' ms';
+  $('calSub').textContent=v==null?'press “again” and tap at least 4 times':'that is how late the sound reaches you — press “apply”';}
+function calTap(){
+  if(!CAL.on)return;const t=ac.currentTime;let best=null;
+  for(const c of CAL.clicks){const d=t-c;if(Math.abs(d)<0.45&&(best==null||Math.abs(d)<Math.abs(best)))best=d;}
+  if(best==null)return;CAL.taps.push(best);
+  const el=$('calTap');el.classList.add('hit');setTimeout(()=>el.classList.remove('hit'),110);
+  const v=calValue();$('calSub').textContent=CAL.taps.length+' taps';
+  if(v!=null)$('calBig').textContent=v+' ms';}
+$('calTap').addEventListener('pointerdown',e=>{e.stopPropagation();e.preventDefault();calTap();});
+$('cal').addEventListener('pointerdown',e=>e.stopPropagation());
+$('caltap').onclick=calStart;
+$('calAgain').onclick=calStart;
+$('calClose').onclick=()=>{CAL.on=false;killSound();$('cal').hidden=true;};
+$('calApply').onclick=()=>{const v=calValue();if(v!=null){$('sync').value=v;syncApply();ST.sync=String(v);saveST();}
+  CAL.on=false;killSound();$('cal').hidden=true;toast(v!=null?'Sound delay set to '+v+' ms. Sing a line — if the line still runs ahead, add 20–40 ms with the slider.':'Nothing measured — the delay stays '+$('sync').value+' ms.');};
 $('sndtest').onclick=async()=>{ensureAudio();await ac.resume();setVol();const now=ac.currentTime;tone(57,now,0.5);tone(64,now+0.55,0.5);const a=$('gtr');try{if(a.src){a.currentTime=8;await a.play();setTimeout(()=>a.pause(),2500);}$('msg').textContent='A tone (and 2 s of the guitar recording). Not in the headphones? On iPad/iPhone pick the output in Control Center; on Mac use the "headphones" list.';}catch(e){$('msg').textContent='Tone played; recording did not start: '+e.message;}};
 // ---------- drawing ----------
-function draw(t){if(t==null)t=mode!=='idle'?mt():(review?rt:-1.5);
+function draw(t){if(t==null)t=mode!=='idle'?songT():(review?rt:-1.5);
   ctx.clearRect(0,0,W,H);const rows=hi-lo,rh=H/rows,px=W*PLAYX;const y=m=>H-(m-lo+0.5)*rh;
   for(let m=lo;m<=hi;m++){const yy=y(m);ctx.fillStyle=[0,2,4,5,7,9,11].includes(((m%12)+12)%12)?getVar('--grid2'):'transparent';ctx.fillRect(0,yy-rh/2,W,rh);ctx.strokeStyle=getVar('--grid');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,yy-rh/2);ctx.lineTo(W,yy-rh/2);ctx.stroke();
     if([0,2,4,5,7,9,11].includes(((m%12)+12)%12)){ctx.fillStyle=getVar('--muted');ctx.font='12px -apple-system,sans-serif';ctx.textBaseline='middle';ctx.fillText(nm(m),6,yy);}}

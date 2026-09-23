@@ -21,8 +21,9 @@ input[type=range]{width:90px;padding:0}
 button{font:inherit;font-weight:600;border:0;border-radius:10px;padding:9px 16px;background:var(--btn);color:var(--btnfg);cursor:pointer}
 button.ghost{background:var(--chip);color:var(--text)}
 button:disabled{opacity:.35;cursor:default}
-button.rec{background:var(--rec);color:#fff}button.rec::before{content:"●";margin-right:6px}
-button.play::before{content:"▶";margin-right:6px}button.stopb::before{content:"■";margin-right:6px}
+button.rec{background:var(--rec);color:#fff}
+button.round{width:66px;height:66px;min-height:66px;border-radius:50%;padding:0;font-size:24px;line-height:1;display:flex;align-items:center;justify-content:center}
+button.stopb::before{content:"■";margin-right:6px}
 button.active{outline:2px solid var(--accent)}
 button.tab{padding:11px 20px;font-size:16px}
 .grp.pair{flex-wrap:nowrap;gap:8px}
@@ -55,7 +56,7 @@ canvas{display:block;width:100%;height:100%}
 #meter{position:absolute;right:12px;bottom:28px;width:120px;height:8px;border-radius:4px;background:var(--chip);overflow:hidden}
 #meter i{display:block;height:100%;width:0;background:var(--good)}
 #meterLbl{position:absolute;right:12px;bottom:40px;font-size:11px;color:var(--muted);letter-spacing:.06em}
-#msg{position:absolute;left:0;right:0;top:40%;text-align:center;font-size:20px;color:var(--muted);pointer-events:none;padding:0 20px}
+#msg{position:absolute;left:0;right:0;top:44%;text-align:center;font-size:22px;color:var(--muted);pointer-events:none;padding:0 20px}
 #modeTag{position:absolute;right:12px;top:10px;font-size:13px;color:var(--muted);padding:4px 10px;border-radius:8px;background:var(--chip)}
 #scrubrow{display:flex;align-items:center;gap:8px;position:absolute;left:12px;right:12px;top:8px;padding:6px 10px;border-radius:12px;background:color-mix(in srgb,var(--panel) 80%,transparent)}
 #scrubrow[hidden]{display:none}
@@ -76,18 +77,17 @@ canvas{display:block;width:100%;height:100%}
 #focus .warn{color:var(--near)}
 </style></head><body>
 <header>
-  <button id="tabSong" class="ghost tab on">Song</button><button id="tabDrone" class="ghost tab">Drone</button>
+  <button id="tabSong" class="ghost tab on">Songs</button><button id="tabDrone" class="ghost tab">Drone</button>
   <span id="songCtl" style="display:contents">
     <label class="ctl">song <select id="song"></select></label>
     <label class="ctl">takes <select id="takes"><option value="">— new —</option></select></label>
-    <button id="rec" class="rec">Rec</button>
-    <button id="play" class="play ghost" disabled>Play</button>
-    <button id="stop" class="stopb ghost" disabled>Stop</button>
+    <button id="rec" class="rec round" title="Record / Stop">●</button>
+    <button id="play" class="ghost round" disabled title="Play back">▶</button>
   </span>
   <button id="gear" class="ghost" title="Settings">⚙</button>
 </header>
 <div id="dronebar" hidden>
-  <div class="grp pair"><button id="dStart" class="rec big">Start</button><button id="dStop" class="stopb ghost big" disabled>Stop</button></div>
+  <div class="grp pair"><button id="dStart" class="rec round" title="Start / Stop">●</button><span class="ctl" id="dHint">tap the screen to start</span></div>
   <div class="grp">
     <label class="ctl">tonic <select id="dTonic"></select></label>
     <label class="ctl">sing <select id="dEx"><option value="0" selected>unison</option><option value="7">fifth</option><option value="12">octave</option><option value="4">third</option></select></label>
@@ -116,6 +116,7 @@ canvas{display:block;width:100%;height:100%}
   </div>
   <div class="grp setSong"><b>Devices</b>
     <label class="ctl">mic <select id="mic"><option value="">default</option></select></label>
+    <span class="ctl">in use: <b id="micNow">—</b></span>
     <label class="ctl">headphones <select id="spk"><option value="">default</option></select></label>
     <label class="ctl" title="Suppresses the app's own sound in the mic. On iOS it also ducks playback while you sing — keep it off with headphones."><input type="checkbox" id="aec"> echo cancel</label>
     <button id="mictest" class="ghost">Mic check</button>
@@ -123,7 +124,7 @@ canvas{display:block;width:100%;height:100%}
   </div>
 </div>
 <audio id="gtr" preload="auto"></audio>
-<div id="stage"><canvas id="cv"></canvas><div id="modeTag">idle</div><div id="scrubrow" hidden><button id="prev" class="ghost" title="← previous syllable">◀</button><input id="scrub" type="range" min="0" max="1000" value="0"><button id="next" class="ghost" title="→ next syllable">▶</button><span id="scrubT">0.0 s</span></div><div id="dbig" hidden></div><div id="dsub" hidden></div><div id="meter" title="microphone level"><i></i></div><div id="meterLbl">mic</div><div id="msg">Rec or Space — allow the mic. 4 clicks, then sing. Space pauses; Space again continues. Stop or the end of the song → scrub and Play to listen back.</div></div>
+<div id="stage"><canvas id="cv"></canvas><div id="modeTag">idle</div><div id="scrubrow" hidden><button id="prev" class="ghost" title="← previous syllable">◀</button><input id="scrub" type="range" min="0" max="1000" value="0"><button id="next" class="ghost" title="→ next syllable">▶</button><span id="scrubT">0.0 s</span></div><div id="dbig" hidden></div><div id="dsub" hidden></div><div id="meter" title="microphone level"><i></i></div><div id="meterLbl">mic</div><div id="msg">tap to start</div></div>
 <div id="result">
   <div class="stats"><span>hit <b id="rIn">—</b> <em id="rLvl"></em></span><span>near <b id="rNear">—</b></span><span>off <b id="rMiss">—</b></span><span>flat <b id="rLow">—</b></span><span>sharp <b id="rHigh">—</b></span><span>syllables <b id="rN">0</b></span><span>recorded <b id="rCov">—</b></span></div>
   <div class="legend"><span><i style="background:var(--good)"></i>hit (±25, long notes ±15)</span><span><i style="background:var(--near)"></i>near</span><span><i style="background:var(--flat)"></i>flat</span><span><i style="background:var(--sharp)"></i>sharp</span><span><i style="background:var(--chip);border:1px solid var(--grid)"></i>no voice</span></div>
@@ -163,9 +164,9 @@ function buildEvents(){
   while(items.length&&items[0].rest){before+=items[0].b;items.shift();}while(items.length&&items[items.length-1].rest)items.pop();
   secStart=before;let t=0;events=[];
   if(useGtr()){let b=secStart;const base=gT(secStart);
-    for(const it of items){if(!it.rest)events.push({syl:it.syl,midi:it.midi+TR+OCT+((GTR.tune||0)/100),t:gT(b)-base,dur:gT(b+it.b)-gT(b),line:it.line});b+=it.b;}
+    for(const it of items){if(!it.rest)events.push({syl:it.syl,midi:it.midi+TR+OCT+((GTR.tune||0)/100),t:gT(b)-base,dur:gT(b+it.b)-gT(b),line:it.line,sec:it.sec});b+=it.b;}
     total=gT(b)-base;}
-  else{for(const it of items){const d=it.b*beat;if(!it.rest)events.push({syl:it.syl,midi:it.midi+TR+OCT,t:t+FEEL,dur:d,line:it.line});t+=d;}total=t+FEEL;}
+  else{for(const it of items){const d=it.b*beat;if(!it.rest)events.push({syl:it.syl,midi:it.midi+TR+OCT,t:t+FEEL,dur:d,line:it.line,sec:it.sec});t+=d;}total=t+FEEL;}
   const ms=events.map(e=>Math.round(e.midi));lo=Math.min(...ms)-3;hi=Math.max(...ms)+3;
   lyricTotal=events.reduce((a,e)=>a+e.dur,0);
 }
@@ -210,6 +211,14 @@ function detect(b,sr){let n=b.length,rms=0;for(let i=0;i<n;i++)rms+=b[i]*b[i];rm
   let d=0;while(d<n-1&&c[d]>c[d+1])d++;let mx=-1,mp=-1;for(let i=d;i<n;i++)if(c[i]>mx){mx=c[i];mp=i;}
   if(mp<=0||mx<0.3*c[0])return -1;let T=mp;const x1=c[mp-1]||0,x2=c[mp],x3=c[mp+1]||0,a=(x1+x3-2*x2)/2,bb=(x3-x1)/2;if(a)T=mp-bb/(2*a);
   const f=sr/T;return (f>60&&f<700)?f:-1;}
+let pitchHist=[];
+function stablePitch(f){      // медиана трёх кадров + защита от прыжка на октаву: линию перестаёт штормить
+  if(f<=0){pitchHist=[];return -1;}
+  let m=69+12*Math.log2(f/440);
+  const last=pitchHist[pitchHist.length-1];
+  if(last!=null){for(const k of [-12,12]){if(Math.abs(m+k-last)+0.6<Math.abs(m-last))m+=k;}}
+  pitchHist.push(m);if(pitchHist.length>3)pitchHist.shift();
+  const a=pitchHist.slice().sort((x,y)=>x-y);return a[Math.floor(a.length/2)];}
 function fold(m,target){if(target==null)return m;let d=m-target;while(d>6){m-=12;d-=12;}while(d<-6){m+=12;d+=12;}return m;}
 function targetAt(t){for(const e of events)if(t>=e.t&&t<e.t+e.dur)return e;return null;}
 let lastMatch=null;
@@ -229,13 +238,24 @@ function grade(e){const a=e.ss;if(!a||a.length<2)return null;let u=a.filter(x=>x
   const cs=u.map(x=>x.c).sort((x,y)=>x-y);const med=Math.round(cs[Math.floor(cs.length/2)]);const touch=u.filter(x=>Math.abs(x.c)<=h).length/u.length;
   const k=Math.abs(med)<=h?'good':(Math.abs(med)<=nr||touch>=0.3)?'near':(med<0?'flat':'sharp');return {med,k,col:getVar('--'+k)};}
 const cs=getComputedStyle(document.documentElement);const getVar=v=>cs.getPropertyValue(v).trim();
+// серый «объёмный» бокс ноты: цвета голоса видны поверх, оценка — рамкой и полоской слева
+function box(x,y,w,h,col,target){
+  const g=ctx.createLinearGradient(0,y,0,y+h);
+  g.addColorStop(0,target?'#4b5261':'#3a4150');g.addColorStop(0.55,target?'#3b4351':'#2e3441');g.addColorStop(1,target?'#2c3341':'#23282f');
+  ctx.fillStyle=g;ctx.fillRect(x,y,w,h);
+  ctx.fillStyle='rgba(255,255,255,.14)';ctx.fillRect(x,y,w,1.5);
+  ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(x,y+h-1.5,w,1.5);
+  ctx.strokeStyle=col||(target?getVar('--accent'):'rgba(255,255,255,.18)');ctx.lineWidth=col?2.5:1;
+  ctx.strokeRect(x+0.5,y+0.5,Math.max(1,w-1),h-1);
+  if(col){ctx.fillStyle=col;ctx.fillRect(x,y,3.5,h);}}
 // ---------- mic ----------
 async function openMic(){
   if(stream)return true;const want=$('mic').value;const cons={echoCancellation:$('aec').checked,noiseSuppression:false,autoGainControl:false};   // AEC: the browser subtracts its own output (accompaniment) from the mic — the pad's B was showing up as a 'second note' on low notesif(want)cons.deviceId={exact:want};
   try{stream=await navigator.mediaDevices.getUserMedia({audio:cons});}catch(e){$('msg').textContent='Mic not allowed ('+e.name+'). Browser: lock icon → Microphone → Allow. Mac: System Settings → Privacy → Microphone.';return false;}
   await listMics();applySink();
   if(srcNode){try{srcNode.disconnect();}catch(e){}}
-  srcNode=ac.createMediaStreamSource(stream);analyser=ac.createAnalyser();analyser.fftSize=1024;buf=new Float32Array(1024);srcNode.connect(analyser);
+  srcNode=ac.createMediaStreamSource(stream);analyser=ac.createAnalyser();analyser.fftSize=2048;buf=new Float32Array(2048);srcNode.connect(analyser);
+  const tr0=stream.getAudioTracks()[0];$('micNow').textContent=tr0?tr0.label||'(unnamed)':'\u2014';
   const tr=stream.getAudioTracks()[0];if(tr&&/airpod|bluetooth|hands-free|hfp/i.test(tr.label||''))$('msg').textContent='Mic is '+tr.label+': Bluetooth mics are poor — pick the built-in mic, keep the earphones for sound only.';
   return true;}
 // ---------- take: recorded voice segments ----------
@@ -247,7 +267,10 @@ function coverage(){let cov=0;for(const e of events){let c=0;for(const s of segs
 function clearTake(){for(const s of segs){try{s.el&&s.el.pause();}catch(e){}}segs=[];samples=[];takeId=null;for(const e of events)e.ss=[];lastMatch=null;$('takes').value='';}
 // ---------- modes: idle / rec / play ----------
 let mode='idle',lastMode='rec',review=false,rt=0,lastT=0,runFrom=0;
-const setMode=m=>{mode=m;$('modeTag').textContent=m==='rec'?'● REC':m==='play'?'▶ PLAY':(review?'review — scrub, Play to listen':'idle');$('rec').classList.toggle('active',m==='rec');$('play').classList.toggle('active',m==='play');$('stop').disabled=(m==='idle'&&!review);$('play').disabled=!(segs.length||mode==='play');$('rec').disabled=false;};
+const setMode=m=>{mode=m;$('modeTag').textContent=m==='rec'?'● REC':m==='play'?'▶ PLAY':(review?'review':'idle');
+  const b=$('rec');b.textContent=m==='idle'?'●':'■';b.classList.toggle('active',m!=='idle');
+  b.classList.toggle('rec',m==='idle');b.classList.toggle('ghost',m!=='idle');b.title=m==='idle'?'Record':'Stop';
+  $('play').classList.toggle('active',m==='play');$('play').disabled=!(segs.length||m==='play');};
 function scheduleFrom(from,withVoice){   // count-in + melody + accompaniment (+ voice segments) from melody time `from`
   ensureAudio();setVol();oscs=[];const modeB=$('backing').value;
   if(useGtr()){const a=$('gtr');const base=gT(secStart);const startAt=Math.max(0,base+from-(gT(secStart+2)-base));a.currentTime=startAt;a.play().catch(()=>{});
@@ -283,7 +306,8 @@ async function startPlay(){
 function loop(){if(mode==='idle')return;
   let t=ac.currentTime-t0;const a=$('gtr');if(useGtr()&&!a.paused)t=a.currentTime-gT(secStart);
   if(mode==='rec'){analyser.getFloatTimeDomainData(buf);const f=detect(buf,ac.sampleRate);const lat=analyser.fftSize/2/ac.sampleRate+(ac.baseLatency||0);
-    if(f>0){const s={t:t-lat,m:69+12*Math.log2(f/440)};samples.push(s);assign(s);}}
+    const pm=stablePitch(f);
+    if(pm>0){const s={t:t-lat,m:pm};samples.push(s);assign(s);}}
   if(mode==='play'){for(const s of segs){const inside=t>=s.fromT&&t<s.fromT+s.dur;if(inside){const pos=t-s.fromT;if(s.el.paused){s.el.currentTime=pos;s.el.play().catch(()=>{});}else if(Math.abs(s.el.currentTime-pos)>0.2)s.el.currentTime=pos;}else if(!s.el.paused)s.el.pause();}}
   if(sched&&t+4>sched.until)scheduleWindow(t+8);
   lastT=t;draw(t);if(t>total+0.8)finish(true);else raf=requestAnimationFrame(loop);}
@@ -296,9 +320,8 @@ async function finish(ended){   // song ended or Stop: final results, save the t
   if(was==='rec'){await recStop();}
   setMode('idle');review=true;$('scrubrow').hidden=false;score();setRT(0);lastMode='play';
   if(was==='rec'&&segs.length)saveTake();}
-$('rec').onclick=()=>{if(mode!=='idle')return;startRec();};
-$('play').onclick=()=>{if(mode!=='idle')return;startPlay();};
-$('stop').onclick=()=>finish(false);
+$('rec').onclick=()=>{if(mode==='idle')startRec();else finish(false);};
+$('play').onclick=()=>{if(mode==='idle')startPlay();};
 document.addEventListener('keydown',e=>{const tag=(e.target.tagName||'').toLowerCase();
   if(e.code==='Space'){e.preventDefault();if(document.activeElement)document.activeElement.blur();if(view==='drone'){DR.on?droneStop():droneStart();return;}if(testing){stopTest();return;}
     if(mode!=='idle')pauseRun();else if(lastMode==='play'&&segs.length)startPlay();else startRec();return;}
@@ -324,7 +347,7 @@ function draw(t){if(t==null)t=mode!=='idle'?ac.currentTime-t0:(review?rt:-1.5);
   const fs=Math.max(15,Math.min(24,Math.round(rh*0.8)));ctx.font='600 '+fs+'px -apple-system,sans-serif';
   for(const e of events){const x=px+(e.t-t)*PPS,w=e.dur*PPS;if(x+w<0||x>W)continue;const yy=y(e.midi);
     const g=(review||mode==='play'||e.t<t)?grade(e):null;const col=g?g.col:null;
-    ctx.fillStyle=col?col+'55':getVar('--accent-soft');ctx.fillRect(x,yy-rh*0.45,w,rh*0.9);ctx.strokeStyle=col||getVar('--accent');ctx.lineWidth=col?2:1.5;ctx.strokeRect(x,yy-rh*0.45,w,rh*0.9);
+    box(x,yy-rh*0.45,w,rh*0.9,col);
     if(e.syl!=='-'){ctx.fillStyle=getVar('--text');ctx.textBaseline='middle';ctx.fillText(e.syl.replace(/^-/,''),x+4,yy);}}
   // lyrics under the boxes: each word under its note, scrolling with it
   const ty=H-26;ctx.font='600 24px -apple-system,sans-serif';ctx.textBaseline='middle';let lastEnd=-1e9;
@@ -390,6 +413,12 @@ function focusReport(n){
       el.style.background=c+'22';el.style.color=c;el.textContent=x.e.syl.replace(/^-/,'').replace(/-$/,'')+' '+(x.g.med>0?'+':'')+x.g.med+' \u00a2';
       el.onclick=()=>{if(review&&mode==='idle')setRT(x.e.t);};row.appendChild(el);}
     box.appendChild(row);}
+  const secs=[...new Set(events.map(e=>e.sec).filter(Boolean))];
+  if(secs.length>1){const row=[];
+    for(const sc of secs){const a=scored.filter(x=>x.e.sec===sc);if(a.length<5)continue;const q=st(a);
+      const c=q.hit>=70?getVar('--good'):q.hit>=50?getVar('--near'):getVar('--sharp');
+      row.push(tag(sc+' \u2014 '+q.hit+'% ('+q.n+')',c));}
+    if(row.length)box.insertAdjacentHTML('beforeend','<div class="row"><b>by part</b>'+row.join('')+'</div>');}
   const cov=Math.round(100*coverage());
   if(cov<80)box.insertAdjacentHTML('beforeend','<div class="row"><b>note</b><span class="tag warn">partial take \u2014 '+cov+
     '% of the lyrics recorded; compare only with takes of similar length</span></div>');}
@@ -399,10 +428,15 @@ function setRT(v){rt=Math.max(0,Math.min(total,v));$('scrub').value=total?Math.r
 function stepSyl(dir){const ts=events.map(e=>e.t);let v;if(dir>0)v=ts.find(x=>x>rt+0.05);else{const p=ts.filter(x=>x<rt-0.05);v=p.length?p[p.length-1]:0;}if(v==null)v=total;setRT(v);}
 $('scrub').addEventListener('input',()=>setRT(+$('scrub').value/1000*total));
 $('prev').onclick=()=>stepSyl(-1);$('next').onclick=()=>stepSyl(1);
-(function(){let dx=null,r0=0;const st=$('stage');
-  st.addEventListener('pointerdown',e=>{if(!review||mode!=='idle')return;dx=e.clientX;r0=rt;st.setPointerCapture(e.pointerId);});
-  st.addEventListener('pointermove',e=>{if(dx==null)return;setRT(r0-(e.clientX-dx)/PPS);});
-  const up=()=>{dx=null;};st.addEventListener('pointerup',up);st.addEventListener('pointercancel',up);})();
+(function(){let dx=null,r0=0,x0=0,y0=0,t0p=0,moved=false;const st=$('stage');
+  st.addEventListener('pointerdown',e=>{x0=e.clientX;y0=e.clientY;t0p=Date.now();moved=false;
+    if(review&&mode==='idle'&&view==='song'){dx=e.clientX;r0=rt;st.setPointerCapture(e.pointerId);}});
+  st.addEventListener('pointermove',e=>{if(Math.hypot(e.clientX-x0,e.clientY-y0)>10)moved=true;if(dx==null)return;setRT(r0-(e.clientX-dx)/PPS);});
+  const up=e=>{dx=null;
+    if(!moved&&Date.now()-t0p<500){        // короткий тап по экрану = старт/стоп, удобно большим пальцем
+      if(view==='drone'){DR.on?droneStop():droneStart();}
+      else if(mode==='idle')startRec();else finish(false);}};
+  st.addEventListener('pointerup',up);st.addEventListener('pointercancel',()=>{dx=null;});})();
 // ---------- takes: save / list / load ----------
 const R2='https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/';
 function card(){const gr=events.map(e=>{const g=grade(e);return g?[e.syl,g.k,g.med]:null;});const n=gr.filter(Boolean).length;const cnt=k=>gr.filter(x=>x&&x[1]===k).length;
@@ -414,7 +448,17 @@ async function saveTake(){const c=card();const fd=new FormData();segs.forEach((s
   try{const r=await fetch('/vocal-api/take',{method:'POST',body:fd});const j=await r.json();if(!j.ok)throw new Error(j.detail||'no');$('hist').insertAdjacentHTML('afterbegin','<span>take saved</span>');loadTakes();}
   catch(e){$('hist').insertAdjacentHTML('afterbegin','<span>server did not accept the take — '+segs.map((s,i)=>s.blob?'<a href="'+URL.createObjectURL(s.blob)+'" download="take'+i+'.webm">download '+(i+1)+'</a>':'').join(' ')+'</span>');}}
 async function loadTakes(){try{const r=await fetch('/vocal-api/takes?song='+encodeURIComponent(SONG.slug));const L=await r.json();const sel=$('takes');sel.innerHTML='<option value="">— new —</option>';
+  takeTrend(L);
   for(const t of L){const o=document.createElement('option');o.value=t.card_key;const d=new Date(t.ts.replace(/^(\d+-\d+-\d+) (\d+)-(\d+)-(\d+)$/,'$1T$2:$3:$4'));o.textContent=d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' · '+(t.coverage!=null?t.coverage+'% · ':'')+(t.n?Math.round(100*t.good/t.n)+'%':'')+(t.coverage!=null&&t.coverage<80?' \u00b7 partial':'');sel.appendChild(o);}}catch(e){}}
+function takeTrend(L){   // прогресс по песне: только полные дубли (\u226580 % текста) сопоставимы
+  const full=L.filter(t=>t.n&&(t.coverage==null||t.coverage>=80)).slice(0,8).reverse();
+  const part=L.filter(t=>t.n&&t.coverage!=null&&t.coverage<80).length;
+  const pc=t=>Math.round(100*t.good/t.n);
+  if(!full.length){$('hist').innerHTML=part?'<span>'+part+' partial take'+(part>1?'s':'')+' \u2014 sing the whole song once to start the trend</span>':'';return;}
+  const best=Math.max(...full.map(pc));
+  $('hist').innerHTML='<span>progress</span>'+full.map(t=>{const v=pc(t),c=v>=best?getVar('--good'):getVar('--muted');
+      return '<span style="color:'+c+'"><b>'+v+'%</b></span>';}).join('<span>\u2192</span>')+
+    '<span>best <b>'+best+'%</b></span>'+(part?'<span>+'+part+' partial</span>':'');}
 $('takes').addEventListener('change',async()=>{if(mode!=='idle')return;const k=$('takes').value;if(!k){clearTake();review=false;$('scrubrow').hidden=true;$('result').classList.remove('show');setMode('idle');draw();return;}
   try{const c=await (await fetch(R2+k,{cache:'no-cache'})).json();clearTake();takeId=c.id;$('takes').value=k;
     if(c.tr!=null&&c.tr!==TR){TR=c.tr;$('tr').value=TR;}if(c.bpm&&c.bpm!=='guitar'){$('tempo').value=c.bpm;}$('backing').value=c.mode||'synth';buildEvents();
@@ -469,7 +513,7 @@ async function droneStart(){
   if(DR.on)return;droneBuild();
   try{for(const a of DR.els)await a.play();}catch(e){$('msg').textContent='Sound did not start: '+e.message;return;}
   DR.on=true;DR.t0=Date.now();DR.samples=[];DR.stat={n:0,good:0,near:0,att:0,attSum:0};ATT.list=[];ATT.on=false;ATT.best=0;
-  $('dStart').disabled=true;$('dStop').disabled=false;$('modeTag').textContent='● DRONE';$('msg').textContent='';
+  dBtn();$('modeTag').textContent='● DRONE';$('msg').textContent='';
   if('mediaSession' in navigator){try{navigator.mediaSession.metadata=new MediaMetadata({title:'Drone '+nm(dMidi()),artist:'Pitch Track'});
     navigator.mediaSession.setActionHandler('pause',()=>droneStop());navigator.mediaSession.setActionHandler('play',()=>droneStart());}catch(e){}}
   ensureAudio();try{await ac.resume();}catch(e){}
@@ -478,7 +522,7 @@ async function droneStart(){
 function droneStop(){
   if(!DR.on)return;DR.on=false;cancelAnimationFrame(DR.raf);
   const secs=(Date.now()-DR.t0)/1000;droneKill();
-  $('dStart').disabled=false;$('dStop').disabled=true;$('modeTag').textContent='idle';
+  dBtn();$('modeTag').textContent='idle';
   if(secs>20)droneSave(secs);
   droneStats();droneList();droneDraw();}
 const droneTargetMidi=()=>dMidi()+ +$('dEx').value;
@@ -487,7 +531,8 @@ function droneLoop(){
   const now=Date.now()/1000;
   if(analyser){analyser.getFloatTimeDomainData(buf);const f=detect(buf,ac.sampleRate);
     const tg=droneTargetMidi();let cNow=null;
-    if(f>0){const m=69+12*Math.log2(f/440);DR.samples.push({t:now,m});
+    const pm=stablePitch(f);
+    if(pm>0){const m=pm;DR.samples.push({t:now,m});
       cNow=(fold(m,tg)-tg)*100;const a=Math.abs(cNow);
       DR.stat.n++;if(a<=HIT)DR.stat.good++;else if(a<=NEAR)DR.stat.near++;}
     attTick(now,cNow);}
@@ -505,17 +550,16 @@ function droneDraw(){
     ctx.fillStyle=getVar('--muted');ctx.font='12px -apple-system,sans-serif';ctx.textBaseline='middle';ctx.fillText(nm(m),6,yy);}
   for(const m of droneNotes()){const yy=y(m);ctx.strokeStyle=getVar('--accent');ctx.globalAlpha=.45;ctx.lineWidth=2;ctx.setLineDash([6,6]);
     ctx.beginPath();ctx.moveTo(0,yy);ctx.lineTo(W,yy);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;}
-  {const yy=y(tg);ctx.fillStyle=getVar('--accent-soft');ctx.fillRect(0,yy-rh*0.45,W,rh*0.9);
-   ctx.strokeStyle=getVar('--accent');ctx.lineWidth=2;ctx.strokeRect(0,yy-rh*0.45,W,rh*0.9);
-   ctx.fillStyle=getVar('--text');ctx.font='600 15px -apple-system,sans-serif';ctx.textBaseline='middle';ctx.fillText('sing '+nm(tg),10,yy-rh*0.8);}
+  {const yy=y(tg);box(0,yy-rh*0.45,W,rh*0.9,null,true);
+   ctx.fillStyle=getVar('--text');ctx.font='600 15px -apple-system,sans-serif';ctx.textBaseline='middle';ctx.fillText(nm(tg),10,yy-rh*0.8);}
   const now=Date.now()/1000,PPS2=Math.max(40,W/8);let cur=null;
   for(const s of DR.samples){const x=W-(now-s.t)*PPS2;if(x<0)continue;const mf=fold(s.m,tg),c=(mf-tg)*100;
     ctx.fillStyle=colorFor(c,1);ctx.fillRect(x-1.5,y(mf)-2,3,4);if(now-s.t<0.2)cur=c;}
   const big=$('dbig'),sub=$('dsub');
-  if(cur==null){big.textContent='—';big.style.color=getVar('--muted');sub.textContent=DR.on?'sing '+nm(tg)+' — hold '+holdSec()+' s, then breathe; each held note is scored':'press Start';}
+  if(cur==null){big.textContent='—';big.style.color=getVar('--muted');sub.textContent=DR.on?nm(tg)+' · hold '+holdSec()+' s':'tap to start';}
   else{const beats=Math.abs(freqOf(tg)*(Math.pow(2,cur/1200)-1));
     big.textContent=(cur>0?'+':'')+Math.round(cur)+' ¢';big.style.color=colorFor(cur,1);
-    sub.textContent=Math.abs(cur)<=HIT?'locked — beats nearly gone ('+beats.toFixed(1)+' Hz)':'beats '+beats.toFixed(1)+' Hz — '+(cur<0?'a touch higher':'a touch lower');}
+    sub.textContent=beats.toFixed(1)+' Hz';}
   attDraw(now,tg);
   const mt=$('meter').firstElementChild,db=20*Math.log10(lastRms+1e-6);
   mt.style.width=Math.max(0,Math.min(100,(db+60)/60*100))+'%';mt.style.background=lastRms<0.003?getVar('--muted'):getVar('--good');}
@@ -565,8 +609,8 @@ function attDraw(now,tg){
     ctx.fillStyle=col+'22';ctx.fillRect(W*0.5-160,H*0.42,320,86);ctx.strokeStyle=col;ctx.lineWidth=2;ctx.strokeRect(W*0.5-160,H*0.42,320,86);
     ctx.textAlign='center';ctx.fillStyle=col;ctx.font='700 30px -apple-system,sans-serif';ctx.textBaseline='middle';
     ctx.fillText(r.inT+'% in tune',W*0.5,H*0.42+30);
-    ctx.fillStyle=getVar('--muted');ctx.font='14px -apple-system,sans-serif';
-    ctx.fillText('median '+(r.med>0?'+':'')+r.med+' ¢  ·  entry '+(r.entry==null?'—':r.entry+' s')+'  ·  drift '+(r.drift>0?'+':'')+r.drift+' ¢',W*0.5,H*0.42+62);
+    ctx.fillStyle=getVar('--muted');ctx.font='16px -apple-system,sans-serif';
+    ctx.fillText((r.med>0?'+':'')+r.med+' ¢ · in '+(r.entry==null?'—':r.entry+'s')+' · drift '+(r.drift>0?'+':'')+r.drift,W*0.5,H*0.42+62);
     ctx.textAlign='left';}
   // история попыток — точки внизу
   const n=a.list.length;
@@ -614,7 +658,8 @@ function setView(v){
   else{if(mode!=='idle')finish(false);if(testing)stopTest();$('scrubrow').hidden=true;$('msg').textContent='';droneStats();droneList();droneDraw();}
   ST.view=v;saveST();}
 $('tabSong').onclick=()=>setView('song');$('tabDrone').onclick=()=>setView('drone');
-$('dStart').onclick=()=>droneStart();$('dStop').onclick=()=>droneStop();
+$('dStart').onclick=()=>DR.on?droneStop():droneStart();
+function dBtn(){const b=$('dStart');b.textContent=DR.on?'■':'●';b.classList.toggle('rec',!DR.on);b.classList.toggle('ghost',DR.on);$('dHint').textContent=DR.on?'tap the screen to stop':'tap the screen to start';}
 (function(){const t=$('dTonic');for(let m=24;m<=71;m++){const o=document.createElement('option');o.value=m;o.textContent=nm(m);t.appendChild(o);}t.value=45;})();
 ['dTonic','dTimbre','dEx','dVol','dTimer','dHold'].forEach(id=>{if(ST['d_'+id]!=null)$(id).value=ST['d_'+id];});
 ['dFifth','dOctL'].forEach(id=>{if(ST['d_'+id]!=null)$(id).checked=!!ST['d_'+id];});

@@ -68,6 +68,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 .ctl{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:46px;color:var(--text);font-size:15px;border-bottom:1px solid var(--sep)}
 .grp .ctl:last-of-type{border-bottom:0}
 .ctl select{max-width:62%}
+.ctlv{display:flex;align-items:center;gap:10px}
+.ctlv b{min-width:58px;text-align:right;font-weight:600}
 .ctl b{padding:0;font-size:14px;color:var(--text);text-transform:none;letter-spacing:0;font-weight:600}
 .grp>button{margin:12px 0 2px;align-self:flex-start}
 #dronebar .grp.pair{flex:0 0 auto;flex-direction:row;align-items:center;gap:14px;padding:10px 0}
@@ -184,6 +186,7 @@ canvas{display:block;width:100%;height:100%}
     <label class="ctl">backing <select id="backing"><option value="synth" selected>accompaniment</option><option value="guitar">own guitar (recording)</option><option value="none">melody only</option></select></label>
     <label class="ctl">key <select id="tr"></select></label>
     <label class="ctl">voice <select id="oct"><option value="-12">low (−1 oct)</option><option value="0" selected>as written</option><option value="12">high (+1 oct)</option></select></label>
+    <label class="ctl">sound delay <span class="ctlv"><input id="sync" type="range" min="0" max="320" step="10" value="0"><b id="syncV">0 ms</b></span></label>
     <label class="ctl">tempo <select id="tempo"><option value="84" id="tempoSong">84 (song)</option><option value="70">70</option><option value="60">60</option><option value="50">50</option></select></label>
   </div>
   <div class="grp setSong"><b>Volume</b>
@@ -197,6 +200,7 @@ canvas{display:block;width:100%;height:100%}
     <label class="ctl">headphones <select id="spk"><option value="">default</option></select></label>
     <label class="ctl" title="Suppresses the app's own sound in the mic. On iOS it also ducks playback while you sing — keep it off with headphones."><input type="checkbox" id="aec"> echo cancel</label>
     <button id="mictest" class="ghost">Mic check</button>
+    <button id="synctest" class="ghost" title="Plays clicks and listens to them — measures how late the sound reaches you">Measure delay</button>
     <button id="sndtest" class="ghost" title="A tone and 2 s of backing, no mic — shows where the sound goes">Sound test</button>
   </div>
 </div>
@@ -229,6 +233,11 @@ const saveST=()=>{try{localStorage.setItem('roll',JSON.stringify(ST));}catch(e){
 if(ST.tempo)$('tempo').value=ST.tempo;if(ST.vol!=null)$('vol').value=ST.vol;if(ST.chvol!=null)$('chvol').value=ST.chvol;if(ST.vcvol!=null)$('vcvol').value=ST.vcvol;
 ['tempo'].forEach(id=>$(id).addEventListener('change',()=>{ST[id]=$(id).value;saveST();if(mode==='idle'){buildEvents();draw();}}));
 ['vol','chvol','vcvol'].forEach(id=>{$(id).addEventListener('input',setVol);$(id).addEventListener('change',()=>{ST[id]=$(id).value;saveST();});});
+if(ST.sync!=null)$('sync').value=ST.sync;
+function syncApply(){SY=+$('sync').value/1000;$('syncV').textContent=$('sync').value+' ms';}
+$('sync').addEventListener('input',syncApply);
+$('sync').addEventListener('change',()=>{ST.sync=$('sync').value;saveST();});
+syncApply();
 $('backing').addEventListener('change',()=>{if(useGtr()){TR=0;$('tr').value=0;}$('tr').disabled=useGtr();if(mode==='idle'){buildEvents();draw();}});
 // ---------- song / events ----------
 let SONG=null,GTR=null,CH={},CHORDS=[],TR=0,OCT=0;   // TR: key shift (melody + accompaniment); OCT: melody register only (a female voice sings an octave up over the same chords)
@@ -252,8 +261,12 @@ function buildEvents(){
 let lyricTotal=0;
 // ---------- audio ----------
 let ac,analyser,buf,stream,t0=0,samples=[],oscs=[],gainNode,raf,srcNode,chGain,btGain,vcGain,lastRms=0;
+let SY=0;                       // задержка выхода (с): картинку сдвигаем на неё, иначе полоса идёт впереди звука
+const mt=()=>ac.currentTime-t0-SY;
 function toast(t){const el=$('toast');if(!t){el.hidden=true;return;}el.textContent=t;el.hidden=false;clearTimeout(el._t);el._t=setTimeout(()=>{el.hidden=true;},9000);}
-function ensureAudio(){if(ac)return;ac=new (window.AudioContext||window.webkitAudioContext)();gainNode=ac.createGain();gainNode.connect(ac.destination);chGain=ac.createGain();chGain.connect(ac.destination);btGain=ac.createGain();btGain.connect(ac.destination);applySink();setVol();}
+function ensureAudio(){if(ac)return;ac=new (window.AudioContext||window.webkitAudioContext)();
+  if(ST.sync==null&&ac.outputLatency>0.02){$('sync').value=Math.round(ac.outputLatency*1000/10)*10;syncApply();}   // если браузер сам знает задержку выхода
+gainNode=ac.createGain();gainNode.connect(ac.destination);chGain=ac.createGain();chGain.connect(ac.destination);btGain=ac.createGain();btGain.connect(ac.destination);applySink();setVol();}
 function setVol(){if(gainNode)gainNode.gain.value=(+$('vol').value/100)*0.5;if(chGain)chGain.gain.value=(+$('chvol').value/100)*0.35;if(btGain)btGain.gain.value=(+$('chvol').value/100)*0.45;for(const s of segs)if(s.el)s.el.volume=+$('vcvol').value/100;}
 async function listMics(){try{const devs=await navigator.mediaDevices.enumerateDevices();const sel=$('mic');const cur=sel.value;sel.innerHTML='<option value="">default</option>';
   devs.filter(d=>d.kind==='audioinput'&&d.deviceId).forEach(d=>{const o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||('mic '+sel.length);sel.appendChild(o);});
@@ -358,7 +371,7 @@ async function openMic(){
 // ---------- take: recorded voice segments ----------
 // take = samples (pitch points) + segs [{fromT, dur, blob|url, el}] ; fromT = melody time at audio position 0
 let segs=[],takeId=null,rec=null,recChunks=[],recSeg=null;
-function recStart(){recChunks=[];try{const mt=['audio/webm;codecs=opus','audio/mp4','audio/webm'].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m));rec=new MediaRecorder(stream,mt?{mimeType:mt,audioBitsPerSecond:64000}:{audioBitsPerSecond:64000});rec.ondataavailable=e=>{if(e.data.size)recChunks.push(e.data);};rec.start(1000);recSeg={fromT:ac.currentTime-t0,startAc:ac.currentTime};}catch(e){rec=null;recSeg=null;}}
+function recStart(){recChunks=[];try{const mt=['audio/webm;codecs=opus','audio/mp4','audio/webm'].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m));rec=new MediaRecorder(stream,mt?{mimeType:mt,audioBitsPerSecond:64000}:{audioBitsPerSecond:64000});rec.ondataavailable=e=>{if(e.data.size)recChunks.push(e.data);};rec.start(1000);recSeg={fromT:mt(),startAc:ac.currentTime};}catch(e){rec=null;recSeg=null;}}
 function recStop(){return new Promise(res=>{if(!rec||rec.state==='inactive'){res(null);return;}rec.onstop=()=>{const b=new Blob(recChunks,{type:rec.mimeType});const s=recSeg;s.dur=ac.currentTime-s.startAc;s.blob=b;s.el=new Audio(URL.createObjectURL(b));s.el.preload='auto';s.el.volume=+$('vcvol').value/100;segs.push(s);res(s);};rec.stop();});}
 function coverage(){let cov=0;for(const e of events){let c=0;for(const s of segs){const a=Math.max(e.t,s.fromT),b=Math.min(e.t+e.dur,s.fromT+s.dur);if(b>a)c+=b-a;}cov+=Math.min(c,e.dur);}return lyricTotal?cov/lyricTotal:0;}
 function clearTake(){for(const s of segs){try{s.el&&s.el.pause();}catch(e){}}segs=[];samples=[];takeId=null;for(const e of events)e.ss=[];lastMatch=null;$('takes').value='';}
@@ -401,7 +414,7 @@ async function startPlay(){
   const from=(review&&rt>0.3&&rt<total-0.5)?rt:0;review=false;$('scrubrow').hidden=true;$('msg').textContent='';runFrom=from;
   scheduleFrom(from,true);setMode('play');lastMode='play';loop();}
 function loop(){if(mode==='idle')return;
-  let t=ac.currentTime-t0;const a=$('gtr');if(useGtr()&&!a.paused)t=a.currentTime-gT(secStart);
+  let t=mt();const a=$('gtr');if(useGtr()&&!a.paused)t=a.currentTime-gT(secStart)-SY;
   if(mode==='rec'){analyser.getFloatTimeDomainData(buf);const f=detect(buf,ac.sampleRate);const lat=analyser.fftSize/2/ac.sampleRate+(ac.baseLatency||0);
     const pm=stablePitch(f);const rs=resoNow(pm>0);
     if(pm>0){const s={t:t-lat,m:pm,r:rs,db:20*Math.log10(lastRms+1e-6)};samples.push(s);assign(s);}}
@@ -438,9 +451,34 @@ async function micTest(){if(mode!=='idle')return;ensureAudio();await ac.resume()
     raf=requestAnimationFrame(tl);})();}
 function stopTest(){testing=false;cancelAnimationFrame(raf);$('mictest').classList.remove('active');$('msg').textContent='';samples=[];draw();}
 $('mictest').onclick=()=>testing?stopTest():micTest();
+function beep(at){const o=ac.createOscillator(),g=ac.createGain();o.type='square';o.frequency.value=1500;
+  g.gain.setValueAtTime(0.0001,at);g.gain.exponentialRampToValueAtTime(0.7,at+0.004);g.gain.exponentialRampToValueAtTime(0.0001,at+0.045);
+  o.connect(g);g.connect(ac.destination);o.start(at);o.stop(at+0.06);track(o,g);}
+async function syncTest(){   // сколько миллисекунд звук идёт до ушей и обратно в микрофон
+  if(mode!=='idle'||testing)return;ensureAudio();await ac.resume();if(!(await openMic()))return;
+  $('synctest').classList.add('active');$('msg').textContent='Listening to the clicks — keep quiet…';
+  const n=5,gap=0.6,t0a=ac.currentTime+0.7,fr=[];
+  for(let i=0;i<n;i++)beep(t0a+i*gap);
+  const win=analyser.fftSize/2/ac.sampleRate;
+  await new Promise(res=>{(function tick(){
+    analyser.getFloatTimeDomainData(buf);let e=0;for(let i=0;i<buf.length;i++)e+=buf[i]*buf[i];
+    fr.push({t:ac.currentTime-win,e:Math.sqrt(e/buf.length)});
+    if(ac.currentTime<t0a+n*gap+0.5)requestAnimationFrame(tick);else res();})();});
+  const base=fr.map(f=>f.e).sort((a,b)=>a-b)[Math.floor(fr.length/2)],ds=[];
+  for(let i=0;i<n;i++){const c=t0a+i*gap;let best=null;
+    for(const f of fr)if(f.t>=c-0.02&&f.t<c+0.45&&(!best||f.e>best.e))best=f;
+    if(best&&best.e>Math.max(0.01,base*3))ds.push(best.t-c);}
+  $('synctest').classList.remove('active');$('msg').textContent='';
+  if(ds.length<3){toast('Could not hear the clicks — turn the volume up and try again, or set the delay by ear.');return;}
+  ds.sort((a,b)=>a-b);const rt=ds[Math.floor(ds.length/2)];
+  const ms=Math.max(0,Math.min(320,Math.round(rt*1000/10)*10));
+  $('sync').value=ms;syncApply();ST.sync=String(ms);saveST();
+  toast('Sound delay '+ms+' ms (measured '+Math.round(rt*1000)+' ms there and back'+
+    (ac.outputLatency?', browser says '+Math.round(ac.outputLatency*1000)+' ms out':'')+'). Nudge the slider if the line still feels early.');}
+$('synctest').onclick=syncTest;
 $('sndtest').onclick=async()=>{ensureAudio();await ac.resume();setVol();const now=ac.currentTime;tone(57,now,0.5);tone(64,now+0.55,0.5);const a=$('gtr');try{if(a.src){a.currentTime=8;await a.play();setTimeout(()=>a.pause(),2500);}$('msg').textContent='A tone (and 2 s of the guitar recording). Not in the headphones? On iPad/iPhone pick the output in Control Center; on Mac use the "headphones" list.';}catch(e){$('msg').textContent='Tone played; recording did not start: '+e.message;}};
 // ---------- drawing ----------
-function draw(t){if(t==null)t=mode!=='idle'?ac.currentTime-t0:(review?rt:-1.5);
+function draw(t){if(t==null)t=mode!=='idle'?mt():(review?rt:-1.5);
   ctx.clearRect(0,0,W,H);const rows=hi-lo,rh=H/rows,px=W*PLAYX;const y=m=>H-(m-lo+0.5)*rh;
   for(let m=lo;m<=hi;m++){const yy=y(m);ctx.fillStyle=[0,2,4,5,7,9,11].includes(((m%12)+12)%12)?getVar('--grid2'):'transparent';ctx.fillRect(0,yy-rh/2,W,rh);ctx.strokeStyle=getVar('--grid');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,yy-rh/2);ctx.lineTo(W,yy-rh/2);ctx.stroke();
     if([0,2,4,5,7,9,11].includes(((m%12)+12)%12)){ctx.fillStyle=getVar('--muted');ctx.font='12px -apple-system,sans-serif';ctx.textBaseline='middle';ctx.fillText(nm(m),6,yy);}}

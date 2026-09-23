@@ -625,6 +625,7 @@ function fcard(name,s,prev,cls){const el=document.createElement('div');el.classN
   return el;}
 function focusReport(pcard,lbl){
   const box=$('focus');box.innerHTML='';const C=CUR;if(!C||!C.n)return;
+  if(!samples.length){box.innerHTML='<div class="sect">old take \u2014 only the score and the audio were saved, no pitch track</div>';return;}
   const sc=scoredNow();if(!sc.length)return;
   const G=makeGroups(sc,true);
   const psc=pcard?scoredPrev(pcard):null,PG=psc?makeGroups(psc,false):null;
@@ -717,7 +718,6 @@ function showStored(c){   // старый дубль: точек голоса н
        ring:c.ring==null?null:c.ring,cov:c.coverage==null?100:c.coverage};
   renderResult(null);getPrev().then(pv=>{if(pv&&pv.card)renderResult(pv);});
   $('result').classList.add('show');
-  $('focus').innerHTML='<div class="sect">old take \u2014 only the score and the audio were saved, no pitch track</div>';
   draw();}
 // ---------- songs / key ----------
 Object.keys(SONGS).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=SONGS[k].title+' · '+SONGS[k].artist;$('song').appendChild(o);});

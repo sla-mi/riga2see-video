@@ -451,6 +451,7 @@ async function startRec(){
   setMode('rec');lastMode='rec';loop();}
 async function startPlay(){
   ensureAudio();await ac.resume();if(!segs.length)return;
+  for(const s of segs)if(!s.abuf&&s.raw){try{s.abuf=await ac.decodeAudioData(s.raw.slice(0));}catch(e){}}
   const from=(review&&rt>0.3&&rt<total-0.5)?rt:0;review=false;$('scrubrow').hidden=true;$('msg').textContent='';runFrom=from;
   scheduleFrom(from,true);setMode('play');lastMode='play';loop();}
 function loop(){if(mode==='idle')return;
@@ -701,9 +702,23 @@ $('takes').addEventListener('change',async()=>{if(mode!=='idle')return;const k=$
   try{const c=await (await fetch('/vocal-api/card?key='+encodeURIComponent(k),{cache:'no-cache'})).json();clearTake();takeId=c.id;$('takes').value=k;
     if(c.tr!=null&&c.tr!==TR){TR=c.tr;$('tr').value=TR;}if(c.oct!=null&&c.oct!==OCT){OCT=c.oct;$('oct').value=OCT;}if(c.bpm&&c.bpm!=='guitar'){if(![...$('tempo').options].some(o=>o.value===String(c.bpm))){const o=document.createElement('option');o.value=String(c.bpm);o.textContent=c.bpm+' (take)';$('tempo').appendChild(o);}$('tempo').value=String(c.bpm);}$('backing').value=c.mode||'synth';buildEvents();
     samples=(c.samples||[]).map(a=>({t:a[0],m:a[1],r:a[2]==null?null:a[2],db:a[3]==null?null:a[3]}));segs=(c.segments||[]).map((s,i)=>{const el=new Audio(R2+encodeURI(s.key||''));el.preload='auto';el.volume=+$('vcvol').value/100;return {fromT:s.fromT,dur:s.dur,el,url:s.key};});
-    for(const sg of segs)if(sg.url)fetch('/vocal-api/audio?key='+encodeURIComponent(sg.url)).then(r=>r.arrayBuffer()).then(a=>ac&&ac.decodeAudioData(a)).then(bufr=>{sg.abuf=bufr;}).catch(()=>{});
-    if(!segs.length)toast('This take has only the score — it was recorded before the app started saving audio.');
-    review=true;$('scrubrow').hidden=false;score();setRT(0);lastMode='play';setMode('idle');}catch(e){$('msg').textContent='Could not load that take.';}});
+    const row=takesList.find(t=>t.card_key===k);
+    if(!segs.length&&row&&row.audio_key){        // старый формат: звук одним файлом, время начала — поле from
+      const el=new Audio(R2+encodeURI(row.audio_key));el.preload='auto';el.volume=+$('vcvol').value/100;
+      segs=[{fromT:c.from||0,dur:(c.to!=null?c.to-(c.from||0):600),el,url:row.audio_key}];}
+    for(const sg of segs)if(sg.url)fetch('/vocal-api/audio?key='+encodeURIComponent(sg.url)).then(r=>r.arrayBuffer()).then(a=>{sg.raw=a;if(ac)return ac.decodeAudioData(a.slice(0));}).then(bufr=>{if(bufr)sg.abuf=bufr;}).catch(()=>{});
+    review=true;$('scrubrow').hidden=false;
+    if(samples.length)score();else showStored(c);
+    setRT(0);lastMode='play';setMode('idle');}catch(e){$('msg').textContent='Could not load that take.';}});
+function showStored(c){   // старый дубль: точек голоса не сохраняли — показываем цифры из карточки, звук играется
+  $('chips').innerHTML='';$('focus').innerHTML='';
+  const n=c.n||0,q=v=>n&&v!=null?Math.round(100*v/n):null;
+  CUR={n,tot:events.length,hit:q(c.good),near:q(c.near),off:q(c.miss),flat:q(c.flat),sharp:q(c.sharp),
+       ring:c.ring==null?null:c.ring,cov:c.coverage==null?100:c.coverage};
+  renderResult(null);getPrev().then(pv=>{if(pv&&pv.card)renderResult(pv);});
+  $('result').classList.add('show');
+  $('focus').innerHTML='<div class="sect">old take \u2014 only the score and the audio were saved, no pitch track</div>';
+  draw();}
 // ---------- songs / key ----------
 Object.keys(SONGS).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=SONGS[k].title+' · '+SONGS[k].artist;$('song').appendChild(o);});
 (function(){const t=$('tr');for(let i=-6;i<=6;i++){const o=document.createElement('option');o.value=i;t.appendChild(o);}

@@ -211,6 +211,18 @@ function detect(b,sr){let n=b.length,rms=0;for(let i=0;i<n;i++)rms+=b[i]*b[i];rm
   let d=0;while(d<n-1&&c[d]>c[d+1])d++;let mx=-1,mp=-1;for(let i=d;i<n;i++)if(c[i]>mx){mx=c[i];mp=i;}
   if(mp<=0||mx<0.3*c[0])return -1;let T=mp;const x1=c[mp-1]||0,x2=c[mp],x3=c[mp+1]||0,a=(x1+x3-2*x2)/2,bb=(x3-x1)/2;if(a)T=mp-bb/(2*a);
   const f=sr/T;return (f>60&&f<700)?f:-1;}
+let freqBuf=null,lastReso=null;
+// певческий резонанс: «звенит» голос или глухой. есть ≥ −3 дБ, нет ≤ −8 дБ (пороги из analyze_takes)
+function resoNow(){
+  if(!analyser)return null;
+  if(!freqBuf||freqBuf.length!==analyser.frequencyBinCount)freqBuf=new Float32Array(analyser.frequencyBinCount);
+  analyser.getFloatFrequencyData(freqBuf);
+  const sr=ac.sampleRate,n=freqBuf.length,hz=i=>i*sr/2/n;let lo=0,hi=0;
+  for(let i=0;i<n;i++){const f=hz(i),p=Math.pow(10,freqBuf[i]/10);
+    if(f>=1000&&f<2000)lo+=p;else if(f>=2400&&f<3400)hi+=p;}
+  if(lo<=0)return null;lastReso=10*Math.log10(hi/lo+1e-12);return lastReso;}
+const resoK=v=>v==null?null:(v>=-3?'ring':v<=-8?'dull':'mid');
+const resoCol=v=>getVar(resoK(v)==='ring'?'--good':resoK(v)==='dull'?'--flat':'--near');
 let pitchHist=[];
 function stablePitch(f){      // медиана трёх кадров + защита от прыжка на октаву: линию перестаёт штормить
   if(f<=0){pitchHist=[];return -1;}
@@ -306,8 +318,8 @@ async function startPlay(){
 function loop(){if(mode==='idle')return;
   let t=ac.currentTime-t0;const a=$('gtr');if(useGtr()&&!a.paused)t=a.currentTime-gT(secStart);
   if(mode==='rec'){analyser.getFloatTimeDomainData(buf);const f=detect(buf,ac.sampleRate);const lat=analyser.fftSize/2/ac.sampleRate+(ac.baseLatency||0);
-    const pm=stablePitch(f);
-    if(pm>0){const s={t:t-lat,m:pm};samples.push(s);assign(s);}}
+    const pm=stablePitch(f);const rs=resoNow();
+    if(pm>0){const s={t:t-lat,m:pm,r:rs,db:20*Math.log10(lastRms+1e-6)};samples.push(s);assign(s);}}
   if(mode==='play'){for(const s of segs){const inside=t>=s.fromT&&t<s.fromT+s.dur;if(inside){const pos=t-s.fromT;if(s.el.paused){s.el.currentTime=pos;s.el.play().catch(()=>{});}else if(Math.abs(s.el.currentTime-pos)>0.2)s.el.currentTime=pos;}else if(!s.el.paused)s.el.pause();}}
   if(sched&&t+4>sched.until)scheduleWindow(t+8);
   lastT=t;draw(t);if(t>total+0.8)finish(true);else raf=requestAnimationFrame(loop);}
@@ -390,8 +402,17 @@ function focusReport(n){
   const st=a=>{if(!a.length)return null;const hit=100*a.filter(x=>x.g.k==='good').length/a.length;
     const md=a.map(x=>Math.abs(x.g.med)).sort((p,q)=>p-q)[Math.floor(a.length/2)];return {hit:Math.round(hit),md:Math.round(md),n:a.length};};
   const mids=scored.map(x=>x.e.midi).sort((p,q)=>p-q),midMid=mids[Math.floor(mids.length/2)];
+  const evStat=e=>{const ss=(samples.filter(s=>s.tg===e));
+    const rs=ss.map(s=>s.r).filter(v=>v!=null),db=ss.map(s=>s.db).filter(v=>v!=null);
+    return {r:rs.length?rs.reduce((a,b)=>a+b,0)/rs.length:null,db:db.length?db.reduce((a,b)=>a+b,0)/db.length:null};};
+  for(const x of scored)x.q=evStat(x.e);
+  const dbs=scored.map(x=>x.q.db).filter(v=>v!=null).sort((p,q)=>p-q),dbMid=dbs.length?dbs[Math.floor(dbs.length/2)]:null;
   const groups=[
     {k:'long notes',a:scored.filter(x=>x.e.dur>=0.8)},
+    {k:'with ring',a:scored.filter(x=>x.q.r!=null&&x.q.r>=-3)},
+    {k:'dull tone',a:scored.filter(x=>x.q.r!=null&&x.q.r<=-8)},
+    {k:'louder half',a:dbMid==null?[]:scored.filter(x=>x.q.db!=null&&x.q.db>dbMid)},
+    {k:'quieter half',a:dbMid==null?[]:scored.filter(x=>x.q.db!=null&&x.q.db<=dbMid)},
     {k:'short notes',a:scored.filter(x=>x.e.dur<0.45)},
     {k:'high notes',a:scored.filter(x=>x.e.midi>midMid)},
     {k:'low notes',a:scored.filter(x=>x.e.midi<=midMid)},
@@ -531,8 +552,8 @@ function droneLoop(){
   const now=Date.now()/1000;
   if(analyser){analyser.getFloatTimeDomainData(buf);const f=detect(buf,ac.sampleRate);
     const tg=droneTargetMidi();let cNow=null;
-    const pm=stablePitch(f);
-    if(pm>0){const m=pm;DR.samples.push({t:now,m});
+    const pm=stablePitch(f);const rs=resoNow();
+    if(pm>0){const m=pm;DR.samples.push({t:now,m,r:rs});
       cNow=(fold(m,tg)-tg)*100;const a=Math.abs(cNow);
       DR.stat.n++;if(a<=HIT)DR.stat.good++;else if(a<=NEAR)DR.stat.near++;}
     attTick(now,cNow);}
@@ -560,6 +581,10 @@ function droneDraw(){
   else{const beats=Math.abs(freqOf(tg)*(Math.pow(2,cur/1200)-1));
     big.textContent=(cur>0?'+':'')+Math.round(cur)+' ¢';big.style.color=colorFor(cur,1);
     sub.textContent=beats.toFixed(1)+' Hz';}
+  {const v=lastReso,x=W-26,h=H*0.38,y0=H*0.30;
+    ctx.fillStyle=getVar('--chip');ctx.fillRect(x,y0,10,h);
+    if(v!=null){const p=Math.max(0,Math.min(1,(v+14)/14));ctx.fillStyle=resoCol(v);ctx.fillRect(x,y0+h*(1-p),10,h*p);}
+    ctx.fillStyle=getVar('--muted');ctx.font='11px -apple-system,sans-serif';ctx.textAlign='center';ctx.fillText('ring',x+5,y0-8);ctx.textAlign='left';}
   attDraw(now,tg);
   const mt=$('meter').firstElementChild,db=20*Math.log10(lastRms+1e-6);
   mt.style.width=Math.max(0,Math.min(100,(db+60)/60*100))+'%';mt.style.background=lastRms<0.003?getVar('--muted'):getVar('--good');}
@@ -582,7 +607,9 @@ function attFinish(now){
   const first=u.filter(x=>x.t<from+1),last=u.filter(x=>x.t>a.last-1);
   const mm=arr=>{const b=arr.map(x=>x.c).sort((x,y)=>x-y);return b.length?b[Math.floor(b.length/2)]:0;};
   const drift=Math.round(mm(last)-mm(first));
-  const rec={inT,med,drift,entry:a.lock==null?null:+a.lock.toFixed(1),held:+dur.toFixed(1),grade:attGrade(inT),t:Date.now()};
+  const rs=u.map(x=>x.r).filter(v=>v!=null);
+  const ring=rs.length?Math.round(100*rs.filter(v=>v>=-3).length/rs.length):null;
+  const rec={inT,med,drift,ring,entry:a.lock==null?null:+a.lock.toFixed(1),held:+dur.toFixed(1),grade:attGrade(inT),t:Date.now()};
   a.list.push(rec);while(a.list.length>40)a.list.shift();a.show=now+3;a.pts=[];
   const isBest=inT>a.best&&a.list.length>1;a.best=Math.max(a.best,inT);
   chime(isBest?'best':rec.grade);
@@ -592,7 +619,7 @@ function attTick(now,c){
   const a=ATT;
   if(c!=null){
     if(!a.on){a.on=true;a.t0=now;a.lock=null;a.pts=[];}
-    a.last=now;a.pts.push({t:now,c});
+    a.last=now;a.pts.push({t:now,c,r:lastReso});
     if(a.lock==null&&Math.abs(c)<=NEAR)a.lock=now-a.t0;
     if(now-a.t0>=holdSec()+(a.lock||0))attFinish(now);
   } else if(a.on&&now-a.last>0.4)attFinish(now);}
@@ -610,7 +637,7 @@ function attDraw(now,tg){
     ctx.textAlign='center';ctx.fillStyle=col;ctx.font='700 30px -apple-system,sans-serif';ctx.textBaseline='middle';
     ctx.fillText(r.inT+'% in tune',W*0.5,H*0.42+30);
     ctx.fillStyle=getVar('--muted');ctx.font='16px -apple-system,sans-serif';
-    ctx.fillText((r.med>0?'+':'')+r.med+' ¢ · in '+(r.entry==null?'—':r.entry+'s')+' · drift '+(r.drift>0?'+':'')+r.drift,W*0.5,H*0.42+62);
+    ctx.fillText((r.med>0?'+':'')+r.med+' ¢ · in '+(r.entry==null?'—':r.entry+'s')+' · drift '+(r.drift>0?'+':'')+r.drift+(r.ring!=null?' · ring '+r.ring+'%':''),W*0.5,H*0.42+62);
     ctx.textAlign='left';}
   // история попыток — точки внизу
   const n=a.list.length;
@@ -626,7 +653,7 @@ function droneSave(secs){
   fetch('/vocal-api/drone',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec)}).catch(()=>{});}
 const attCol=g=>({great:'--good',good:'--good',ok:'--near',weak:'--sharp'})[g]||'--muted';
 function attChip(a){const c=getVar(attCol(a.grade));
-  return '<i style="background:'+c+'22;color:'+c+'">'+a.inT+'% \u00b7 '+(a.med>0?'+':'')+a.med+' \u00a2'+(a.entry!=null?' \u00b7 in '+a.entry+'s':'')+'</i>';}
+  return '<i style="background:'+c+'22;color:'+c+'">'+a.inT+'% \u00b7 '+(a.med>0?'+':'')+a.med+' \u00a2'+(a.entry!=null?' \u00b7 in '+a.entry+'s':'')+(a.ring!=null?' \u00b7 ring '+a.ring+'%':'')+'</i>';}
 function droneList(){   // сегодняшние сессии и каждая попытка внутри них
   const today=new Date().toISOString().slice(0,10),h=droneHist().filter(r=>r.day===today),blocks=[];
   if(DR.on||ATT.list.length){const l=ATT.list,avg=l.length?Math.round(l.reduce((x,a)=>x+a.inT,0)/l.length):0;

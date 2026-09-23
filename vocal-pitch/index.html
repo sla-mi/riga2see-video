@@ -902,9 +902,10 @@ function attFinish(now){
   const drift=Math.round(mm(last)-mm(first));
   const rs=u.map(x=>x.r).filter(v=>v!=null);
   const ring=rs.length?Math.round(100*rs.filter(v=>v>=-3).length/rs.length):null;
-  const rec={inT,med,drift,ring,entry:a.lock==null?null:+a.lock.toFixed(1),held:+dur.toFixed(1),grade:attGrade(inT),t:Date.now()};
-  {const ex=$('dEx').selectedOptions[0].textContent;
-   const peers=droneHist().filter(r=>r.ex===ex).reduce((x,r)=>x.concat((r.attempts||[]).map(y=>y.inT)),[]).concat(a.list.map(y=>y.inT)).filter(v=>v!=null);
+  const rec={inT,med,drift,ring,entry:a.lock==null?null:+a.lock.toFixed(1),held:+dur.toFixed(1),grade:attGrade(inT),t:Date.now(),
+    ex:$('dEx').selectedOptions[0].textContent,tonic:nm(dMidi())};
+  {const ex=rec.ex;
+   const peers=attPeers(ex,a.list);
    if(peers.length>=2){rec.place=1+peers.filter(v=>v>inT).length;rec.tot=peers.length+1;}}
   a.list.push(rec);while(a.list.length>40)a.list.shift();a.show=now+3;a.pts=[];
   const isBest=inT>a.best&&a.list.length>1;a.best=Math.max(a.best,inT);
@@ -951,11 +952,13 @@ function attDraw(now,tg){
   for(let i=0;i<n;i++){const x=W-14-(n-1-i)*16,y2=H-18,g=a.list[i].grade;
     ctx.fillStyle={great:getVar('--good'),good:getVar('--good'),ok:getVar('--near'),weak:getVar('--sharp')}[g];
     ctx.globalAlpha=g==='great'?1:.75;ctx.beginPath();ctx.arc(x,y2,g==='great'?6:5,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}}
+function attPeers(ex,cur){   // попытки ТОГО ЖЕ упражнения: из истории (у старых записей упражнение хранилось на сессию) и из текущей
+  const h=droneHist().reduce((a,r)=>a.concat((r.attempts||[]).filter(x=>(x.ex||r.ex)===ex).map(x=>x.inT)),[]);
+  return h.concat((cur||[]).filter(x=>(x.ex||ex)===ex).map(x=>x.inT)).filter(v=>v!=null);}
 function droneRank(){   // место последней попытки среди всех своих попыток этого упражнения
   const box=$('drank');box.innerHTML='';const last=ATT.list[ATT.list.length-1];if(!last)return;
-  const ex=$('dEx').selectedOptions[0].textContent;
-  const hist=droneHist().filter(r=>r.ex===ex).reduce((a,r)=>a.concat((r.attempts||[]).map(x=>x.inT)),[]);
-  const peers=hist.concat(ATT.list.slice(0,-1).map(a=>a.inT)).filter(v=>v!=null).slice(-80);
+  const ex=last.ex||$('dEx').selectedOptions[0].textContent;
+  const peers=attPeers(ex,ATT.list.slice(0,-1)).slice(-80);
   box.innerHTML=scaleHTML(last.inT,peers,'attempts \u00b7 '+ex,peers.length?'2nd attempt \u2014 scale from the third':'first attempt \u2014 scale appears later');}
 function droneHist(){try{return JSON.parse(localStorage.getItem('drone')||'[]');}catch(e){return [];}}
 function droneSave(secs){

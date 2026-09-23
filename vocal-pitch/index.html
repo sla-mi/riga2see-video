@@ -583,7 +583,7 @@ function focusReport(pcard,lbl){
     for(const s of secs){const a=sc.filter(x=>x.e.sec===s);if(a.length<5)continue;const q=gstat(a);
       let pd=null;if(psc){const pa=psc.filter(x=>x.e.sec===s);if(pa.length>=5)pd=gstat(pa).hit;}
       const dd=pd==null?null:deltaStr(q.hit-pd,1),col=q.hit>=70?getVar('--good'):q.hit>=50?getVar('--near'):getVar('--sharp');
-      row.push('<span class="tag" style="background:'+col+'22;color:'+col+'">'+s+' '+q.hit+'%'+(dd?' <b style="font-weight:600">'+dd.s+'</b>':'')+'</span>');}
+      row.push('<span class="tag" style="background:'+col+'22;color:'+col+'">'+s+' '+q.hit+'%'+(dd?' <b style="font-weight:700;color:'+getVar(dd.cls==='up'?'--good':dd.cls==='dn'?'--sharp':'--muted')+'">'+dd.s+'</b>':'')+'</span>');}
     if(row.length)box.insertAdjacentHTML('beforeend','<div class="sect">by part</div><div class="row">'+row.join('')+'</div>');}
   const bad=sc.filter(x=>x.g.k==='flat'||x.g.k==='sharp').sort((p,q)=>Math.abs(q.g.med)-Math.abs(p.g.med)).slice(0,8);
   if(bad.length){const row=document.createElement('div');row.className='row';
@@ -610,7 +610,7 @@ $('prev').onclick=()=>stepSyl(-1);$('next').onclick=()=>stepSyl(1);
 // ---------- takes: save / list / load ----------
 const R2='https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/';
 function card(){const gr=events.map(e=>{const g=grade(e);return g?[e.syl,g.k,g.med]:null;});const n=gr.filter(Boolean).length;const cnt=k=>gr.filter(x=>x&&x[1]===k).length;
-  return {id:takeId,ts:new Date().toISOString(),song:SONG.slug,title:SONG.title,mode:$('backing').value,bpm:useGtr()?'guitar':$('tempo').value,tr:TR,coverage:Math.round(100*coverage()),
+  return {id:takeId,ts:new Date().toISOString(),song:SONG.slug,title:SONG.title,mode:$('backing').value,bpm:useGtr()?'guitar':$('tempo').value,tr:TR,oct:OCT,coverage:Math.round(100*coverage()),
     mic:($('mic').selectedOptions[0]||{}).textContent||'',device:navigator.userAgent.slice(0,80),n,good:cnt('good'),near:cnt('near'),miss:cnt('flat')+cnt('sharp'),flat:cnt('flat'),sharp:cnt('sharp'),
     ring:(()=>{const r=samples.map(s=>s.r).filter(v=>v!=null);return r.length?Math.round(100*r.filter(v=>v>=-3).length/r.length):null;})(),
     rule:'±25/±40, long ±15/±25, attack 120 ms, median',syllables:gr,segments:segs.map(s=>({fromT:Math.round(s.fromT*1000)/1000,dur:Math.round(s.dur*1000)/1000})),
@@ -635,7 +635,7 @@ function takeTrend(L){   // прогресс по песне: только по�
     '<span>best <b>'+best+'%</b></span>'+(part?'<span>+'+part+' partial</span>':'');}
 $('takes').addEventListener('change',async()=>{if(mode!=='idle')return;const k=$('takes').value;if(!k){clearTake();review=false;$('scrubrow').hidden=true;$('result').classList.remove('show');setMode('idle');draw();return;}
   try{const c=await (await fetch('/vocal-api/card?key='+encodeURIComponent(k),{cache:'no-cache'})).json();clearTake();takeId=c.id;$('takes').value=k;
-    if(c.tr!=null&&c.tr!==TR){TR=c.tr;$('tr').value=TR;}if(c.bpm&&c.bpm!=='guitar'){$('tempo').value=c.bpm;}$('backing').value=c.mode||'synth';buildEvents();
+    if(c.tr!=null&&c.tr!==TR){TR=c.tr;$('tr').value=TR;}if(c.oct!=null&&c.oct!==OCT){OCT=c.oct;$('oct').value=OCT;}if(c.bpm&&c.bpm!=='guitar'){$('tempo').value=c.bpm;}$('backing').value=c.mode||'synth';buildEvents();
     samples=(c.samples||[]).map(a=>({t:a[0],m:a[1],r:a[2]==null?null:a[2],db:a[3]==null?null:a[3]}));segs=(c.segments||[]).map((s,i)=>{const el=new Audio(R2+encodeURI(s.key||''));el.preload='auto';el.volume=+$('vcvol').value/100;return {fromT:s.fromT,dur:s.dur,el,url:s.key};});
     review=true;$('scrubrow').hidden=false;score();setRT(0);lastMode='play';setMode('idle');}catch(e){$('msg').textContent='Could not load that take.';}});
 // ---------- songs / key ----------

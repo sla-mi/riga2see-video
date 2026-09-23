@@ -404,7 +404,10 @@ function recStop(){return new Promise(res=>{if(!rec||rec.state==='inactive'){res
     try{s.abuf=await ac.decodeAudioData(await b.arrayBuffer());}catch(e){}
     res(s);};rec.stop();});}
 function coverage(){let cov=0;for(const e of events){let c=0;for(const s of segs){const a=Math.max(e.t,s.fromT),b=Math.min(e.t+e.dur,s.fromT+s.dur);if(b>a)c+=b-a;}cov+=Math.min(c,e.dur);}return lyricTotal?cov/lyricTotal:0;}
-function clearTake(){NOACC=false;for(const s of segs){try{s.el&&s.el.pause();}catch(e){}}segs=[];samples=[];takeId=null;for(const e of events)e.ss=[];lastMatch=null;$('takes').value='';}
+function restoreTempo(){   // после прослушивания старого дубля возвращаем СВОЙ темп, иначе новая запись пойдёт медленнее
+  const want=String(ST.tempo||SONG.bpm);
+  if([...$('tempo').options].some(o=>o.value===want)&&$('tempo').value!==want){$('tempo').value=want;buildEvents();}}
+function clearTake(){NOACC=false;restoreTempo();for(const s of segs){try{s.el&&s.el.pause();}catch(e){}}segs=[];samples=[];takeId=null;for(const e of events)e.ss=[];lastMatch=null;$('takes').value='';}
 // ---------- modes: idle / rec / play ----------
 let mode='idle',lastMode='rec',review=false,rt=0,lastT=0,runFrom=0;
 const setMode=m=>{mode=m;$('modeTag').textContent=m==='rec'?'● REC':m==='play'?'▶ PLAY':(review?'review':'idle');
@@ -477,7 +480,7 @@ function killSound(){sched=null;for(const o of oscs){try{o.stop();}catch(e){}}os
 async function startRec(){
   ensureAudio();await ac.resume();if(!(await openMic()))return;
   const from=(review&&rt>0.3&&rt<total-0.5)?rt:0;
-  if(!review||from===0)clearTake();else{samples=samples.filter(x=>x.t<from);segs=segs.filter(s=>s.fromT<from);for(const s of segs)s.dur=Math.min(s.dur,from-s.fromT);reassignAll();}
+  if(!review||from===0){clearTake();buildEvents();}else{samples=samples.filter(x=>x.t<from);segs=segs.filter(s=>s.fromT<from);for(const s of segs)s.dur=Math.min(s.dur,from-s.fromT);reassignAll();}
   if(!takeId)takeId=new Date().toISOString();
   review=false;$('scrubrow').hidden=true;$('result').classList.remove('show');$('msg').textContent='';runFrom=from;
   buildEvents();reassignAll();scheduleFrom(from,false);recStart();

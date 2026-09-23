@@ -618,7 +618,8 @@ function card(){const gr=events.map(e=>{const g=grade(e);return g?[e.syl,g.k,g.m
 async function saveTake(){const c=card();const fd=new FormData();segs.forEach((s,i)=>{if(s.blob)fd.append('audio',s.blob,'seg'+i);});fd.append('card',JSON.stringify(c));
   try{const r=await fetch('/vocal-api/take',{method:'POST',body:fd});const j=await r.json();if(!j.ok)throw new Error(j.detail||'no');$('hist').insertAdjacentHTML('afterbegin','<span>take saved</span>');loadTakes();}
   catch(e){$('hist').insertAdjacentHTML('afterbegin','<span>server did not accept the take — '+segs.map((s,i)=>s.blob?'<a href="'+URL.createObjectURL(s.blob)+'" download="take'+i+'.webm">download '+(i+1)+'</a>':'').join(' ')+'</span>');}}
-async function loadTakes(){try{const r=await fetch('/vocal-api/takes?song='+encodeURIComponent(SONG.slug));const L=await r.json();takesList=L;const sel=$('takes');sel.innerHTML='<option value="">— new —</option>';
+async function loadTakes(){try{const r=await fetch('/vocal-api/takes?song='+encodeURIComponent(SONG.slug));const L0=await r.json();   // мусорные дубли (меньше 10 % песни или почти без нот) в списке не показываем
+  const L=L0.filter(t=>t.n>=8&&(t.coverage==null||t.coverage>=10));takesList=L;const sel=$('takes');sel.innerHTML='<option value="">— new —</option>';
   takeTrend(L);
   for(const t of L){const o=document.createElement('option');o.value=t.card_key;const d=new Date(t.ts.replace(/^(\d+-\d+-\d+) (\d+)-(\d+)-(\d+)$/,'$1T$2:$3:$4'));o.textContent=d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' · '+(t.coverage!=null?t.coverage+'% · ':'')+(t.n?Math.round(100*t.good/t.n)+'%':'')+(t.coverage!=null&&t.coverage<80?' \u00b7 partial':'');sel.appendChild(o);}}catch(e){}}
 let lastTakeHit=null;

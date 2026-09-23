@@ -10,7 +10,7 @@
 <style>
 :root{
  --bg:#000;--panel:#1c1c1e;--panel2:#2c2c2e;--chip:#2c2c2e;--sep:rgba(255,255,255,.08);
- --grid:rgba(255,255,255,.06);--grid2:rgba(255,255,255,.04);
+ --grid:rgba(255,255,255,.13);--grid2:rgba(255,255,255,.085);
  --text:#ffffff;--muted:#98989f;--line:#f5f5f7;--tint:#0a84ff;--accent:#ff9f0a;
  --good:#30d158;--near:#ffd60a;--flat:#64d2ff;--sharp:#ff453a;--rec:#ff3b30;
  --glass:rgba(255,255,255,.07);--glass2:rgba(255,255,255,.1);--hair:rgba(255,255,255,.1);
@@ -99,7 +99,7 @@ canvas{display:block;width:100%;height:100%}
 #modeTag{position:absolute;right:12px;top:12px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 11px;border-radius:9px;background:rgba(44,44,46,.7);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
 #dbig{position:absolute;left:0;right:0;top:14px;text-align:center;font-size:46px;font-weight:700;letter-spacing:-.02em}
 #dsub{position:absolute;left:0;right:0;top:72px;text-align:center;font-size:15px;color:var(--muted)}
-#scrubrow{display:flex;align-items:center;gap:10px;position:absolute;left:12px;right:12px;top:12px;padding:7px 12px;border-radius:16px;background:rgba(28,28,30,.72);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+#scrubrow{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:16px;background:rgba(28,28,30,.72);box-shadow:inset 0 0 0 1px var(--hair)}
 #scrubrow input[type=range]{flex:1;width:auto}
 #scrubrow span{color:var(--muted);font-size:13px;min-width:56px;text-align:right}
 #scrubrow button{padding:7px 13px;border-radius:10px;background:rgba(255,255,255,.1)}
@@ -219,8 +219,9 @@ canvas{display:block;width:100%;height:100%}
   </div>
 </div>
 <audio id="gtr" preload="auto"></audio>
-<div id="stage"><canvas id="cv"></canvas><div id="modeTag">idle</div><div id="scrubrow" hidden><button id="prev" class="ghost" title="← previous syllable">◀</button><input id="scrub" type="range" min="0" max="1000" value="0"><button id="next" class="ghost" title="→ next syllable">▶</button><span id="scrubT">0.0 s</span></div><div id="dbig" hidden></div><div id="dsub" hidden></div><div id="meter" title="microphone level"><i></i></div><div id="meterLbl">mic</div><div id="msg">tap to start</div>
+<div id="stage"><canvas id="cv"></canvas><div id="modeTag">idle</div><div id="dbig" hidden></div><div id="dsub" hidden></div><div id="meter" title="microphone level"><i></i></div><div id="meterLbl">mic</div><div id="msg">tap to start</div>
 </div>
+<div id="scrubrow" hidden><button id="prev" class="ghost" title="← previous syllable">◀</button><input id="scrub" type="range" min="0" max="1000" value="0"><button id="next" class="ghost" title="→ next syllable">▶</button><span id="scrubT">0.0 s</span></div>
 <div id="result">
   <div class="hero"><b id="rIn">—</b><span class="unit">in tune</span><span id="rDelta" class="delta"></span></div>
   <div id="rank"></div>
@@ -391,12 +392,14 @@ function box(x,y,w,h,col,target){
   if(ctx.roundRect)ctx.roundRect(x,y,w,h,r);else ctx.rect(x,y,w,h);
   ctx.clip();
   const g=ctx.createLinearGradient(0,y,0,y+h);
-  g.addColorStop(0,target?'rgba(255,255,255,.17)':'rgba(255,255,255,.115)');
-  g.addColorStop(0.5,target?'rgba(255,255,255,.1)':'rgba(255,255,255,.06)');
-  g.addColorStop(1,target?'rgba(255,255,255,.06)':'rgba(255,255,255,.035)');
+  g.addColorStop(0,target?'rgba(255,255,255,.30)':'rgba(255,255,255,.22)');
+  g.addColorStop(0.55,target?'rgba(255,255,255,.19)':'rgba(255,255,255,.135)');
+  g.addColorStop(1,target?'rgba(255,255,255,.13)':'rgba(255,255,255,.085)');
   ctx.fillStyle=g;ctx.fillRect(x,y,w,h);
-  ctx.fillStyle='rgba(255,255,255,.22)';ctx.fillRect(x,y,w,1.2);          // блик сверху
-  ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(x,y+h-1.2,w,1.2);          // тень снизу
+  ctx.fillStyle='rgba(255,255,255,.34)';ctx.fillRect(x,y,w,1.4);          // блик сверху
+  ctx.fillStyle='rgba(0,0,0,.42)';ctx.fillRect(x,y+h-1.4,w,1.4);          // тень снизу
+  ctx.strokeStyle='rgba(255,255,255,.2)';ctx.lineWidth=1;                  // тонкая кромка: видно границы боксов
+  ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x+0.5,y+0.5,w-1,h-1,r);else ctx.rect(x+0.5,y+0.5,w-1,h-1);ctx.stroke();
   if(col){ctx.fillStyle=col+'3a';ctx.fillRect(x,y,w,h);ctx.fillStyle=col;ctx.fillRect(x,y,4,h);}
   ctx.restore();}
 // ---------- mic ----------
@@ -558,7 +561,14 @@ function draw(t){if(t==null)t=mode!=='idle'?songT():(review?rt:-1.5);
   for(const e of events){const x=px+(e.t-t)*PPS,w=e.dur*PPS;if(x+w<0||x>W)continue;const yy=y(e.midi);
     const g=(review||mode==='play'||e.t<t)?grade(e):null;const col=g?g.col:null;
     box(x,yy-rh*0.45,w,rh*0.9,col);
-    if(e.syl!=='-'){ctx.fillStyle=getVar('--text');ctx.textBaseline='middle';ctx.fillText(e.syl.replace(/^-/,''),x+4,yy);}}
+    if(e.syl!=='-'){const txt=e.syl.replace(/^-/,'');
+      const FONT=v=>'700 '+v+'px -apple-system,"SF Pro Display",Helvetica,sans-serif';
+      let f2=fs;ctx.font=FONT(f2);const avail=Math.max(10,w-8);
+      const tw=ctx.measureText(txt).width;
+      if(tw>avail){f2=Math.max(13,Math.floor(fs*avail/tw));ctx.font=FONT(f2);}
+      ctx.save();ctx.beginPath();ctx.rect(x,yy-rh*0.45,w,rh*0.9);ctx.clip();
+      ctx.fillStyle=getVar('--text');ctx.textBaseline='middle';ctx.fillText(txt,x+4,yy);ctx.restore();
+      ctx.font=FONT(fs);}}
   // lyrics under the boxes: each word under its note, scrolling with it
   const ty=H-28;ctx.font='700 29px -apple-system,"SF Pro Display",Helvetica,sans-serif';ctx.textBaseline='middle';let lastEnd=-1e9;
   for(let i=0;i<events.length;i++){const e=events[i];if(e.syl.startsWith('-')||e.syl==='-')continue;let word=e.syl.replace(/-$/,'');for(let j=i+1;j<events.length&&events[j].syl.startsWith('-');j++)word+=events[j].syl.replace(/^-/,'').replace(/-$/,'');

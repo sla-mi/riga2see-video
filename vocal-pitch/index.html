@@ -471,8 +471,11 @@ function score(){const chips=$('chips');chips.innerHTML='';const errs=[];reassig
   $('result').classList.add('show');$('msg').textContent=n?'':'No voice heard — check the mic.';}
 // сравнение с предыдущим дублем: берём соседнюю строку в списке дублей (для загруженного — ту, что перед ним)
 let takesList=[],cardCache={};
-function prevRow(){const k=$('takes').value;const i=k?takesList.findIndex(t=>t.card_key===k):-1;
-  for(let j=i+1;j<takesList.length;j++)if(takesList[j].n)return takesList[j];return null;}
+function prevRow(){const k=$('takes').value,i=k?takesList.findIndex(t=>t.card_key===k):-1;
+  const rest=takesList.slice(i+1).filter(t=>t.n);if(!rest.length)return null;
+  const cov=CUR?CUR.cov:null;   // сравниваем с дублем похожей длины, иначе проценты несопоставимы
+  if(cov!=null){const near=rest.find(t=>t.coverage!=null&&Math.abs(t.coverage-cov)<=20);if(near)return near;}
+  return rest[0];}
 async function getPrev(){const r=prevRow();if(!r)return null;
   if(cardCache[r.card_key])return {row:r,card:cardCache[r.card_key]};
   try{const c=await (await fetch('/vocal-api/card?key='+encodeURIComponent(r.card_key),{cache:'no-cache'})).json();cardCache[r.card_key]=c;return {row:r,card:c};}
@@ -541,7 +544,7 @@ function focusReport(pcard,lbl){
   const strongK=keys.filter(k=>G[k].hit>=C.hit+4&&G[k].n>=12).pop();
   const show=weak.length?weak:keys.slice(0,2);
   if(show.length){
-    box.insertAdjacentHTML('beforeend','<div class="sect">'+(weak.length?'main problem':'no single weak spot \u2014 errors are spread out')+(PG&&lbl?' \u00b7 move since '+lbl:'')+'</div>');
+    box.insertAdjacentHTML('beforeend','<div class="sect">'+(weak.length?'main problem':'errors spread evenly')+(PG&&lbl?' \u00b7 vs '+lbl:'')+'</div>');
     const grid=document.createElement('div');grid.className='fcards';
     show.forEach((k,i)=>grid.appendChild(fcard(k,G[k],PG&&PG[k]?PG[k].hit:null,i<2?'bad':'')));
     if(strongK)grid.appendChild(fcard('strongest \u00b7 '+strongK,G[strongK],PG&&PG[strongK]?PG[strongK].hit:null,'ok'));

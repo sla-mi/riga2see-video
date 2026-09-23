@@ -223,6 +223,7 @@ const NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const nm=m=>NAMES[m%12]+(Math.floor(m/12)-1);
 const $=id=>document.getElementById(id);
 var view='song';   // 'song' | 'drone' — объявлено до resize(), иначе TDZ
+var SY=0;          // задержка выхода (с): на неё сдвигаем картинку, иначе полоса идёт впереди звука. Объявлять ЗДЕСЬ — используется в настройках выше по коду
 const cv=$('cv'),ctx=cv.getContext('2d');
 let W=0,H=0,DPR=1;
 function resize(){DPR=window.devicePixelRatio||1;W=cv.clientWidth;H=cv.clientHeight;cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);if(view==='drone')droneDraw();else draw();}
@@ -261,7 +262,6 @@ function buildEvents(){
 let lyricTotal=0;
 // ---------- audio ----------
 let ac,analyser,buf,stream,t0=0,samples=[],oscs=[],gainNode,raf,srcNode,chGain,btGain,vcGain,lastRms=0;
-let SY=0;                       // задержка выхода (с): картинку сдвигаем на неё, иначе полоса идёт впереди звука
 const mt=()=>ac.currentTime-t0-SY;
 function toast(t){const el=$('toast');if(!t){el.hidden=true;return;}el.textContent=t;el.hidden=false;clearTimeout(el._t);el._t=setTimeout(()=>{el.hidden=true;},9000);}
 function ensureAudio(){if(ac)return;ac=new (window.AudioContext||window.webkitAudioContext)();

@@ -496,7 +496,7 @@ function takeTrend(L){   // прогресс по песне: только по�
       return '<span style="color:'+c+'"><b>'+v+'%</b></span>';}).join('<span>\u2192</span>')+
     '<span>best <b>'+best+'%</b></span>'+(part?'<span>+'+part+' partial</span>':'');}
 $('takes').addEventListener('change',async()=>{if(mode!=='idle')return;const k=$('takes').value;if(!k){clearTake();review=false;$('scrubrow').hidden=true;$('result').classList.remove('show');setMode('idle');draw();return;}
-  try{const c=await (await fetch(R2+encodeURI(k),{cache:'no-cache'})).json();clearTake();takeId=c.id;$('takes').value=k;
+  try{const c=await (await fetch('/vocal-api/card?key='+encodeURIComponent(k),{cache:'no-cache'})).json();clearTake();takeId=c.id;$('takes').value=k;
     if(c.tr!=null&&c.tr!==TR){TR=c.tr;$('tr').value=TR;}if(c.bpm&&c.bpm!=='guitar'){$('tempo').value=c.bpm;}$('backing').value=c.mode||'synth';buildEvents();
     samples=(c.samples||[]).map(([t,m])=>({t,m}));segs=(c.segments||[]).map((s,i)=>{const el=new Audio(R2+encodeURI(s.key||''));el.preload='auto';el.volume=+$('vcvol').value/100;return {fromT:s.fromT,dur:s.dur,el,url:s.key};});
     review=true;$('scrubrow').hidden=false;score();setRT(0);lastMode='play';setMode('idle');}catch(e){$('msg').textContent='Could not load that take.';}});

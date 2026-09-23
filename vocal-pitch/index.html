@@ -404,7 +404,7 @@ function recStop(){return new Promise(res=>{if(!rec||rec.state==='inactive'){res
     try{s.abuf=await ac.decodeAudioData(await b.arrayBuffer());}catch(e){}
     res(s);};rec.stop();});}
 function coverage(){let cov=0;for(const e of events){let c=0;for(const s of segs){const a=Math.max(e.t,s.fromT),b=Math.min(e.t+e.dur,s.fromT+s.dur);if(b>a)c+=b-a;}cov+=Math.min(c,e.dur);}return lyricTotal?cov/lyricTotal:0;}
-function clearTake(){for(const s of segs){try{s.el&&s.el.pause();}catch(e){}}segs=[];samples=[];takeId=null;for(const e of events)e.ss=[];lastMatch=null;$('takes').value='';}
+function clearTake(){NOACC=false;for(const s of segs){try{s.el&&s.el.pause();}catch(e){}}segs=[];samples=[];takeId=null;for(const e of events)e.ss=[];lastMatch=null;$('takes').value='';}
 // ---------- modes: idle / rec / play ----------
 let mode='idle',lastMode='rec',review=false,rt=0,lastT=0,runFrom=0;
 const setMode=m=>{mode=m;$('modeTag').textContent=m==='rec'?'● REC':m==='play'?'▶ PLAY':(review?'review':'idle');
@@ -453,6 +453,7 @@ function scheduleVoice(from){   // голос кладём в ту же звук
     src.connect(g);g.connect($('fx').value==='off'?FX.bypass:FX.input);src.start(Math.max(ac.currentTime,at),off);track(src,g);}}
 function scheduleFrom(from,withVoice){   // count-in + melody + accompaniment (+ voice segments) from melody time `from`
   ensureAudio();setVol();oscs=[];const modeB=$('backing').value;
+  if(withVoice&&NOACC){t0=ac.currentTime+0.15-from;sched=null;scheduleVoice(from);return;}
   if(useGtr()){const a=$('gtr');const base=gT(secStart);const startAt=Math.max(0,base+from-(gT(secStart+2)-base));a.currentTime=startAt;a.play().catch(()=>{});
     const now=ac.currentTime;t0=now-(startAt-base);
     for(const e of events)if(e.t+e.dur>from)tone(e.midi,t0+e.t,e.dur);
@@ -740,10 +741,33 @@ $('takes').addEventListener('change',async()=>{if(mode!=='idle')return;const k=$
       const el=new Audio(R2+encodeURI(row.audio_key));el.preload='auto';el.volume=+$('vcvol').value/100;
       segs=[{fromT:c.from||0,dur:(c.to!=null?c.to-(c.from||0):600),el,url:row.audio_key}];}
     for(const sg of segs)if(sg.url)fetch('/vocal-api/audio?key='+encodeURIComponent(sg.url)).then(r=>r.arrayBuffer()).then(a=>{sg.raw=a;if(ac)return ac.decodeAudioData(a.slice(0));}).then(bufr=>{if(bufr)sg.abuf=bufr;}).catch(()=>{});
+    NOACC=!!(c.syllables&&c.syllables.length&&c.syllables.length!==events.length);
     review=true;$('scrubrow').hidden=false;
     if(samples.length)score();else showStored(c);
-    setRT(0);lastMode='play';setMode('idle');}catch(e){$('msg').textContent='Could not load that take.';}});
+    setRT(0);lastMode='play';setMode('idle');
+    if(!samples.length){(async()=>{
+      for(let i=0;i<40&&!segs.some(s=>s.abuf);i++){ensureAudio();
+        for(const s of segs)if(!s.abuf&&s.raw){try{s.abuf=await ac.decodeAudioData(s.raw.slice(0));}catch(e){}}
+        if(!segs.some(s=>s.abuf))await new Promise(r=>setTimeout(r,300));}
+      if(await rebuildSamples()){if(NOACC){draw();}else{reassignAll();score();}setRT(0);draw();}
+    })();}
+    }catch(e){$('msg').textContent='Could not load that take.';}});
+let NOACC=false;   // старый дубль под другую (короткую) версию песни — аккомпанемент к нему не подходит
+async function rebuildSamples(){   // прогоняем записанный звук через тот же детектор и получаем линию голоса
+  const seg=segs.find(s=>s.abuf);if(!seg)return false;
+  const b=seg.abuf,sr=b.sampleRate,d=b.getChannelData(0),N=YW+YTMAX,hop=Math.round(sr/50);
+  toast('Rebuilding the pitch line from the audio…');
+  const out=[];const frame=new Float32Array(N);
+  for(let st=0,k=0;st+N<d.length;st+=hop,k++){
+    frame.set(d.subarray(st,st+N));
+    const f=detect(frame,sr);
+    if(f>0)out.push({t:seg.fromT+(st+N/2)/sr,m:69+12*Math.log2(f/440),r:null,db:null});
+    if(k%400===0)await new Promise(r=>setTimeout(r,0));
+  }
+  samples=out;toast(out.length?'Pitch line restored: '+out.length+' points':'Could not hear a voice in that recording');
+  return out.length>0;}
 function showStored(c){   // старый дубль: точек голоса не сохраняли — показываем цифры из карточки, звук играется
+  if(NOACC)toast('Old take: it was sung to a shorter version of the song, so it plays without the accompaniment.');
   $('chips').innerHTML='';$('focus').innerHTML='';
   const n=c.n||0,q=v=>n&&v!=null?Math.round(100*v/n):null;
   CUR={n,tot:events.length,hit:q(c.good),near:q(c.near),off:q(c.miss),flat:q(c.flat),sharp:q(c.sharp),

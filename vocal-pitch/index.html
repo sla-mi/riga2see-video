@@ -612,15 +612,27 @@ function draw(t){if(t==null)t=mode!=='idle'?songT():(review?rt:-1.5);
   for(let m=lo;m<=hi;m++){const yy=y(m);ctx.fillStyle=[0,2,4,5,7,9,11].includes(((m%12)+12)%12)?getVar('--grid2'):'transparent';ctx.fillRect(0,yy-rh/2,W,rh);ctx.strokeStyle=getVar('--grid');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,yy-rh/2);ctx.lineTo(W,yy-rh/2);ctx.stroke();
     if([0,2,4,5,7,9,11].includes(((m%12)+12)%12)){ctx.fillStyle=getVar('--muted');ctx.font='12px -apple-system,sans-serif';ctx.textBaseline='middle';ctx.fillText(nm(m),6,yy);}}
   const fs=Math.max(18,Math.min(29,Math.round(rh*0.95)));ctx.font='700 '+fs+'px -apple-system,"SF Pro Display",Helvetica,sans-serif';
-  let lastSylEnd=-1e9,lastSylY=-1e9;
   for(const e of events){const x=px+(e.t-t)*PPS,w=e.dur*PPS;if(x+w<0||x>W)continue;const yy=y(e.midi);
     const g=(review||mode==='play'||e.t<t)?grade(e):null;const col=g?g.col:null;
-    box(x,yy-rh*0.45,w,rh*0.9,col);
-    if(e.syl!=='-'){const txt=e.syl.replace(/^-/,'');
-      const tw=ctx.measureText(txt).width;let tx=x+5;
-      if(Math.abs(yy-lastSylY)<rh*1.15&&tx<lastSylEnd+9)tx=lastSylEnd+9;   // сосед на той же высоте — отодвигаем, слово не режем
-      ctx.fillStyle=getVar('--text');ctx.textBaseline='middle';ctx.fillText(txt,tx,yy);
-      lastSylEnd=tx+tw;lastSylY=yy;}}
+    box(x,yy-rh*0.45,w,rh*0.9,col);}
+  // подписи: слово целиком, один раз — на первом слоге, строчными, без переносов «your- -self».
+  // Если слово не влезает до следующего на той же высоте — поднимается над своим боксом мелким шрифтом (вторая полоса).
+  const FONT=v=>'700 '+v+'px -apple-system,"SF Pro Display",Helvetica,sans-serif',fsUp=Math.max(13,Math.round(fs*0.7));
+  const endAt={};ctx.textBaseline='middle';     // занятость по строкам нот: где кончается последняя подпись в этой строке
+  const free=(r,x)=>x>=(endAt[r]==null?-1e9:endAt[r])+8;
+  for(let i=0;i<events.length;i++){const e=events[i];if(e.syl==='-'||e.syl.startsWith('-'))continue;
+    const x=px+(e.t-t)*PPS;if(x>W)break;
+    let word=e.syl.replace(/-$/,''),span=e.dur;
+    for(let j=i+1;j<events.length&&events[j].syl.startsWith('-');j++){word+=events[j].syl.replace(/^-/,'').replace(/-$/,'');span=events[j].t+events[j].dur-e.t;}
+    word=word.toLowerCase();const m=Math.round(e.midi),yy=y(e.midi);
+    ctx.font=FONT(fs);const tw=ctx.measureText(word).width;
+    if(x+Math.max(tw,span*PPS)<0)continue;
+    ctx.fillStyle=getVar('--text');
+    if(free(m,x+5)){ctx.fillText(word,x+5,yy);endAt[m]=x+5+tw;}          // в своём боксе
+    else{ctx.font=FONT(fsUp);const tu=ctx.measureText(word).width;       // тесно — строкой выше, мелко
+      let xu=x+3;if(!free(m+1,xu))xu=endAt[m+1]+8;
+      ctx.fillText(word,xu,yy-rh);endAt[m+1]=xu+tu;}}
+  ctx.font=FONT(fs);
   // lyrics under the boxes: each word under its note, scrolling with it
   const ty=H-28;ctx.font='700 29px -apple-system,"SF Pro Display",Helvetica,sans-serif';ctx.textBaseline='middle';let lastEnd=-1e9;
   for(let i=0;i<events.length;i++){const e=events[i];if(e.syl.startsWith('-')||e.syl==='-')continue;let word=e.syl.replace(/-$/,'');for(let j=i+1;j<events.length&&events[j].syl.startsWith('-');j++)word+=events[j].syl.replace(/^-/,'').replace(/-$/,'');

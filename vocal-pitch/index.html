@@ -156,6 +156,17 @@ canvas{display:block;width:100%;height:100%}
 #focus .row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:15px}
 #focus .tag{padding:8px 13px;border-radius:12px;font-size:16px;font-weight:500;background:var(--glass);box-shadow:inset 0 0 0 1px var(--hair);white-space:nowrap}
 #focus .warn{color:var(--near)}
+.deep,#deep{background:var(--glass);box-shadow:inset 0 0 0 1px var(--hair);border-radius:16px;padding:10px 14px}
+#deep summary{cursor:pointer;font-weight:700;font-size:16px;list-style:none;display:flex;align-items:center;gap:8px}
+#deep summary::before{content:'›';display:inline-block;transition:transform .2s;color:var(--muted);font-size:20px}
+#deep[open] summary::before{transform:rotate(90deg)}
+#deepBody{display:flex;flex-direction:column;gap:14px;margin-top:10px}
+.dsec b{display:block;color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.drow2{display:grid;grid-template-columns:minmax(92px,1.2fr) 3fr 44px 30px;align-items:center;gap:8px;padding:4px 6px;border-radius:9px;font-size:15px}
+.drow2 .bar{height:8px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden}.drow2 .bar i{display:block;height:100%;border-radius:4px}
+.drow2 em{font-style:normal;font-weight:700;text-align:right}.drow2 small{color:var(--muted);font-size:12px;text-align:right}
+.drow2.bad{background:rgba(255,69,58,.14)}.drow2.good{background:rgba(48,209,88,.12)}
+.keyf{display:flex;flex-wrap:wrap;gap:6px}.keyf span{padding:6px 11px;border-radius:10px;font-size:14px;font-weight:600;background:rgba(255,69,58,.16);color:#ff8a80}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .chips{display:flex;flex-wrap:wrap;gap:4px;max-height:32vh;overflow:auto;-webkit-overflow-scrolling:touch}
@@ -243,6 +254,7 @@ canvas{display:block;width:100%;height:100%}
   <div id="rank"></div>
   <div class="tiles" id="tiles"></div>
   <div id="focus"></div>
+  <details id="deep"><summary>Deep analysis</summary><div id="deepBody"></div></details>
     <div class="chips" id="chips"></div>
   <div id="hist" class="stats"></div>
 </div>
@@ -657,8 +669,13 @@ function draw(t){if(t==null)t=mode!=='idle'?songT():(review?rt:-1.5);
     let x=px+(e.t-t)*PPS;if(x<lastEnd+6)x=lastEnd+6;const w=ctx.measureText(word).width;if(x>W||x+w<0){lastEnd=x+w;continue;}
     const sung=e.t<=t,now=t>=e.t&&t<e.t+e.dur+0.15;ctx.fillStyle=now?'#64b5ff':(sung?getVar('--text'):getVar('--muted'));ctx.fillText(word,x,ty);lastEnd=x+w;}
   // voice: raw dots in review, comet while running (rec or play)
-  if(mode==='idle'){for(const s of samples){const x=px+(s.t-t)*PPS;if(x<0||x>W)continue;const tg=s.tg;const m=fold(s.m,tg?tg.midi:null);const c=tg?(m-tg.midi)*100:null;ctx.fillStyle=c==null?getVar('--muted'):colorFor(c,tg&&tg.dur);ctx.fillRect(x-1.5,y(m)-2,3,4);}}
-  else{const tail=[];for(let i=samples.length-1;i>=0;i--){const s=samples[i];if(s.t>t)continue;if(t-s.t>0.7)break;tail.push(s);}tail.reverse();
+  {// тот же «червячок», что при записи: линия по точкам голоса, цвет по попаданию; раньше в разборе были отдельные точки
+    const t0v=t-px/PPS,t1v=mode==='idle'?t+(W-px)/PPS:t;let pv=null;ctx.lineCap='round';ctx.lineWidth=3.5;
+    for(const s of samples){if(s.t<t0v)continue;if(s.t>t1v)break;const tg=s.tg,m=fold(s.m,tg?tg.midi:null),c=tg?(m-tg.midi)*100:null;
+      const x=px+(s.t-t)*PPS,yy=y(m);
+      if(pv&&s.t-pv.t<0.15&&Math.abs(yy-pv.y)<rh*2.5){ctx.strokeStyle=c==null?getVar('--muted'):colorFor(c,tg&&tg.dur);ctx.beginPath();ctx.moveTo(pv.x,pv.y);ctx.lineTo(x,yy);ctx.stroke();}
+      pv={t:s.t,x,y:yy};}}
+  if(mode!=='idle'){const tail=[];for(let i=samples.length-1;i>=0;i--){const s=samples[i];if(s.t>t)continue;if(t-s.t>0.7)break;tail.push(s);}tail.reverse();
     if(tail.length){const last=tail[tail.length-1];const tg=last.tg;const mh=fold(last.m,tg?tg.midi:null);
       const sm=i=>{const a=[];for(let k=Math.max(0,i-2);k<=i;k++)a.push(fold(tail[k].m,tg?tg.midi:null));a.sort((p,q)=>p-q);return a[Math.floor(a.length/2)];};
       const c=tg?(sm(tail.length-1)-tg.midi)*100:null;const col=c==null?getVar('--muted'):colorFor(c,tg&&tg.dur);
@@ -771,8 +788,57 @@ function fcard(name,s,prev,cls){const el=document.createElement('div');el.classN
   el.innerHTML='<u>'+name+'</u><div class="v"><b>'+s.hit+'%</b><s class="'+(dd?dd.cls:'')+'">'+(dd?dd.s:'')+'</s></div>'+
     '<small>±'+s.md+' ¢ · '+s.n+' notes</small>';
   return el;}
+// ---------- глубокий анализ: интервалы, ноты без резонанса, гласные, длительности ----------
+function vowelOf(syl){   // гласная по написанию (английская орфография — приблизительно)
+  const w=syl.toLowerCase().replace(/[^a-z']/g,'');
+  if(/ee|ea|ie|ey$|y$/.test(w)&&!/eau/.test(w))return 'ee (see)';
+  if(/oo|ew|ue|u(?![aeiou])/.test(w))return 'oo / u (you, love)';
+  if(/ou|ow/.test(w))return 'ow (out)';
+  if(/ai|ay|ei/.test(w))return 'ay (day)';
+  if(/o|aw|au/.test(w))return 'o (go, all)';
+  if(/a/.test(w))return 'a (cat)';
+  if(/i/.test(w))return 'i (it, like)';
+  if(/e/.test(w))return 'e (let)';
+  return null;}
+function deepReport(){
+  const body=$('deepBody');body.innerHTML='';const C=CUR;if(!C||!C.n||!samples.length){$('deep').hidden=true;return;}
+  $('deep').hidden=false;const H=C.hit;
+  const sc=events.map((e,i)=>({e,i,g:grade(e)})).filter(x=>x.g);
+  const hitOf=a=>Math.round(100*a.filter(x=>x.g.k==='good').length/a.length);
+  const finds=[];
+  const section=(title,rows,valFn,judge)=>{   // rows: [label, items]
+    const R=rows.filter(r=>r[1].length>=4);if(!R.length)return;
+    const d=document.createElement('div');d.className='dsec';d.innerHTML='<b>'+title+'</b>';
+    for(const [lab,a] of R){const v=valFn(a),cls=judge(v,a);
+      if(cls==='bad')finds.push(lab+' '+v+'%');
+      const col=cls==='bad'?'var(--sharp)':cls==='good'?'var(--good)':'rgba(255,255,255,.45)';
+      d.insertAdjacentHTML('beforeend','<div class="drow2 '+cls+'"><span>'+lab+'</span><div class="bar"><i style="width:'+v+'%;background:'+col+'"></i></div><em>'+v+'%</em><small>'+a.length+'</small></div>');}
+    body.appendChild(d);};
+  const byHit=(v,a)=>a.length>=5&&v<=H-10?'bad':(a.length>=5&&v>=H+10?'good':'');
+  // интервалы: в какую ноту из предыдущей
+  const IV=[[0,0,'same note'],[1,2,'step'],[3,4,'third'],[5,7,'4th–5th'],[8,24,'leap 6th+']],iv={};
+  for(const x of sc){if(x.i===0)continue;const d=Math.round(x.e.midi-events[x.i-1].midi),a=Math.abs(d);
+    const cl=IV.find(c=>a>=c[0]&&a<=c[1]);if(!cl)continue;const k=cl[2]+(a===0?'':(d>0?' up':' down'));(iv[k]=iv[k]||[]).push(x);}
+  section('Intervals — into the note',Object.entries(iv).sort((p,q)=>hitOf(p[1])-hitOf(q[1])),hitOf,byHit);
+  // резонанс по нотам
+  const rg={};for(const s of samples){if(s.r==null||!s.tg)continue;const k=nm(Math.round(s.tg.midi));(rg[k]=rg[k]||[]).push(s);}
+  const ringOf=a=>Math.round(100*a.filter(s=>s.r>=-3).length/a.length);
+  if(Object.keys(rg).length){const rows=Object.entries(rg).filter(r=>r[1].length>=20).map(([k,a])=>[k,a]);
+    const d=document.createElement('div');d.className='dsec';d.innerHTML='<b>Ring by note — % of time with resonance</b>';
+    for(const [k,a] of rows.sort((p,q)=>ringOf(p[1])-ringOf(q[1]))){const v=ringOf(a),cls=v<=25?'bad':(v>=60?'good':'');
+      if(cls==='bad')finds.push(k+' without ring');
+      const col=cls==='bad'?'var(--sharp)':cls==='good'?'var(--good)':'rgba(255,255,255,.45)';
+      d.insertAdjacentHTML('beforeend','<div class="drow2 '+cls+'"><span>'+k+'</span><div class="bar"><i style="width:'+v+'%;background:'+col+'"></i></div><em>'+v+'%</em><small></small></div>');}
+    if(rows.length)body.appendChild(d);}
+  // гласные
+  const vw={};for(const x of sc){const v=vowelOf(x.e.syl);if(v)(vw[v]=vw[v]||[]).push(x);}
+  section('Vowels (by spelling)',Object.entries(vw).sort((p,q)=>hitOf(p[1])-hitOf(q[1])),hitOf,byHit);
+  // длительность
+  const L={'short (under 0.3 s)':sc.filter(x=>x.e.dur<0.3),'medium':sc.filter(x=>x.e.dur>=0.3&&x.e.dur<0.8),'long (0.8 s+)':sc.filter(x=>x.e.dur>=0.8)};
+  section('Note length',Object.entries(L),hitOf,byHit);
+  if(finds.length)body.insertAdjacentHTML('afterbegin','<div class="dsec"><b>Key findings</b><div class="keyf">'+finds.slice(0,5).map(f=>'<span>'+f+'</span>').join('')+'</div></div>');}
 function focusReport(pcard,lbl){
-  const box=$('focus');box.innerHTML='';const C=CUR;if(!C||!C.n)return;
+  const box=$('focus');box.innerHTML='';const C=CUR;try{deepReport();}catch(e){$('deep').hidden=true;}if(!C||!C.n)return;
   if(!samples.length){box.innerHTML='<div class="sect">old take \u2014 only the score and the audio were saved, no pitch track</div>';return;}
   const sc=scoredNow();if(!sc.length)return;
   const G=makeGroups(sc,true);

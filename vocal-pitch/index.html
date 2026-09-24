@@ -952,11 +952,17 @@ function droneDraw(){
    lbl((tg===base?'sing '+nm(tg)+' \u00b7 with the drone':'sing '+nm(tg)),LX+12,yy,getVar('--text'),Math.min(19,Math.max(14,rh*0.62)));}
   if(tg!==base){   // стрелка от тоники к цели: сразу видно, куда и на что петь
     const x=LX+BW-30,y1=y(base),y2=y(tg),dir=y2<y1?-1:1,head=Math.min(12,Math.abs(y2-y1)*0.3);
-    ctx.strokeStyle=getVar('--accent');ctx.fillStyle=getVar('--accent');ctx.lineWidth=3;ctx.lineCap='round';
+    ctx.strokeStyle=getVar('--tint');ctx.fillStyle=getVar('--tint');ctx.lineWidth=3;ctx.lineCap='round';   // синий: жёлтый/зелёный/красный заняты оценкой
     ctx.beginPath();ctx.moveTo(x,y1-dir*rh*0.45);ctx.lineTo(x,y2+dir*(rh*0.45+head));ctx.stroke();
     ctx.beginPath();ctx.moveTo(x,y2+dir*rh*0.45);ctx.lineTo(x-head*0.8,y2+dir*(rh*0.45+head));ctx.lineTo(x+head*0.8,y2+dir*(rh*0.45+head));ctx.closePath();ctx.fill();
-    ctx.save();ctx.translate(x-12,(y1+y2)/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';
-    lbl(exName+(dir<0?' \u2191':' \u2193'),0,0,getVar('--accent'),13);ctx.restore();ctx.textAlign='left';}
+    // подпись по центру: «sing a fifth up ↑»
+    const art=/^[aeiou]/i.test(exName)?'an ':'a ',cap='sing '+art+exName+(dir<0?' up \u2191':' down \u2193');
+    ctx.font='700 17px -apple-system,"SF Pro Display",sans-serif';const cw=ctx.measureText(cap).width,cy=(y1+y2)/2,cx=W/2-20;
+    ctx.fillStyle='rgba(10,132,255,.16)';ctx.beginPath();
+    if(ctx.roundRect)ctx.roundRect(cx-cw/2-14,cy-16,cw+28,32,16);else ctx.rect(cx-cw/2-14,cy-16,cw+28,32);ctx.fill();
+    ctx.textAlign='center';lbl(cap,cx,cy,'#64b5ff',17);ctx.textAlign='left';}
+  else{ctx.font='700 17px -apple-system,"SF Pro Display",sans-serif';ctx.textAlign='center';
+    lbl('sing the same note as the drone',W/2-20,y(tg)-rh*1.3,'#64b5ff',16);ctx.textAlign='left';}
   const now=Date.now()/1000,PPS2=Math.max(40,W/8);let cur=null;
   for(const s of DR.samples){const x=W-(now-s.t)*PPS2;if(x<0)continue;const mf=fold(s.m,tg),c=(mf-tg)*100;
     ctx.fillStyle=colorFor(c,1);ctx.fillRect(x-1.5,y(mf)-2,3,4);if(now-s.t<0.2)cur=c;}

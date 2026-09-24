@@ -586,9 +586,10 @@ async function pauseRun(){   // Space while running: stop everything, keep posit
   review=true;$('scrubrow').hidden=false;score();setRT(Math.max(0,Math.min(total,tstop)));setMode('idle');}
 async function finish(ended){   // song ended or Stop: final results, save the take
   if(mode==='idle'&&!review)return;const was=mode;cancelAnimationFrame(raf);killSound();
-  if(LISTEN){LISTEN=false;setMode('idle');draw(-1.5);return;}   // слушали песню — оценивать нечего
+  const here=ended?0:Math.max(0,Math.min(total,lastT));
+  if(LISTEN){LISTEN=false;review=true;$('scrubrow').hidden=false;setMode('idle');setRT(here);return;}   // слушали песню — оценивать нечего, но место держим
   if(was==='rec'){await recStop();}
-  setMode('idle');review=true;$('scrubrow').hidden=false;score();setRT(0);lastMode='play';
+  setMode('idle');review=true;$('scrubrow').hidden=false;score();setRT(here);lastMode='play';
   if(was==='rec'&&segs.length){   // пустые и совсем короткие дубли не храним — засоряют историю и шкалу
     if(!CUR||!CUR.n)toast('take not saved \u2014 no notes recognised');
     else if(CUR.cov<20)toast('take not saved \u2014 only '+CUR.cov+'% of the song (saving from 20%)');
@@ -639,10 +640,11 @@ function draw(t){if(t==null)t=mode!=='idle'?songT():(review?rt:-1.5);
     let w=e.syl.replace(/-$/,'');for(let j=i+1;j<events.length&&events[j].syl.startsWith('-');j++)w+=events[j].syl.replace(/^-/,'').replace(/-$/,'');
     words.push({w:w.toLowerCase(),e});}
   ctx.textBaseline='middle';ctx.font=FONT(fs);
-  if(LYR==='notes'){const endAt={};
-    for(const o of words){let x=px+(o.e.t-t)*PPS+5;if(x>W)break;const m=Math.round(o.e.midi),tw=ctx.measureText(o.w).width;
+  if(LYR==='notes'){const endAt={};   // по слогам: «your-» в своём боксе, «self» в своём (owner: лучше перенос)
+    for(const e of events){if(e.syl==='-')continue;let x=px+(e.t-t)*PPS+5;if(x>W)break;
+      const txt=e.syl.replace(/^-/,'').toLowerCase(),m=Math.round(e.midi),tw=ctx.measureText(txt).width;
       if(endAt[m]!=null&&x<endAt[m]+10)x=endAt[m]+10;endAt[m]=x+tw;          // в одной строке слова не сливаются: всегда зазор
-      if(x+tw<0)continue;ctx.fillStyle=getVar('--text');ctx.fillText(o.w,x,y(o.e.midi));}}
+      if(x+tw<0)continue;ctx.fillStyle=getVar('--text');ctx.fillText(txt,x,y(e.midi));}}
   else{let low=null;for(const e of events){if(e.t+e.dur<t-0.5||e.t>t+2.5)continue;low=low==null?e.midi:Math.min(low,e.midi);}
     const target=low==null?H-40:Math.min(H-20,y(low)+rh*1.05);lyricY=lyricY==null?target:lyricY+(target-lyricY)*0.12;
     let end=-1e9;

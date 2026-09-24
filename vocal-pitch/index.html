@@ -77,6 +77,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 .sheetHd span{font-size:17px;font-weight:700;margin-top:8px}
 .sheetHd button{margin-left:auto;margin-top:8px;padding:8px 16px;border-radius:11px;background:var(--tint);color:#fff;font-weight:600;min-height:0}
 #dronebar{display:flex;flex-wrap:wrap;align-items:center;gap:4px 26px;padding:4px 16px 12px;background:rgba(28,28,30,.72);-webkit-backdrop-filter:blur(26px) saturate(160%);backdrop-filter:blur(26px) saturate(160%);box-shadow:inset 0 0 0 1px var(--hair);border-radius:var(--r)}
+#dronebar{flex-direction:column;align-items:center;gap:14px;padding:14px 16px 12px!important}
+.drow{display:flex;gap:10px;width:100%}
+.dsel{flex:1;display:flex;align-items:center;gap:8px;color:var(--muted);font-size:14px;min-width:0}
+.dsel select{flex:1;min-width:0}
 #dronebar .grp{flex:1 1 250px}
 .grp{display:flex;flex-direction:column;min-width:0}
 .grp b{color:var(--muted);font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:14px 0 4px}
@@ -95,10 +99,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 #dronebar .grp.pair{flex:0 0 auto;flex-direction:row;align-items:center;gap:14px;padding:10px 0}
 #dHint{border:0;color:var(--muted);font-size:14px;min-height:0}
 #mictest.active{background:var(--tint)}
-#toast{padding:11px 14px;border-radius:14px;background:rgba(44,44,46,.92);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);color:var(--near);font-size:14px}
+#toast{position:fixed;left:14px;right:14px;top:calc(10px + env(safe-area-inset-top));z-index:40;padding:12px 15px;border-radius:16px;background:rgba(44,44,46,.95);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);color:var(--near);font-size:15px;box-shadow:0 8px 30px rgba(0,0,0,.45)}
 /* ---- stage ---- */
 #stage{position:relative;flex:1;min-height:320px;background:rgba(28,28,30,.72);box-shadow:inset 0 0 0 1px var(--hair);border-radius:24px;overflow:hidden}
 canvas{display:block;width:100%;height:100%}
+#meter,#meterLbl{display:none!important}
 #meter{position:absolute;right:14px;bottom:26px;width:110px;height:6px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden}
 #meter i{display:block;height:100%;width:0;background:var(--good);border-radius:3px}
 #meterLbl{position:absolute;right:14px;bottom:36px;font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
@@ -185,11 +190,11 @@ canvas{display:block;width:100%;height:100%}
 </div>
 <div id="toast" hidden></div>
 <div id="dronebar" hidden>
-  <div class="grp">
-    <label class="ctl">tonic <select id="dTonic"></select></label>
-    <label class="ctl">sing <select id="dEx"><option value="0" selected>unison</option><option value="3">minor third</option><option value="4">third</option><option value="5">fourth</option><option value="7">fifth</option><option value="9">sixth</option><option value="12">octave</option></select></label>
+  <div class="drow">
+    <label class="dsel">tonic <select id="dTonic"></select></label>
+    <label class="dsel">sing <select id="dEx"><option value="0" selected>unison</option><option value="3">minor third</option><option value="4">third</option><option value="5">fourth</option><option value="7">fifth</option><option value="9">sixth</option><option value="12">octave</option></select></label>
   </div>
-  <div class="grp pair"><button id="dStart" class="rec" title="Start / Stop">●</button><span class="ctl" id="dHint">tap the screen to start</span></div>
+  <div class="bw"><button id="dStart" class="rec" title="Start / Stop">●</button><span id="dHint">Start</span></div>
 </div>
 </div>
 <div id="setback"></div>
@@ -222,7 +227,9 @@ canvas{display:block;width:100%;height:100%}
     <span class="ctl">in use: <b id="micNow">—</b></span>
     <label class="ctl">headphones <select id="spk"><option value="">default</option></select></label>
     <label class="ctl" title="Suppresses the app's own sound in the mic. On iOS it also ducks playback while you sing — keep it off with headphones."><input type="checkbox" id="aec"> echo cancel</label>
-    <div class="micRow"><button id="mictest" class="ghost">Mic check</button><button id="micBuiltin" class="ghost">Use phone mic</button></div>
+    <label class="ctl">phone mic <input type="checkbox" id="phoneMic"></label>
+    <span class="ctl" id="micMsg" hidden></span>
+    <div class="micRow"><button id="mictest" class="ghost">Mic check</button></div>
     <div id="micLive" hidden><div class="lvl"><i id="micLvl"></i></div><span id="micNote">—</span></div>
   </div>
 </div>
@@ -313,7 +320,7 @@ async function useBuiltInMic(){   // одним нажатием: встроен
   const o=[...$('mic').options].find(x=>/iphone|ipad|built-in|встро|internal|macbook/i.test(x.textContent));
   if(!o){toast('No built-in mic in the list. Grant mic access first (Mic check).');return;}
   $('mic').value=o.value;$('mic').dispatchEvent(new Event('change'));
-  await openMic();toast('Mic in use: '+((stream&&stream.getAudioTracks()[0]||{}).label||'?'));}
+  await openMic();micState();}
 const canSink=('setSinkId' in AudioContext.prototype)||('setSinkId' in HTMLMediaElement.prototype);
 if(/iPhone|iPad/.test(navigator.userAgent))$('spk').parentElement.hidden=true;
 if(!canSink){$('spk').hidden=true;const n=document.createElement('span');n.textContent='system decides';n.title='Safari/iPad does not let a page pick the output';$('spk').parentElement.appendChild(n);}
@@ -435,7 +442,7 @@ async function openMic(){
       catch(e){stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:cons.echoCancellation,noiseSuppression:false,autoGainControl:false}});}}}
   if(srcNode){try{srcNode.disconnect();}catch(e){}}
   srcNode=ac.createMediaStreamSource(stream);analyser=ac.createAnalyser();analyser.fftSize=2048;buf=new Float32Array(2048);srcNode.connect(analyser);
-  const tr0=stream.getAudioTracks()[0];$('micNow').textContent=tr0?tr0.label||'(unnamed)':'\u2014';
+  micState();
   const tr=stream.getAudioTracks()[0];if(tr&&/airpod|bluetooth|hands-free|hfp/i.test(tr.label||''))toast('mic: '+tr.label+' — Bluetooth mic, quality drops. Pick the built-in mic in \u2699.');
   return true;}
 // ---------- take: recorded voice segments ----------
@@ -565,7 +572,7 @@ async function finish(ended){   // song ended or Stop: final results, save the t
   setMode('idle');review=true;$('scrubrow').hidden=false;score();setRT(0);lastMode='play';
   if(was==='rec'&&segs.length){   // пустые и совсем короткие дубли не храним — засоряют историю и шкалу
     if(!CUR||!CUR.n)toast('take not saved \u2014 no notes recognised');
-    else if(CUR.cov<10)toast('take not saved \u2014 only '+CUR.cov+'% of the song');
+    else if(CUR.cov<20)toast('take not saved \u2014 only '+CUR.cov+'% of the song (saving from 20%)');
     else saveTake();}}
 $('rec').onclick=()=>{if(mode==='idle')startRec();else finish(false);};
 $('play').onclick=()=>{if(mode==='play')finish(false);else if(mode==='idle')startPlay();};
@@ -590,7 +597,15 @@ async function micCheckStart(){
 function micCheckStop(){micChk.on=false;cancelAnimationFrame(micChk.raf);$('micLive').hidden=true;$('mictest').textContent='Mic check';$('mictest').classList.remove('active');}
 function stopTest(){micCheckStop();}
 $('mictest').onclick=()=>micChk.on?micCheckStop():micCheckStart();
-$('micBuiltin').onclick=useBuiltInMic;
+function micState(){   // тумблер показывает, какой микрофон РЕАЛЬНО взят, а не то, что мы попросили
+  const lab=(stream&&stream.getAudioTracks()[0]||{}).label||'';$('micNow').textContent=lab||'\u2014';
+  $('phoneMic').checked=/iphone|ipad|built-in|встро|internal|macbook/i.test(lab);return lab;}
+$('phoneMic').addEventListener('change',async()=>{
+  const want=$('phoneMic').checked;const m=$('micMsg');m.hidden=false;m.textContent='switching…';
+  if(want)await useBuiltInMic();
+  else{$('mic').value='';ST.mic='';ST.micLabel='';saveST();if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}ensureAudio();await openMic();}
+  const lab=micState();
+  m.textContent=want&&!$('phoneMic').checked?'iOS kept “'+lab+'” — it did not allow the phone mic':'now using: '+(lab||'?');});
 // ---------- drawing ----------
 function draw(t){if(t==null)t=mode!=='idle'?songT():(review?rt:-1.5);
   ctx.clearRect(0,0,W,H);const rows=hi-lo,rh=H/rows,px=W*PLAYX;const y=m=>H-(m-lo+0.5)*rh;
@@ -787,7 +802,7 @@ async function saveTake(){const c=card();const fd=new FormData();segs.forEach((s
   try{const r=await fetch('/vocal-api/take',{method:'POST',body:fd});const j=await r.json();if(!j.ok)throw new Error(j.detail||'no');$('hist').insertAdjacentHTML('afterbegin','<span>take saved</span>');loadTakes();}
   catch(e){$('hist').insertAdjacentHTML('afterbegin','<span>server did not accept the take — '+segs.map((s,i)=>s.blob?'<a href="'+URL.createObjectURL(s.blob)+'" download="take'+i+'.webm">download '+(i+1)+'</a>':'').join(' ')+'</span>');}}
 async function loadTakes(){try{const r=await fetch('/vocal-api/takes?song='+encodeURIComponent(SONG.slug));const L0=await r.json();   // мусорные дубли (меньше 10 % песни или почти без нот) в списке не показываем
-  const L=L0.filter(t=>t.n>=8&&(t.coverage==null||t.coverage>=10));takesList=L;const sel=$('takes');sel.innerHTML='<option value="">— new —</option>';
+  const L=L0.filter(t=>t.n>=8&&(t.coverage==null||t.coverage>=20));takesList=L;const sel=$('takes');sel.innerHTML='<option value="">— new —</option>';
   takeTrend(L);
   for(const t of L){const o=document.createElement('option');o.value=t.card_key;const d=new Date(t.ts.replace(/^(\d+-\d+-\d+) (\d+)-(\d+)-(\d+)$/,'$1T$2:$3:$4'));o.textContent=d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' · '+(t.coverage!=null?t.coverage+'% · ':'')+(t.n?Math.round(100*t.good/t.n)+'%':'')+(t.coverage!=null&&t.coverage<80?' \u00b7 partial':'')+(t.audio===false?' \u00b7 no audio':'');sel.appendChild(o);}}catch(e){}}
 let lastTakeHit=null;
@@ -929,10 +944,19 @@ function droneDraw(){
   for(let m=lo2;m<=hi2;m++){const yy=y(m);ctx.fillStyle=[0,2,4,5,7,9,11].includes(((m%12)+12)%12)?getVar('--grid2'):'transparent';ctx.fillRect(0,yy-rh/2,W,rh);
     ctx.strokeStyle=getVar('--grid');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,yy-rh/2);ctx.lineTo(W,yy-rh/2);ctx.stroke();
     ctx.fillStyle=getVar('--muted');ctx.font='12px -apple-system,sans-serif';ctx.textBaseline='middle';ctx.fillText(nm(m),6,yy);}
-  for(const m of droneNotes()){const yy=y(m);ctx.strokeStyle=getVar('--accent');ctx.globalAlpha=.45;ctx.lineWidth=2;ctx.setLineDash([6,6]);
-    ctx.beginPath();ctx.moveTo(0,yy);ctx.lineTo(W,yy);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;}
-  {const yy=y(tg);box(0,yy-rh*0.45,W,rh*0.9,null,true);
-   ctx.fillStyle=getVar('--text');ctx.font='600 15px -apple-system,sans-serif';ctx.textBaseline='middle';ctx.fillText(nm(tg),10,yy-rh*0.8);}
+  const LX=W*0.07,BW=W*0.79,exName=$('dEx').selectedOptions[0].textContent;
+  const lbl=(t,x,yy,col,sz)=>{ctx.fillStyle=col;ctx.font='700 '+sz+'px -apple-system,"SF Pro Display",sans-serif';ctx.textBaseline='middle';ctx.fillText(t,x,yy);};
+  for(const m of droneNotes()){if(m===tg)continue;const yy=y(m);   // что звучит (дрон) — приглушённый бокс
+    box(LX,yy-rh*0.42,BW,rh*0.84,null,false);lbl('drone '+nm(m),LX+12,yy,getVar('--muted'),Math.min(17,Math.max(13,rh*0.55)));}
+  {const yy=y(tg);box(LX,yy-rh*0.45,BW,rh*0.9,null,true);        // что петь — яркий бокс
+   lbl((tg===base?'sing '+nm(tg)+' \u00b7 with the drone':'sing '+nm(tg)),LX+12,yy,getVar('--text'),Math.min(19,Math.max(14,rh*0.62)));}
+  if(tg!==base){   // стрелка от тоники к цели: сразу видно, куда и на что петь
+    const x=LX+BW-30,y1=y(base),y2=y(tg),dir=y2<y1?-1:1,head=Math.min(12,Math.abs(y2-y1)*0.3);
+    ctx.strokeStyle=getVar('--accent');ctx.fillStyle=getVar('--accent');ctx.lineWidth=3;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(x,y1-dir*rh*0.45);ctx.lineTo(x,y2+dir*(rh*0.45+head));ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x,y2+dir*rh*0.45);ctx.lineTo(x-head*0.8,y2+dir*(rh*0.45+head));ctx.lineTo(x+head*0.8,y2+dir*(rh*0.45+head));ctx.closePath();ctx.fill();
+    ctx.save();ctx.translate(x-12,(y1+y2)/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';
+    lbl(exName+(dir<0?' \u2191':' \u2193'),0,0,getVar('--accent'),13);ctx.restore();ctx.textAlign='left';}
   const now=Date.now()/1000,PPS2=Math.max(40,W/8);let cur=null;
   for(const s of DR.samples){const x=W-(now-s.t)*PPS2;if(x<0)continue;const mf=fold(s.m,tg),c=(mf-tg)*100;
     ctx.fillStyle=colorFor(c,1);ctx.fillRect(x-1.5,y(mf)-2,3,4);if(now-s.t<0.2)cur=c;}
@@ -1076,7 +1100,7 @@ function setView(v){
   ST.view=v;saveST();}
 $('tabSong').onclick=()=>setView('song');$('tabDrone').onclick=()=>setView('drone');
 $('dStart').onclick=()=>DR.on?droneStop():droneStart();
-function dBtn(){const b=$('dStart');b.textContent=DR.on?'■':'●';b.classList.toggle('active',DR.on);b.classList.toggle('rec',!DR.on);b.classList.toggle('ghost',DR.on);$('dHint').textContent=DR.on?'tap the screen to stop':'tap the screen to start';}
+function dBtn(){const b=$('dStart');b.textContent=DR.on?'■':'●';b.classList.toggle('active',DR.on);b.classList.toggle('rec',!DR.on);b.classList.toggle('ghost',DR.on);$('dHint').textContent=DR.on?'Stop':'Start';}
 (function(){const t=$('dTonic');for(let m=24;m<=71;m++){const o=document.createElement('option');o.value=m;o.textContent=nm(m);t.appendChild(o);}t.value=45;})();
 ['dTonic','dTimbre','dEx','dVol','dTimer','dHold'].forEach(id=>{if(ST['d_'+id]!=null)$(id).value=ST['d_'+id];});
 ['dFifth','dOctL'].forEach(id=>{if(ST['d_'+id]!=null)$(id).checked=!!ST['d_'+id];});

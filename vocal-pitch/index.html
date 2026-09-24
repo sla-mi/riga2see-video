@@ -643,7 +643,8 @@ $('phoneMic').addEventListener('change',async()=>{
 var vLo=null,vHi=null,vTs=0,VSPAN=12;
 function viewRange(t,px){let a=null,b=null;const t0=t-px/PPS,t1=t+(W-px)/PPS;
   for(const e of events){if(e.t+e.dur<t0)continue;if(e.t>t1)break;const m=Math.round(e.midi);a=a==null?m:Math.min(a,m);b=b==null?m:Math.max(b,m);}
-  if(a==null){if(vLo!=null)return;a=lo+2;b=hi-2;}
+  if(a==null){if(vLo!=null)return;const nx=events.filter(e=>e.t>=t).slice(0,8);   // до первой фразы — сразу её диапазон
+    if(nx.length){a=Math.min(...nx.map(e=>Math.round(e.midi)));b=Math.max(...nx.map(e=>Math.round(e.midi)));}else{a=lo+2;b=hi-2;}}
   let L=a-2,U=b+2;if(U-L<VSPAN){const c=(L+U)/2;L=c-VSPAN/2;U=c+VSPAN/2;}
   if(L<lo){U+=lo-L;L=lo;}if(U>hi){L-=U-hi;U=hi;}L=Math.max(L,lo);   // не выезжать за диапазон песни
   const now=performance.now(),dt=Math.min(0.25,(now-vTs)/1000);vTs=now;

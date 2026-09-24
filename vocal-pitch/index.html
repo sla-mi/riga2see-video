@@ -928,7 +928,7 @@ function takeTrend(L){   // прогресс по песне: только по�
 $('takes').addEventListener('change',async()=>{if(mode!=='idle')return;const k=$('takes').value;if(!k){clearTake();review=false;$('scrubrow').hidden=true;$('result').classList.remove('show');setMode('idle');draw();return;}
   try{const c=await (await fetch('/vocal-api/card?key='+encodeURIComponent(k),{cache:'no-cache'})).json();clearTake();takeId=c.id;$('takes').value=k;
     if(c.tr!=null&&c.tr!==TR){TR=c.tr;$('tr').value=TR;}if(c.oct!=null&&c.oct!==OCT){OCT=c.oct;$('oct').value=OCT;}if(c.bpm&&c.bpm!=='guitar'){const f=+c.bpm/SONG.bpm;let o=[...$('tempo').options].find(o=>Math.abs(+o.value-f)<0.006);   // дубль хранит удары в минуту → доля от темпа песни
-      if(!o){o=document.createElement('option');o.value=String(Math.round(f*10000)/10000);o.textContent=Math.round(f*100)+'% (take)';$('tempo').appendChild(o);}$('tempo').value=o.value;}$('backing').value=c.mode||'synth';buildEvents();
+      if(!o){o=document.createElement('option');o.value=String(f);o.textContent=Math.round(f*100)+'% (take) · '+Math.round(+c.bpm)+' bpm';$('tempo').appendChild(o);}$('tempo').value=o.value;}$('backing').value=c.mode||'synth';buildEvents();
     samples=(c.samples||[]).map(a=>({t:a[0],m:a[1],r:a[2]==null?null:a[2],db:a[3]==null?null:a[3]}));segs=(c.segments||[]).map((s,i)=>{const el=new Audio(R2+encodeURI(s.key||''));el.preload='auto';el.volume=+$('vcvol').value/100;return {fromT:s.fromT,dur:s.dur,el,url:s.key};});
     const row=takesList.find(t=>t.card_key===k);
     if(!segs.length&&row&&row.audio_key){        // старый формат: звук одним файлом, время начала — поле from

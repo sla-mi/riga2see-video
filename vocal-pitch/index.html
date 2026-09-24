@@ -628,10 +628,8 @@ function draw(t){if(t==null)t=mode!=='idle'?songT():(review?rt:-1.5);
     ctx.font=FONT(fs);const tw=ctx.measureText(word).width;
     if(x+Math.max(tw,span*PPS)<0)continue;
     ctx.fillStyle=getVar('--text');
-    if(free(m,x+5)){ctx.fillText(word,x+5,yy);endAt[m]=x+5+tw;}          // в своём боксе
-    else{ctx.font=FONT(fsUp);const tu=ctx.measureText(word).width;       // тесно — строкой выше, мелко
-      let xu=x+3;if(!free(m+1,xu))xu=endAt[m+1]+8;
-      ctx.fillText(word,xu,yy-rh);endAt[m+1]=xu+tu;}}
+    // влезает — пишем в боксе крупно; не влезает — бокс без подписи, слово есть в бегущей строке внизу (owner: мелкое над боксом — отстой)
+    if(free(m,x+5)){ctx.fillText(word,x+5,yy);endAt[m]=x+5+tw;}}
   ctx.font=FONT(fs);
   // lyrics under the boxes: each word under its note, scrolling with it
   const ty=H-28;ctx.font='700 29px -apple-system,"SF Pro Display",Helvetica,sans-serif';ctx.textBaseline='middle';let lastEnd=-1e9;

@@ -212,6 +212,7 @@ canvas{display:block;width:100%;height:100%}
     <label class="ctl">backing <select id="backing"><option value="synth" selected>accompaniment</option><option value="guitar">own guitar (recording)</option><option value="none">melody only</option></select></label>
     <label class="ctl">key <select id="tr"></select></label>
     <label class="ctl">voice <select id="oct"><option value="-12">low (−1 oct)</option><option value="0" selected>original</option><option value="12">high (+1 oct)</option></select></label>
+    <label class="ctl">words <select id="lyr"><option value="notes" selected>on the notes</option><option value="line">line under the phrase</option></select></label>
     <label class="ctl">sound delay <span class="ctlv"><input id="sync" type="range" min="0" max="320" step="10" value="0"><b id="syncV">0 ms</b></span></label>
     <label class="ctl" title="Only for listening: EQ, compression and reverb on your voice. Does not touch the recording or the score">voice sound <select id="fx"><option value="off">dry</option><option value="soft" selected>soft</option><option value="studio">studio</option><option value="hall">hall</option></select></label>
     <label class="ctl" title="Shifts your recorded voice against the accompaniment when you press Play">voice in playback <span class="ctlv"><input id="voff" type="range" min="-400" max="200" step="10" value="0"><b id="voffV">0 ms</b></span></label>
@@ -273,6 +274,8 @@ $('sync').addEventListener('change',()=>{ST.sync=$('sync').value;saveST();});
 $('voff').value=ST.voff!=null?ST.voff:0;
 function voffApply(){VOFF=+$('voff').value/1000;$('voffV').textContent=(+$('voff').value>0?'+':'')+$('voff').value+' ms';}
 $('fx').addEventListener('change',()=>{ST.fx=$('fx').value;saveST();fxApply();});
+if(ST.lyr)$('lyr').value=ST.lyr;
+$('lyr').addEventListener('change',()=>{ST.lyr=$('lyr').value;saveST();lyricY=null;if(mode==='idle')draw();});
 if(ST.fx)$('fx').value=ST.fx;
 $('voff').addEventListener('input',voffApply);
 $('voff').addEventListener('change',()=>{ST.voff=$('voff').value;saveST();});
@@ -281,7 +284,7 @@ syncApply();
 $('backing').addEventListener('change',()=>{if(useGtr()){TR=0;$('tr').value=0;}$('tr').disabled=useGtr();if(mode==='idle'){buildEvents();draw();}});
 // ---------- song / events ----------
 let SONG=null,GTR=null,CH={},CHORDS=[],TR=0,OCT=0;   // TR: key shift (melody + accompaniment); OCT: melody register only (a female voice sings an octave up over the same chords)
-let events=[],total=0,lo=40,hi=56,PPS=130,PLAYX=0.3,secStart=0;
+let events=[],total=0,lo=40,hi=56,PPS=180,PLAYX=0.3,secStart=0,lyricY=null;
 const FEEL=0.1;      // boxes sit 0.1 s after the beat: a live voice always trails the beat a bit
 const WIN=1.0;       // pitch-based search window when no syllable is sounding (rests, rubato)
 function gT(b){const g=GTR.grid;if(b<=0)return g[0]+b*(g[1]-g[0]);const i=Math.floor(b);if(i>=g.length-1)return g[g.length-1]+(b-(g.length-1))*(g[g.length-1]-g[g.length-2]);return g[i]+(b-i)*(g[i+1]-g[i]);}
@@ -631,28 +634,26 @@ function draw(t){if(t==null)t=mode!=='idle'?songT():(review?rt:-1.5);
   for(const e of events){const x=px+(e.t-t)*PPS,w=e.dur*PPS;if(x+w<0||x>W)continue;const yy=y(e.midi);
     const g=(review||mode==='play'||e.t<t)?grade(e):null;const col=g?g.col:null;
     box(x,yy-rh*0.45,w,rh*0.9,col);}
-  // подписи: слово целиком, один раз — на первом слоге, строчными, без переносов «your- -self».
-  // Если слово не влезает до следующего на той же высоте — поднимается над своим боксом мелким шрифтом (вторая полоса).
-  const FONT=v=>'700 '+v+'px -apple-system,"SF Pro Display",Helvetica,sans-serif',fsUp=Math.max(13,Math.round(fs*0.7));
-  const endAt={};ctx.textBaseline='middle';     // занятость по строкам нот: где кончается последняя подпись в этой строке
-  const free=(r,x)=>x>=(endAt[r]==null?-1e9:endAt[r])+8;
-  for(let i=0;i<events.length;i++){const e=events[i];if(e.syl==='-'||e.syl.startsWith('-'))continue;
-    const x=px+(e.t-t)*PPS;if(x>W)break;
-    let word=e.syl.replace(/-$/,''),span=e.dur;
-    for(let j=i+1;j<events.length&&events[j].syl.startsWith('-');j++){word+=events[j].syl.replace(/^-/,'').replace(/-$/,'');span=events[j].t+events[j].dur-e.t;}
-    word=word.toLowerCase();const m=Math.round(e.midi),yy=y(e.midi);
-    ctx.font=FONT(fs);const tw=ctx.measureText(word).width;
-    if(x+Math.max(tw,span*PPS)<0)continue;
-    ctx.fillStyle=getVar('--text');
-    // влезает — крупно в боксе; не влезает — тем же крупным шрифтом над своим боксом (дорожка теперь выше, место есть)
-    if(free(m,x+5)){ctx.fillText(word,x+5,yy);endAt[m]=x+5+tw;}
-    else{let xu=x+3;if(!free(m+1,xu))xu=endAt[m+1]+8;ctx.fillText(word,xu,yy-rh*0.95);endAt[m+1]=xu+tw;}}
+  const FONT=v=>'700 '+v+'px -apple-system,"SF Pro Display",Helvetica,sans-serif',LYR=$('lyr').value;
+  const words=[];for(let i=0;i<events.length;i++){const e=events[i];if(e.syl==='-'||e.syl.startsWith('-'))continue;
+    let w=e.syl.replace(/-$/,'');for(let j=i+1;j<events.length&&events[j].syl.startsWith('-');j++)w+=events[j].syl.replace(/^-/,'').replace(/-$/,'');
+    words.push({w:w.toLowerCase(),e});}
+  ctx.textBaseline='middle';ctx.font=FONT(fs);
+  if(LYR==='notes'){const endAt={};
+    for(const o of words){let x=px+(o.e.t-t)*PPS+5;if(x>W)break;const m=Math.round(o.e.midi),tw=ctx.measureText(o.w).width;
+      if(endAt[m]!=null&&x<endAt[m]+10)x=endAt[m]+10;endAt[m]=x+tw;          // в одной строке слова не сливаются: всегда зазор
+      if(x+tw<0)continue;ctx.fillStyle=getVar('--text');ctx.fillText(o.w,x,y(o.e.midi));}}
+  else{let low=null;for(const e of events){if(e.t+e.dur<t-0.5||e.t>t+2.5)continue;low=low==null?e.midi:Math.min(low,e.midi);}
+    const target=low==null?H-40:Math.min(H-20,y(low)+rh*1.05);lyricY=lyricY==null?target:lyricY+(target-lyricY)*0.12;
+    let end=-1e9;
+    for(const o of words){let x=px+(o.e.t-t)*PPS;if(x>W)break;const tw=ctx.measureText(o.w).width;if(x<end+10)x=end+10;end=x+tw;if(x+tw<0)continue;
+      const now=t>=o.e.t&&t<o.e.t+o.e.dur+0.15;ctx.fillStyle=now?'#64b5ff':(o.e.t<=t?getVar('--text'):'rgba(235,235,245,.6)');ctx.fillText(o.w,x,lyricY);}}
   ctx.font=FONT(fs);
   // lyrics under the boxes: each word under its note, scrolling with it
   const ty=H-28;ctx.font='700 29px -apple-system,"SF Pro Display",Helvetica,sans-serif';ctx.textBaseline='middle';let lastEnd=-1e9;
-  for(let i=0;i<events.length;i++){const e=events[i];if(e.syl.startsWith('-')||e.syl==='-')continue;let word=e.syl.replace(/-$/,'');for(let j=i+1;j<events.length&&events[j].syl.startsWith('-');j++)word+=events[j].syl.replace(/^-/,'').replace(/-$/,'');
+  if(LYR==='notes')for(let i=0;i<events.length;i++){const e=events[i];if(e.syl.startsWith('-')||e.syl==='-')continue;let word=e.syl.replace(/-$/,'');for(let j=i+1;j<events.length&&events[j].syl.startsWith('-');j++)word+=events[j].syl.replace(/^-/,'').replace(/-$/,'');
     let x=px+(e.t-t)*PPS;if(x<lastEnd+6)x=lastEnd+6;const w=ctx.measureText(word).width;if(x>W||x+w<0){lastEnd=x+w;continue;}
-    const sung=e.t<=t,now=t>=e.t&&t<e.t+e.dur+0.15;ctx.fillStyle=now?getVar('--accent'):(sung?getVar('--text'):getVar('--muted'));ctx.fillText(word,x,ty);lastEnd=x+w;}
+    const sung=e.t<=t,now=t>=e.t&&t<e.t+e.dur+0.15;ctx.fillStyle=now?'#64b5ff':(sung?getVar('--text'):getVar('--muted'));ctx.fillText(word,x,ty);lastEnd=x+w;}
   // voice: raw dots in review, comet while running (rec or play)
   if(mode==='idle'){for(const s of samples){const x=px+(s.t-t)*PPS;if(x<0||x>W)continue;const tg=s.tg;const m=fold(s.m,tg?tg.midi:null);const c=tg?(m-tg.midi)*100:null;ctx.fillStyle=c==null?getVar('--muted'):colorFor(c,tg&&tg.dur);ctx.fillRect(x-1.5,y(m)-2,3,4);}}
   else{const tail=[];for(let i=samples.length-1;i>=0;i--){const s=samples[i];if(s.t>t)continue;if(t-s.t>0.7)break;tail.push(s);}tail.reverse();

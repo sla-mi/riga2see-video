@@ -92,6 +92,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 .ctl b{padding:0;font-size:14px;color:var(--text);text-transform:none;letter-spacing:0;font-weight:600}
 .grp>button{margin:12px 0 2px;align-self:flex-start}
 .micRow{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 4px}
+.calRow{flex-direction:column;align-items:flex-start;gap:6px;padding:10px 0}
+.calRow .hint{color:var(--muted);font-size:13px;line-height:1.35}
 #micLive{display:flex;align-items:center;gap:12px;padding:8px 0 4px}
 #micLive .lvl{flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,.12);overflow:hidden}
 #micLive .lvl i{display:block;height:100%;width:0;background:var(--good);border-radius:4px;transition:width .06s}
@@ -224,7 +226,8 @@ canvas{display:block;width:100%;height:100%}
     <label class="ctl">key <select id="tr"></select></label>
     <label class="ctl">voice <select id="oct"><option value="-12">low (−1 oct)</option><option value="0" selected>original</option><option value="12">high (+1 oct)</option></select></label>
     <label class="ctl">words <select id="lyr"><option value="notes" selected>on the notes</option><option value="line">line under the phrase</option></select></label>
-    <label class="ctl">sound delay <span class="ctlv"><input id="sync" type="range" min="0" max="320" step="10" value="0"><b id="syncV">0 ms</b></span></label>
+    <label class="ctl">sound delay <span class="ctlv"><input id="sync" type="range" min="0" max="500" step="10" value="0"><b id="syncV">0 ms</b></span></label>
+    <div class="ctl calRow"><button id="calBtn" class="ghost" type="button">Measure headphone delay</button><span id="calMsg" class="hint">hold an earbud right at the phone's microphone (bottom edge), then tap</span></div>
     <label class="ctl" title="Only for listening: EQ, compression and reverb on your voice. Does not touch the recording or the score">voice sound <select id="fx"><option value="off">dry</option><option value="soft" selected>soft</option><option value="studio">studio</option><option value="hall">hall</option></select></label>
     <label class="ctl" title="Shifts your recorded voice against the accompaniment when you press Play">voice in playback <span class="ctlv"><input id="voff" type="range" min="-400" max="200" step="10" value="0"><b id="voffV">0 ms</b></span></label>
     <label class="ctl">tempo <select id="tempo"><option value="1">original</option><option value="0.9">90%</option><option value="0.8">80%</option><option value="0.7">70%</option><option value="0.6">60%</option><option value="0.5">50%</option></select></label>
@@ -630,6 +633,28 @@ async function micCheckStart(){
     micChk.raf=requestAnimationFrame(tick);})();}
 function micCheckStop(){micChk.on=false;cancelAnimationFrame(micChk.raf);$('micLive').hidden=true;$('mictest').textContent='Mic check';$('mictest').classList.remove('active');}
 function stopTest(){micCheckStop();}
+// ---------- замер задержки наушников: наушник у микрофона, 10 писков, тот же путь, что у голоса (owner 25.09) ----------
+const CAL={on:false,raf:0};
+async function calRun(){
+  if(CAL.on||mode!=='idle')return;const msg=$('calMsg'),btn=$('calBtn');
+  ensureAudio();await ac.resume();if(!(await openMic())){msg.textContent='no microphone';return;}
+  if($('aec').checked){msg.textContent='turn off “echo cancel” below first — it hides the beeps';return;}
+  CAL.on=true;btn.disabled=true;msg.textContent='listening… keep the earbud at the mic';
+  const F=523.25,N=10,GAP=0.7,T0=ac.currentTime+0.8,hits=[],b2=new Float32Array(analyser.fftSize),lat=analyser.fftSize/2/ac.sampleRate+(ac.baseLatency||0);
+  for(let k=0;k<N;k++){const at=T0+k*GAP,o=ac.createOscillator(),g=ac.createGain();o.frequency.value=F;
+    g.gain.setValueAtTime(0,at);g.gain.linearRampToValueAtTime(0.6,at+0.004);g.gain.setValueAtTime(0.6,at+0.16);g.gain.linearRampToValueAtTime(0,at+0.18);
+    o.connect(g);g.connect(ac.destination);o.start(at);o.stop(at+0.2);}
+  await new Promise(res=>{(function tick(){analyser.getFloatTimeDomainData(b2);const f=detect(b2,ac.sampleRate);
+    if(f>0){let d=12*Math.log2(f/F);d-=12*Math.round(d/12);if(Math.abs(d)<0.6)hits.push(ac.currentTime-T0-lat);}
+    if(ac.currentTime>T0+N*GAP+0.3){res();return;}CAL.raf=requestAnimationFrame(tick);})();});
+  const ds=[];for(let k=0;k<N;k++){const h=hits.find(x=>x>=k*GAP-0.02&&x<k*GAP+0.6);if(h!=null)ds.push(h-k*GAP);}
+  CAL.on=false;btn.disabled=false;ds.sort((a,b)=>a-b);
+  if(ds.length<6){msg.textContent='heard '+ds.length+' of '+N+' beeps — hold the earbud closer to the mic, volume up, and try again';return;}
+  const med=ds[Math.floor(ds.length/2)],q=ds.slice(Math.floor(ds.length*0.2),Math.ceil(ds.length*0.8)),spread=(q[q.length-1]-q[0])/2;
+  if(spread>0.04){msg.textContent='unsteady result (±'+Math.round(spread*1000)+' ms) — quieter room, try again';return;}
+  const v=Math.max(0,Math.min(500,Math.round(med*100)*10));$('sync').value=v;syncApply();ST.sync=String(v);saveST();
+  msg.textContent='measured '+Math.round(med*1000)+' ms ('+ds.length+'/'+N+' beeps, ±'+Math.round(spread*1000)+' ms) — set';}
+$('calBtn').onclick=calRun;
 $('mictest').onclick=()=>micChk.on?micCheckStop():micCheckStart();
 function micState(){   // тумблер показывает, какой микрофон РЕАЛЬНО взят, а не то, что мы попросили
   const lab=(stream&&stream.getAudioTracks()[0]||{}).label||'';$('micNow').textContent=lab||'\u2014';

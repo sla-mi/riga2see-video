@@ -904,7 +904,7 @@ $('prev').onclick=()=>stepSyl(-1);$('next').onclick=()=>stepSyl(1);
 // ---------- takes: save / list / load ----------
 const R2='https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/';
 function card(){const gr=events.map(e=>{const g=grade(e);return g?[e.syl,g.k,g.med]:null;});const n=gr.filter(Boolean).length;const cnt=k=>gr.filter(x=>x&&x[1]===k).length;
-  return {id:takeId,ts:new Date().toISOString(),song:SONG.slug,title:SONG.title,mode:$('backing').value,bpm:useGtr()?'guitar':Math.round(tempoBpm()*10)/10,tr:TR,oct:OCT,coverage:Math.round(100*coverage()),
+  return {id:takeId,ts:new Date().toISOString(),song:SONG.slug,title:SONG.title,mode:$('backing').value,bpm:useGtr()?'guitar':Math.round(tempoBpm()*10)/10,syncMs:+$('sync').value,outLat:ac&&ac.outputLatency!=null?Math.round(ac.outputLatency*1000):null,baseLat:ac&&ac.baseLatency!=null?Math.round(ac.baseLatency*1000):null,tr:TR,oct:OCT,coverage:Math.round(100*coverage()),
     mic:($('mic').selectedOptions[0]||{}).textContent||'',device:navigator.userAgent.slice(0,80),n,good:cnt('good'),near:cnt('near'),miss:cnt('flat')+cnt('sharp'),flat:cnt('flat'),sharp:cnt('sharp'),
     ring:(()=>{const r=samples.map(s=>s.r).filter(v=>v!=null);return r.length?Math.round(100*r.filter(v=>v>=-3).length/r.length):null;})(),
     rule:'±25/±40, long ±15/±25, attack 120 ms, median',syllables:gr,segments:segs.map(s=>({fromT:Math.round(s.fromT*1000)/1000,dur:Math.round(s.dur*1000)/1000})),

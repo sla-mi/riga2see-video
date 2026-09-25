@@ -272,6 +272,7 @@ const nm=m=>NAMES[m%12]+(Math.floor(m/12)-1);
 const $=id=>document.getElementById(id);
 var view='song';   // 'song' | 'drone' — объявлено до resize(), иначе TDZ
 var VOFF=0;        // сдвиг записанного голоса при воспроизведении (с)
+var REC_LAG=0.065;   // запись голоса начинается на ~65 мс позже нажатия (замер 26.09 по 9 дублям: звук сдвинут на 60–70 мс против линии голоса) — при проигрывании кладём её на столько же позже
 var SY=0;          // задержка выхода (с): на неё сдвигаем картинку, иначе полоса идёт впереди звука. Объявлять ЗДЕСЬ — используется в настройках выше по коду
 const cv=$('cv'),ctx=cv.getContext('2d');
 let W=0,H=0,DPR=1;
@@ -524,20 +525,24 @@ function buildFX(){
   const rev=ac.createConvolver();rev.buffer=irBuffer(1.1,2.2,0.025);
   hp.connect(mud);mud.connect(fill);fill.connect(pres);pres.connect(air);air.connect(comp);comp.connect(make);
   make.connect(dry);make.connect(send);send.connect(rev);rev.connect(wet);
-  FX={input:hp,dry,wet,bypass:ac.createGain()};
+  FX={input:hp,dry,wet,bypass:ac.createGain(),hp,mud,fill,pres,air,comp,make};
   dry.connect(vcGain);wet.connect(vcGain);FX.bypass.connect(vcGain);
   fxApply();}
 function fxApply(){
   if(!FX)return;const m=$('fx').value;
   const w={off:0,soft:0.10,studio:0.16,hall:0.30}[m]!=null?{off:0,soft:0.10,studio:0.16,hall:0.30}[m]:0.10;
-  FX.wet.gain.value=w;FX.dry.gain.value=m==='off'?0:1;FX.bypass.gain.value=m==='off'?1:0;}
+  FX.wet.gain.value=w;FX.dry.gain.value=m==='off'?0:1;FX.bypass.gain.value=m==='off'?1:0;
+  // 26.09 owner: «в эйрподах почти мегафонный голос» — soft/hall теперь почти без эквалайзера (низ сохранён, середина не выпячена); прежняя окраска осталась только в studio
+  const P=m==='studio'?{hp:95,mud:-2.5,fill:2.5,pres:3,air:2,thr:-20,ratio:3.5,make:1.4}:{hp:65,mud:0,fill:0,pres:1,air:1.5,thr:-24,ratio:2,make:1.15};
+  FX.hp.frequency.value=P.hp;FX.mud.gain.value=P.mud;FX.fill.gain.value=P.fill;FX.pres.gain.value=P.pres;FX.air.gain.value=P.air;
+  FX.comp.threshold.value=P.thr;FX.comp.ratio.value=P.ratio;FX.make.gain.value=P.make;}
 function scheduleVoice(from){   // голос кладём в ту же звуковую сетку, что и аккомпанемент — без рывков старта <audio>
   if(!vcGain){vcGain=ac.createGain();vcGain.connect(ac.destination);}
   vcGain.gain.value=+$('vcvol').value/100;
   if(!FX)buildFX();
   for(const s of segs){
     if(!s.abuf)continue;
-    const fs=s.fromT-VOFF,end=fs+(s.dur||s.abuf.duration);
+    const fs=s.fromT+REC_LAG-VOFF,end=fs+(s.dur||s.abuf.duration);
     if(end<=from)continue;
     const at=t0+Math.max(fs,from),off=Math.max(0,from-fs);
     if(off>=s.abuf.duration)continue;
@@ -594,7 +599,7 @@ function loop(){if(mode==='idle')return;
     const pm=stablePitch(f);const rs=resoNow(pm>0);
     if(pm>0){const s={t:t-lat,m:pm,r:rs,db:20*Math.log10(lastRms+1e-6)};samples.push(s);assign(s);}}
   if(mode==='play'){for(const s of segs){if(s.abuf||!s.el)continue;   // без декодированного буфера — старый способ через <audio>
-    const fs=s.fromT-VOFF,inside=t>=fs&&t<fs+s.dur;if(inside){const pos=t-fs;if(s.el.paused){s.el.currentTime=pos;s.el.play().catch(()=>{});}else if(Math.abs(s.el.currentTime-pos)>0.2)s.el.currentTime=pos;}else if(!s.el.paused)s.el.pause();}}
+    const fs=s.fromT+REC_LAG-VOFF,inside=t>=fs&&t<fs+s.dur;if(inside){const pos=t-fs;if(s.el.paused){s.el.currentTime=pos;s.el.play().catch(()=>{});}else if(Math.abs(s.el.currentTime-pos)>0.2)s.el.currentTime=pos;}else if(!s.el.paused)s.el.pause();}}
   if(sched&&t+4>sched.until)scheduleWindow(t+8);
   lastT=t;draw(t);if(t>total+0.8)finish(true);else raf=requestAnimationFrame(loop);}
 async function pauseRun(){   // Space while running: stop everything, keep position; Space again resumes the same mode from here
@@ -981,7 +986,7 @@ async function rebuildSamples(){   // прогоняем записанный з
   for(let st=0,k=0;st+N<d.length;st+=hop,k++){
     frame.set(d.subarray(st,st+N));
     const f=detect(frame,sr);
-    if(f>0)out.push({t:seg.fromT+(st+N/2)/sr,m:69+12*Math.log2(f/440),r:null,db:null});
+    if(f>0)out.push({t:seg.fromT+REC_LAG+(st+N/2)/sr,m:69+12*Math.log2(f/440),r:null,db:null});
     if(k%400===0)await new Promise(r=>setTimeout(r,0));
   }
   samples=out;toast(out.length?'Pitch line restored: '+out.length+' points':'Could not hear a voice in that recording');

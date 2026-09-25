@@ -640,7 +640,7 @@ async function micCheckStart(){
 function micCheckStop(){micChk.on=false;cancelAnimationFrame(micChk.raf);$('micLive').hidden=true;$('mictest').textContent='Mic check';$('mictest').classList.remove('active');}
 function stopTest(){micCheckStop();}
 // ---------- замер задержки наушников: наушник у микрофона, 10 писков, тот же путь, что у голоса (owner 25.09) ----------
-const CAL={on:false,raf:0};var CAL_BIAS=0;   // поправка метода (подобрана по симуляции)
+const CAL={on:false,raf:0};var CAL_BIAS=-0.013;   // поправка метода: на симуляции 0/230/410 мс мерил на 12–14 мс меньше
 async function calRun(){
   if(CAL.on||mode!=='idle')return;const msg=$('calMsg'),btn=$('calBtn');
   ensureAudio();await ac.resume();if(!(await openMic())){msg.textContent='no microphone';return;}

@@ -235,6 +235,7 @@ canvas{display:block;width:100%;height:100%}
   <div class="grp setSong"><b>Volume</b>
     <label class="ctl">melody <input id="vol" type="range" min="0" max="100" value="60"></label>
     <label class="ctl">accompaniment <input id="chvol" type="range" min="0" max="100" value="55"></label>
+    <label class="ctl" title="Kick, snare and hi-hat under the song (accompaniment mode)">drums <input id="btvol" type="range" min="0" max="100" value="28"></label>
     <label class="ctl">your voice <input id="vcvol" type="range" min="0" max="100" value="90"></label>
   </div>
   <div class="grp setSong"><b>General · both modes</b>
@@ -279,11 +280,11 @@ window.addEventListener('resize',resize);
 // ---------- settings ----------
 const ST=(()=>{try{return JSON.parse(localStorage.getItem('roll')||'{}');}catch(e){return {};}})();
 const saveST=()=>{try{localStorage.setItem('roll',JSON.stringify(ST));}catch(e){}};
-if(ST.tempoF)$('tempo').value=ST.tempoF;if(ST.vol!=null)$('vol').value=ST.vol;if(ST.chvol!=null)$('chvol').value=ST.chvol;if(ST.vcvol!=null)$('vcvol').value=ST.vcvol;
+if(ST.tempoF)$('tempo').value=ST.tempoF;if(ST.vol!=null)$('vol').value=ST.vol;if(ST.chvol!=null)$('chvol').value=ST.chvol;if(ST.vcvol!=null)$('vcvol').value=ST.vcvol;$('btvol').value=ST.btvol!=null?ST.btvol:Math.round((ST.chvol!=null?+ST.chvol:55)/2);   // по умолчанию — как было, когда бит шёл от ползунка аккомпанемента
 // темп — доля от темпа песни (owner 24.09): один выбор подходит ко всем песням
 function tempoBpm(){return SONG.bpm*(+$('tempo').value||1);}
 ['tempo'].forEach(id=>$(id).addEventListener('change',()=>{ST.tempoF=$(id).value;saveST();if(mode==='idle'){buildEvents();draw();}}));
-['vol','chvol','vcvol'].forEach(id=>{$(id).addEventListener('input',setVol);$(id).addEventListener('change',()=>{ST[id]=$(id).value;saveST();});});
+['vol','chvol','vcvol','btvol'].forEach(id=>{$(id).addEventListener('input',setVol);$(id).addEventListener('change',()=>{ST[id]=$(id).value;saveST();});});
 $('sync').value=ST.sync!=null?ST.sync:100;   // 100 мс по умолчанию — owner проверил, так лучше
 function syncApply(){SY=+$('sync').value/1000;$('syncV').textContent=$('sync').value+' ms';}
 $('sync').addEventListener('input',syncApply);
@@ -326,7 +327,7 @@ const songT=()=>ac.currentTime-t0-SY;   // «время песни»: звук �
 function toast(t){const el=$('toast');if(!t){el.hidden=true;return;}el.textContent=t;el.hidden=false;clearTimeout(el._t);el._t=setTimeout(()=>{el.hidden=true;},9000);}
 function ensureAudio(){if(ac)return;ac=new (window.AudioContext||window.webkitAudioContext)();
 gainNode=ac.createGain();gainNode.connect(ac.destination);chGain=ac.createGain();chGain.connect(ac.destination);btGain=ac.createGain();btGain.connect(ac.destination);applySink();setVol();}
-function setVol(){if(vcGain)vcGain.gain.value=+$('vcvol').value/100;if(gainNode)gainNode.gain.value=(+$('vol').value/100)*0.5;if(chGain)chGain.gain.value=(+$('chvol').value/100)*0.35;if(btGain)btGain.gain.value=(+$('chvol').value/100)*0.45;for(const s of segs)if(s.el)s.el.volume=+$('vcvol').value/100;}
+function setVol(){if(vcGain)vcGain.gain.value=+$('vcvol').value/100;if(gainNode)gainNode.gain.value=(+$('vol').value/100)*0.5;if(chGain)chGain.gain.value=(+$('chvol').value/100)*0.35;if(btGain)btGain.gain.value=(+$('btvol').value/100)*0.9;for(const s of segs)if(s.el)s.el.volume=+$('vcvol').value/100;}
 async function listMics(){try{const devs=await navigator.mediaDevices.enumerateDevices();const sel=$('mic');const cur=sel.value;sel.innerHTML='<option value="">default</option>';
   devs.filter(d=>d.kind==='audioinput'&&d.deviceId).forEach(d=>{const o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||('mic '+sel.length);sel.appendChild(o);});
   sel.value=[...sel.options].some(o=>o.value===(cur||ST.mic||''))?(cur||ST.mic||''):'';

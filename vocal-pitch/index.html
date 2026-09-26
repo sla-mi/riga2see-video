@@ -209,6 +209,9 @@ header .seg button{padding:8px 13px;font-size:14px}
   padding:env(safe-area-inset-top) 18px 22px;transform:translateY(-102%)}
 #settings.open,#songSheet.open{transform:translateY(0)}
 #settings .sheetHd .grab,#songSheet .sheetHd .grab{display:none}
+#songCtl,#dronebar{display:none!important}
+header #play{width:42px;height:42px;min-height:42px;font-size:15px;flex:0 0 auto}
+body.drone header #play{display:none}
 </style></head><body>
 <header>
   <div class="seg" hidden><button id="tabSong" class="on">Songs</button><button id="tabDrone">Drone</button></div>
@@ -257,6 +260,7 @@ header .seg button{padding:8px 13px;font-size:14px}
     <label class="ctl">voice <select id="oct"><option value="-12">low (−1 oct)</option><option value="0" selected>original</option><option value="12">high (+1 oct)</option></select></label>
     <label class="ctl">words <select id="lyr"><option value="notes" selected>on the notes</option><option value="line">line under the phrase</option></select></label>
     <label class="ctl">sound delay <span class="ctlv"><input id="sync" type="range" min="0" max="500" step="10" value="0"><b id="syncV">0 ms</b></span></label>
+    <label class="ctl" title="Boxes reach the line a bit before you hear the note, so you can come in on time. Only the picture moves — scoring and playback stay as they are">cursor ahead <span class="ctlv"><input id="lead" type="range" min="0" max="400" step="10" value="150"><b id="leadV">150 ms</b></span></label>
     <div class="ctl calRow"><button id="calBtn" class="ghost" type="button">Measure headphone delay</button><span id="calMsg" class="hint">press an earbud onto the LEFT grille at the bottom of the phone (the microphone, screen facing you), then tap. Quiet room</span></div>
     <label class="ctl" title="Only for listening: EQ, compression and reverb on your voice. Does not touch the recording or the score">voice sound <select id="fx"><option value="off">dry</option><option value="soft" selected>soft</option><option value="studio">studio</option><option value="hall">hall</option></select></label>
     <label class="ctl" title="Shifts your recorded voice against the accompaniment when you press Play">voice in playback <span class="ctlv"><input id="voff" type="range" min="-400" max="200" step="10" value="0"><b id="voffV">0 ms</b></span></label>
@@ -300,6 +304,7 @@ const nm=m=>NAMES[m%12]+(Math.floor(m/12)-1);
 const $=id=>document.getElementById(id);
 var view='song';   // 'song' | 'drone' — объявлено до resize(), иначе TDZ
 var VOFF=0;        // сдвиг записанного голоса при воспроизведении (с)
+var LEAD=0.15;   // 26.09 owner: полоса бежит на LEAD раньше звука — подсказка вступить вовремя (только картинка)
 var REC_LAG=0.065;   // запись голоса начинается на ~65 мс позже нажатия (замер 26.09 по 9 дублям: звук сдвинут на 60–70 мс против линии голоса) — при проигрывании кладём её на столько же позже
 var SY=0;          // задержка выхода (с): на неё сдвигаем картинку, иначе полоса идёт впереди звука. Объявлять ЗДЕСЬ — используется в настройках выше по коду
 const cv=$('cv'),ctx=cv.getContext('2d');
@@ -317,6 +322,8 @@ function tempoBpm(){return SONG.bpm*(+$('tempo').value||1);}
 $('sync').value=ST.sync!=null?ST.sync:100;   // 100 мс по умолчанию — owner проверил, так лучше
 function syncApply(){SY=+$('sync').value/1000;$('syncV').textContent=$('sync').value+' ms';}
 $('sync').addEventListener('input',syncApply);
+function leadApply(){LEAD=+$('lead').value/1000;$('leadV').textContent=$('lead').value+' ms';}
+if(ST.lead!=null)$('lead').value=ST.lead;leadApply();$('lead').addEventListener('input',leadApply);$('lead').addEventListener('change',()=>{ST.lead=$('lead').value;saveST();});
 $('sync').addEventListener('change',()=>{ST.sync=$('sync').value;saveST();});
 $('voff').value=ST.voff!=null?ST.voff:0;
 function voffApply(){VOFF=+$('voff').value/1000;$('voffV').textContent=(+$('voff').value>0?'+':'')+$('voff').value+' ms';}
@@ -353,7 +360,7 @@ let lyricTotal=0;
 let ac,analyser,buf,stream,t0=0,samples=[],oscs=[],gainNode,raf,srcNode,chGain,btGain,vcGain,lastRms=0;
 const songT=()=>ac.currentTime-t0-SY;   // «время песни»: звук приходит позже картинки
 // ⚠️ имя mt НЕ использовать — оно занято локально в recStart (мим-тип) и в draw (элемент метра)
-function toast(t){const el=$('toast');if(!t){el.hidden=true;return;}el.textContent=t;el.hidden=false;clearTimeout(el._t);el._t=setTimeout(()=>{el.hidden=true;},3500);}
+function toast(t){const el=$('toast');if(!t){el.hidden=true;return;}el.textContent=t;el.hidden=false;clearTimeout(el._t);el._t=setTimeout(()=>{el.hidden=true;},2000);}
 function ensureAudio(){if(ac)return;ac=new (window.AudioContext||window.webkitAudioContext)();
 gainNode=ac.createGain();gainNode.connect(ac.destination);chGain=ac.createGain();chGain.connect(ac.destination);btGain=ac.createGain();btGain.connect(ac.destination);applySink();setVol();}
 function setVol(){if(vcGain)vcGain.gain.value=+$('vcvol').value/100;if(gainNode)gainNode.gain.value=(+$('vol').value/100)*0.5;if(chGain)chGain.gain.value=(+$('chvol').value/100)*0.35;if(btGain)btGain.gain.value=(+$('btvol').value/100)*0.9;for(const s of segs)if(s.el)s.el.volume=+$('vcvol').value/100;}
@@ -630,7 +637,7 @@ function loop(){if(mode==='idle')return;
   if(mode==='play'){for(const s of segs){if(s.abuf||!s.el)continue;   // без декодированного буфера — старый способ через <audio>
     const fs=s.fromT+REC_LAG-VOFF,inside=t>=fs&&t<fs+s.dur;if(inside){const pos=t-fs;if(s.el.paused){s.el.currentTime=pos;s.el.play().catch(()=>{});}else if(Math.abs(s.el.currentTime-pos)>0.2)s.el.currentTime=pos;}else if(!s.el.paused)s.el.pause();}}
   if(sched&&t+4>sched.until)scheduleWindow(t+8);
-  lastT=t;draw(t);if(t>total+0.8)finish(true);else raf=requestAnimationFrame(loop);}
+  lastT=t;draw(t+LEAD);if(t>total+0.8)finish(true);else raf=requestAnimationFrame(loop);}
 async function pauseRun(){   // Space while running: stop everything, keep position; Space again resumes the same mode from here
   if(mode==='idle')return;const was=mode;const tstop=lastT;cancelAnimationFrame(raf);killSound();setMode('idle');
   if(LISTEN){LISTEN=false;rt=Math.max(0,Math.min(total,tstop));draw(rt);return;}
@@ -765,7 +772,7 @@ function draw(t){if(t==null)t=mode!=='idle'?songT():(review?rt:-1.5);
       const sm=i=>{const a=[];for(let k=Math.max(0,i-2);k<=i;k++)a.push(fold(tail[k].m,tg?tg.midi:null));a.sort((p,q)=>p-q);return a[Math.floor(a.length/2)];};
       const c=tg?(sm(tail.length-1)-tg.midi)*100:null;const col=c==null?getVar('--muted'):colorFor(c,tg&&tg.dur);
       for(let i=1;i<tail.length;i++){const s=tail[i],pv=tail[i-1];if(s.t-pv.t>0.15)continue;const k=i/tail.length;ctx.strokeStyle=col;ctx.globalAlpha=0.15+0.75*k;ctx.lineWidth=1+9*k;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(px+(pv.t-t)*PPS,y(sm(i-1)));ctx.lineTo(px+(s.t-t)*PPS,y(sm(i)));ctx.stroke();}
-      ctx.globalAlpha=1;if(t-last.t<0.15){const yy=y(sm(tail.length-1));ctx.fillStyle=col;ctx.beginPath();ctx.arc(px,yy,8,0,Math.PI*2);ctx.fill();ctx.fillStyle=getVar('--text');ctx.font='600 13px -apple-system,sans-serif';ctx.textBaseline='middle';ctx.fillText(nm(Math.round(mh)).replace(/\d/,''),px+13,yy);}}}
+      ctx.globalAlpha=1;if(t-last.t<0.15+LEAD){const yy=y(sm(tail.length-1)),hx=px+(last.t-t)*PPS;ctx.fillStyle=col;ctx.beginPath();ctx.arc(hx,yy,8,0,Math.PI*2);ctx.fill();ctx.fillStyle=getVar('--text');ctx.font='600 13px -apple-system,sans-serif';ctx.textBaseline='middle';ctx.fillText(nm(Math.round(mh)).replace(/\d/,''),hx+13,yy);}}}
   {const v=lastReso,x=W-26,h=H*0.34,y0=H*0.28;   // столбик резонанса: звенит голос или глухой
     ctx.fillStyle=getVar('--chip');ctx.fillRect(x,y0,10,h);
     if(v!=null&&(mode==='rec'||testing)){const p=Math.max(0,Math.min(1,(v+14)/14));ctx.fillStyle=resoCol(v);ctx.fillRect(x,y0+h*(1-p),10,h*p);}
@@ -1284,7 +1291,7 @@ function setView(v){
   $('result').style.display=song?'':'none';$('dbig').hidden=song;$('dsub').hidden=song;
   if(song){droneStop();$('msg').textContent='';draw();}
   else{if(mode!=='idle')finish(false);if(testing)stopTest();$('scrubrow').hidden=true;$('msg').textContent='';droneStats();droneList();droneRank();droneDraw();}
-  ST.view=v;saveST();}
+  document.body.classList.toggle('drone',v!=='song');ST.view=v;saveST();}
 $('tabSong').onclick=()=>setView('song');$('tabDrone').onclick=()=>setView('drone');
 $('dStart').onclick=()=>DR.on?droneStop():droneStart();
 function dBtn(){const b=$('dStart');b.textContent=DR.on?'■':'●';b.classList.toggle('active',DR.on);b.classList.toggle('rec',!DR.on);b.classList.toggle('ghost',DR.on);$('dHint').textContent=DR.on?'Stop':'Start';}
@@ -1329,8 +1336,9 @@ const _setView=setView;setView=function(v){_setView(v);updTitle();fitStage();};
 let fitW=0,fitH0=innerHeight;
 function fitStage(){const st=$('stage'),row=view==='song'?$('songCtl'):$('dronebar');
   const top=st.getBoundingClientRect().top+scrollY,pad=parseFloat(getComputedStyle(document.body).paddingBottom)||12;
-  const h=Math.max(300,Math.round(fitH0-top-(row.offsetHeight||96)-12-pad));st.style.height=h+'px';resize();}
+  const h=Math.max(300,Math.round(fitH0-top-row.offsetHeight-(row.offsetHeight?12:0)-pad));st.style.height=h+'px';resize();}
 addEventListener('resize',()=>{if(Math.abs(innerWidth-fitW)>40){fitW=innerWidth;fitH0=innerHeight;fitStage();}});
+$('gear').before($('play'));   // 26.09 owner, вариант 1: ▶ наверху, запись — тапом по полю
 fitW=innerWidth;updTitle();fitStage();
 // после попытки — сами прокручиваемся к статистике; на старте записи — наверх
 

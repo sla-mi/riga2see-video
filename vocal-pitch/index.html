@@ -200,6 +200,15 @@ canvas{display:block;width:100%;height:100%}
  button{min-height:44px;font-size:16px}
  #dbig{font-size:40px;top:10px}#dsub{top:62px;font-size:14px}
 }
+
+/* owner 26.09: режим текстом Sing | Drone вместо значка; меню песни и настроек выпадают сверху */
+header .seg{display:inline-flex!important;flex:0 0 auto} header .seg[hidden]{display:inline-flex!important}
+header .seg button{padding:8px 13px;font-size:14px}
+#modeBtn{display:none!important}
+#settings,#songSheet{top:0;bottom:auto;border-radius:0 0 26px 26px;box-shadow:0 12px 44px rgba(0,0,0,.55);
+  padding:env(safe-area-inset-top) 18px 22px;transform:translateY(-102%)}
+#settings.open,#songSheet.open{transform:translateY(0)}
+#settings .sheetHd .grab,#songSheet .sheetHd .grab{display:none}
 </style></head><body>
 <header>
   <div class="seg" hidden><button id="tabSong" class="on">Songs</button><button id="tabDrone">Drone</button></div>
@@ -1325,6 +1334,11 @@ addEventListener('resize',()=>{if(Math.abs(innerWidth-fitW)>40){fitW=innerWidth;
 fitW=innerWidth;updTitle();fitStage();
 // после попытки — сами прокручиваемся к статистике; на старте записи — наверх
 
+
+// owner 26.09: Sing | Drone — те же правила, что у прежней кнопки режима (во время записи не переключается)
+$('tabSong').textContent='Sing';$('tabDrone').textContent='Drone';
+$('tabSong').onclick=()=>{if(mode!=='idle'||DR.on)return;setView('song');};
+$('tabDrone').onclick=()=>{if(mode!=='idle')return;setView('drone');};
 </script>
 
 </body></html>

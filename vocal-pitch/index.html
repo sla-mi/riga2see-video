@@ -208,6 +208,7 @@ canvas{display:block;width:100%;height:100%}
   <button id="gear" class="icon" title="Settings">⚙</button>
 </header>
 <div id="stage"><canvas id="cv"></canvas><div id="modeTag">idle</div><div id="dbig" hidden></div><div id="dsub" hidden></div><div id="meter" title="microphone level"><i></i></div><div id="meterLbl">mic</div><div id="msg">tap to start</div>
+</div>
 <div id="songCtl">
   <div class="btns"><div class="bw"><button id="rec" class="rec" title="Record / Stop">●</button><span id="recCap">Record</span></div>
   <div class="bw"><button id="play" class="ghost" title="Listen">▶</button><span id="playCap">Listen</span></div></div>
@@ -270,7 +271,6 @@ canvas{display:block;width:100%;height:100%}
   </div>
 </div>
 <audio id="gtr" preload="auto"></audio>
-</div>
 <div id="scrubrow" hidden><button id="prev" class="ghost" title="← previous syllable">◀</button><input id="scrub" type="range" min="0" max="1000" value="0"><button id="next" class="ghost" title="→ next syllable">▶</button><span id="scrubT">0.0 s</span></div>
 <div id="result">
   <div class="hero"><b id="rIn">—</b><span class="unit">in tune</span><span id="rDelta" class="delta"></span></div>

@@ -111,9 +111,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 #dronebar .grp.pair{flex:0 0 auto;flex-direction:row;align-items:center;gap:14px;padding:10px 0}
 #dHint{border:0;color:var(--muted);font-size:14px;min-height:0}
 #mictest.active{background:var(--tint)}
-#toast{position:fixed;left:14px;right:14px;top:calc(10px + env(safe-area-inset-top));z-index:40;padding:12px 15px;border-radius:16px;background:rgba(44,44,46,.95);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);color:var(--near);font-size:15px;box-shadow:0 8px 30px rgba(0,0,0,.45)}
+#toast{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:max-content;max-width:78vw;text-align:center;z-index:40;padding:12px 16px;border-radius:16px;background:rgba(44,44,46,.95);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);color:var(--near);font-size:15px;box-shadow:0 8px 30px rgba(0,0,0,.45)}
 /* ---- stage ---- */
-#stage{position:relative;flex:0 0 auto;height:max(320px,calc(100svh - 190px));background:rgba(28,28,30,.72);box-shadow:inset 0 0 0 1px var(--hair);border-radius:24px;overflow:hidden}
+#stage{position:relative;flex:0 0 auto;height:max(320px,calc(100svh - 190px));background:rgba(28,28,30,.72);box-shadow:inset 0 0 0 1px var(--hair);border-radius:12px;overflow:hidden}
 canvas{display:block;width:100%;height:100%}
 #meter,#meterLbl{display:none!important}
 #meter{position:absolute;right:14px;bottom:26px;width:110px;height:6px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden}
@@ -353,7 +353,7 @@ let lyricTotal=0;
 let ac,analyser,buf,stream,t0=0,samples=[],oscs=[],gainNode,raf,srcNode,chGain,btGain,vcGain,lastRms=0;
 const songT=()=>ac.currentTime-t0-SY;   // «время песни»: звук приходит позже картинки
 // ⚠️ имя mt НЕ использовать — оно занято локально в recStart (мим-тип) и в draw (элемент метра)
-function toast(t){const el=$('toast');if(!t){el.hidden=true;return;}el.textContent=t;el.hidden=false;clearTimeout(el._t);el._t=setTimeout(()=>{el.hidden=true;},9000);}
+function toast(t){const el=$('toast');if(!t){el.hidden=true;return;}el.textContent=t;el.hidden=false;clearTimeout(el._t);el._t=setTimeout(()=>{el.hidden=true;},3500);}
 function ensureAudio(){if(ac)return;ac=new (window.AudioContext||window.webkitAudioContext)();
 gainNode=ac.createGain();gainNode.connect(ac.destination);chGain=ac.createGain();chGain.connect(ac.destination);btGain=ac.createGain();btGain.connect(ac.destination);applySink();setVol();}
 function setVol(){if(vcGain)vcGain.gain.value=+$('vcvol').value/100;if(gainNode)gainNode.gain.value=(+$('vol').value/100)*0.5;if(chGain)chGain.gain.value=(+$('chvol').value/100)*0.35;if(btGain)btGain.gain.value=(+$('btvol').value/100)*0.9;for(const s of segs)if(s.el)s.el.volume=+$('vcvol').value/100;}
@@ -711,7 +711,7 @@ $('phoneMic').addEventListener('change',async()=>{
   m.textContent=want&&!$('phoneMic').checked?'iOS kept “'+lab+'” — it did not allow the phone mic':'now using: '+(lab||'?');});
 // ---------- drawing ----------
 // поле подстраивается под ноты, видимые на экране (owner 24.09): крупнее дорожки, плавный съезд к припеву
-var vLo=null,vHi=null,vTs=0,VSPAN=12;
+var vLo=null,vHi=null,vTs=0,VSPAN=18;   // 26.09: 19 строк — нота на ~30% ниже, чем при 12
 function viewRange(t,px){let a=null,b=null;const t0=t-px/PPS,t1=t+(W-px)/PPS;
   for(const e of events){if(e.t+e.dur<t0)continue;if(e.t>t1)break;const m=Math.round(e.midi);a=a==null?m:Math.min(a,m);b=b==null?m:Math.max(b,m);}
   if(a==null){const nx=events.filter(e=>e.t>=t).slice(0,8);   // пауза/проигрыш: заранее едем к следующей фразе
@@ -728,7 +728,7 @@ function draw(t){if(t==null)t=mode!=='idle'?songT():(review?rt:-1.5);
   const mLo=Math.floor(lo),mHi=Math.ceil(hi);
   for(let m=mLo;m<=mHi;m++){const yy=y(m);ctx.fillStyle=[0,2,4,5,7,9,11].includes(((m%12)+12)%12)?getVar('--grid2'):'transparent';ctx.fillRect(0,yy-rh/2,W,rh);ctx.strokeStyle=getVar('--grid');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,yy-rh/2);ctx.lineTo(W,yy-rh/2);ctx.stroke();
   }
-  const fs=Math.max(18,Math.min(29,Math.round(rh*0.95)));ctx.font='700 '+fs+'px -apple-system,"SF Pro Display",Helvetica,sans-serif';
+  const fs=Math.max(16,Math.min(29,Math.round(rh*0.8)));ctx.font='700 '+fs+'px -apple-system,"SF Pro Display",Helvetica,sans-serif';
   for(const e of events){const x=px+(e.t-t)*PPS,w=e.dur*PPS;if(x+w<0||x>W)continue;const yy=y(e.midi);
     const g=(review||mode==='play'||e.t<t)?grade(e):null;const col=g?g.col:null;
     box(x,yy-rh*0.45,w,rh*0.9,col);}

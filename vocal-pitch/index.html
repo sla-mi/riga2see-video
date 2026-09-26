@@ -1434,7 +1434,7 @@ function parseMidi(ab){const v=new DataView(ab);let p=0;const u8=()=>v.getUint8(
   if(str(4)!=='MThd')throw new Error('not a MIDI file');const hl=u32(),fmt=u16(),nt=u16(),div=u16();p=8+hl;if(div&0x8000)throw new Error('SMPTE timing is not supported');
   const tracks=[],tempos=[];
   for(let k=0;k<nt&&p<v.byteLength-8;k++){const id=str(4),len=u32(),end=p+len;if(id!=='MTrk'){p=end;continue;}
-    let t=0,rs=0;const tr={name:'',notes:[],lyr:[],on:{}};
+    let t=0,rs=0;const tr={name:'',notes:[],lyr:[],on:{},prog:{}};
     while(p<end){t+=vlq();let st=v.getUint8(p);if(st&0x80){p++;rs=st;}else st=rs;
       if(st===0xFF){const ty=u8(),n=vlq(),s0=p;
         if(ty===0x51&&n===3){tempos.push({t,us:(v.getUint8(p)<<16)|(v.getUint8(p+1)<<8)|v.getUint8(p+2)});}
@@ -1447,7 +1447,7 @@ function parseMidi(ab){const v=new DataView(ab);let p=0;const u8=()=>v.getUint8(
         if(hi===0x90||hi===0x80){const n=u8(),vel=u8();
           if(hi===0x90&&vel>0){(tr.on[ch*128+n]=tr.on[ch*128+n]||[]).push(t);}
           else{const q=tr.on[ch*128+n];if(q&&q.length){const s=q.shift();if(t>s)tr.notes.push({t:s,d:t-s,p:n,ch});}}}
-        else if(hi===0xC0||hi===0xD0)p+=1;else p+=2;}}
+        else if(hi===0xC0){const pg=u8();if(tr.prog[ch]==null)tr.prog[ch]=pg;}else if(hi===0xD0)p+=1;else p+=2;}}
     p=end;delete tr.on;tr.notes.sort((a,b)=>a.t-b.t);tracks.push(tr);}
   return {tpb:div,tempos,tracks};}
 function mkSyl(parts){   // [{text, word:true|false}] → слоги в нотации приложения: «Hel-» «-lo»
@@ -1459,12 +1459,18 @@ function midiToSong(M,title){
   const tpb=M.tpb,bpm=M.tempos.length?Math.round(60000000/M.tempos[0].us*10)/10:120;
   const lyrAll=M.tracks.flatMap(tr=>tr.lyr).filter(x=>!/^@/.test(x.text)&&/[A-Za-zА-Яа-яЁё0-9]/.test(x.text)).sort((a,b)=>a.t-b.t);
   const lyrOnly=lyrAll.some(x=>x.lyr)?lyrAll.filter(x=>x.lyr):lyrAll;   // есть настоящие Lyric — берём только их
-  const cand=M.tracks.map((tr,i)=>({i,tr,notes:tr.notes.filter(n=>n.ch!==9)})).filter(c=>c.notes.length>=8);
+  // кандидаты — каждая пара «дорожка × канал» (в MIDI формата 0 все инструменты в одной дорожке)
+  const progOf=ch=>{for(const tr of M.tracks)if(tr.prog[ch]!=null)return tr.prog[ch];return null;};
+  const cand=[];M.tracks.forEach((tr,i)=>{const chs=[...new Set(tr.notes.map(n=>n.ch))].filter(c=>c!==9);
+    for(const ch of chs){const notes=tr.notes.filter(n=>n.ch===ch);if(notes.length>=8)cand.push({i,ch,tr,notes,prog:tr.prog[ch]!=null?tr.prog[ch]:progOf(ch),name:tr.name||''});}});
   if(!cand.length)throw new Error('no melody found in the file');
   const mono=ns=>{let ov=0;for(let i=1;i<ns.length;i++)if(ns[i].t<ns[i-1].t+ns[i-1].d-tpb/16)ov++;return 1-ov/ns.length;};
   const near=(ns,ls)=>{if(!ls.length)return 0;let h=0,j=0;for(const l of ls){while(j<ns.length-1&&ns[j+1].t<=l.t+tpb/8)j++;if(Math.abs(ns[j].t-l.t)<=tpb/8)h++;}return h/ls.length;};
-  for(const c of cand){const med=c.notes.map(n=>n.p).sort((a,b)=>a-b)[c.notes.length>>1];
-    c.score=near(c.notes,lyrOnly)*1000+(/vocal|voice|voc|melod|lead|sing|голос|мелод/i.test(c.tr.name)?300:0)+mono(c.notes)*100+(med>=52&&med<=84?50:0)-(med<48?250:0)+Math.min(c.notes.length,400)/10;}
+  for(const c of cand){const med=c.notes.map(n=>n.p).sort((a,b)=>a-b)[c.notes.length>>1],avg=c.notes.reduce((a,n)=>a+n.d,0)/c.notes.length/tpb,pg=c.prog;
+    const leadProg=pg!=null&&((pg>=52&&pg<=54)||pg===85||pg===22||(pg>=40&&pg<=41)||(pg>=56&&pg<=79)||pg===80||pg===81);   // голос/хор, харм., скрипка, духовые, флейты, лиды — так часто пишут вокал в GM
+    const accProg=pg!=null&&((pg>=0&&pg<=7)||(pg>=24&&pg<=39)||(pg>=88&&pg<=103)||pg>=112);   // фортепиано, гитары, бас, пэды, эффекты
+    c.score=near(c.notes,lyrOnly)*1000+(/vocal|voice|voc|melod|lead|sing|голос|мелод/i.test(c.name)?300:0)+mono(c.notes)*150+(med>=52&&med<=80?60:0)-(med<48?250:0)
+      +(leadProg?80:0)-(accProg?60:0)-(avg<0.15?200:0)+Math.min(c.notes.length,400)/10;}
   cand.sort((a,b)=>b.score-a.score);const mel=cand[0];
   // одноголосие: на одной атаке — верхняя нота; предыдущую обрезаем по следующей
   let ns=[];for(const n of mel.notes){const l=ns[ns.length-1];if(l&&Math.abs(n.t-l.t)<tpb/16){if(n.p>l.p)ns[ns.length-1]=n;continue;}ns.push({...n});}
@@ -1491,7 +1497,7 @@ function midiToSong(M,title){
       const c=best[1];if(chords.length&&chords[chords.length-1].c===c)chords[chords.length-1].d+=2;else chords.push({b,d:2,c});}}
   const chordNotes={};for(const c of chords){if(chordNotes[c.c])continue;const r=N.indexOf(c.c.replace('m','')),m=c.c.endsWith('m');const bass=r+(r<4?48:36);
     chordNotes[c.c]=[bass,...[0,m?3:4,7].map(x=>{let q=48+((r+x)%12);if(q<52)q+=12;return q;})];}
-  return {title,artist:'my file',bpm,items,chords,chordNotes,keyNote:'as in the file',melodyTrack:mel.tr.name||('track '+(mel.i+1)),words:hasWords};}
+  return {title,artist:'',bpm,items,chords,chordNotes,keyNote:'as in the file',melodyTrack:(mel.name||('track '+(mel.i+1)))+' ch'+(mel.ch+1),words:hasWords};}
 function ultrastarToSong(txt,title){
   const H={};const notes=[];let line=1;
   for(const raw of txt.split(/\r?\n/)){const l=raw.replace(/\r$/,'');if(!l.trim())continue;
@@ -1505,7 +1511,7 @@ function ultrastarToSong(txt,title){
   const syl=mkSyl(parts);const items=[];let cur=0;const r3=x=>Math.round(x*1000)/1000;
   for(let i=0;i<notes.length;i++){const s=notes[i].s/4,d=notes[i].d/4;if(s-cur>0.01)items.push({rest:true,b:r3(s-cur),line:notes[i].line,sec:null});
     items.push({syl:syl[i],midi:60+notes[i].p,b:r3(Math.max(d,0.125)),line:notes[i].line,sec:null});cur=s+Math.max(d,0.125);}
-  return {title:H.TITLE||title,artist:H.ARTIST||'my file',bpm:Math.round(bpm*10)/10,items,chords:[],chordNotes:{},keyNote:'as in the file',words:true};}
+  return {title:H.TITLE||title,artist:H.ARTIST||'',bpm:Math.round(bpm*10)/10,items,chords:[],chordNotes:{},keyNote:'as in the file',words:true};}
 
 function saveMy(){try{localStorage.setItem(MYKEY,JSON.stringify(MY));return true;}catch(e){return false;}}
 function addMySong(slug,song){song.slug=slug;song.local=true;MY[slug]=song;SONGS[slug]=song;}

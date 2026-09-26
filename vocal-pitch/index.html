@@ -1360,7 +1360,8 @@ addEventListener('resize',()=>{if(Math.abs(innerWidth-fitW)>40){fitW=innerWidth;
 (function(){const ov=document.createElement('div');ov.id='ov';const th=document.createElement('div');th.id='tapHint';th.textContent='tap to stop';
   ov.appendChild($('rec').closest('.bw'));ov.appendChild($('play').closest('.bw'));ov.appendChild($('dStart').closest('.bw'));$('stage').append(ov,th);
   ['pointerdown','pointerup','click'].forEach(ev=>ov.addEventListener(ev,e=>e.stopPropagation()));})();
-function ovUpd(){const run=mode!=='idle'||DR.on,song=view==='song';$('ov').hidden=run;$('tapHint').hidden=!run;
+function ovUpd(){if(!document.getElementById('ov'))return;   // до создания оверлея (ранние вызовы из loadSong) — ничего
+  const run=mode!=='idle'||DR.on,song=view==='song';$('ov').hidden=run;$('tapHint').hidden=!run;
   $('rec').closest('.bw').hidden=!song;$('play').closest('.bw').hidden=!song;$('dStart').closest('.bw').hidden=song;
   if(!run)$('msg').textContent='';}
 $('upBtn').onclick=()=>$('upFile').click();

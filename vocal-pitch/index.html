@@ -51,11 +51,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 #songCtl .btns{display:flex;align-items:flex-start;justify-content:center;gap:34px;margin:0 auto}
 .bw{display:flex;flex-direction:column;align-items:center;gap:6px}
 .bw span{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em}
-#rec,#dStart{width:74px;height:74px;min-height:74px;border-radius:50%;background:transparent;padding:0;font-size:0;flex:0 0 auto;
- border:3px solid rgba(235,235,245,.5);display:flex;align-items:center;justify-content:center}
-#rec::after,#dStart::after{content:"";width:58px;height:58px;border-radius:50%;background:var(--rec);transition:width .22s,height .22s,border-radius .22s}
-#rec.active::after,#dStart.active::after{width:28px;height:28px;border-radius:8px}
-#play{width:74px;height:74px;min-height:74px;border-radius:50%;padding:0;font-size:26px;flex:0 0 auto;background:var(--panel2);display:flex;align-items:center;justify-content:center}
+#rec,#dStart{width:44px;height:44px;min-height:44px;border-radius:50%;background:transparent;padding:0;font-size:0;flex:0 0 auto;
+ border:2px solid rgba(235,235,245,.5);display:flex;align-items:center;justify-content:center}
+#rec::after,#dStart::after{content:"";width:34px;height:34px;border-radius:50%;background:var(--rec);transition:width .22s,height .22s,border-radius .22s}
+#rec.active::after,#dStart.active::after{width:16px;height:16px;border-radius:5px}
+#play{width:44px;height:44px;min-height:44px;border-radius:50%;padding:0;font-size:17px;flex:0 0 auto;background:var(--panel2);display:flex;align-items:center;justify-content:center}
 #play.active{background:var(--tint)}
 @media (max-width:560px){
  #songCtl select{flex:1 1 45%}
@@ -514,7 +514,7 @@ function coverage(){let cov=0;for(const e of events){let c=0;for(const s of segs
 function restoreTempo(){   // после прослушивания старого дубля возвращаем СВОЙ темп, иначе новая запись пойдёт медленнее
   const want=String(ST.tempoF||'1');
   if([...$('tempo').options].some(o=>o.value===want)&&$('tempo').value!==want){$('tempo').value=want;buildEvents();}}
-function clearTake(){NOACC=false;restoreTempo();for(const s of segs){try{s.el&&s.el.pause();}catch(e){}}segs=[];samples=[];takeId=null;for(const e of events)e.ss=[];lastMatch=null;$('takes').value='';}
+function clearTake(){NOACC=false;restoreTempo();if($('backing').value!=='synth'){$('backing').value='synth';}for(const s of segs){try{s.el&&s.el.pause();}catch(e){}}segs=[];samples=[];takeId=null;for(const e of events)e.ss=[];lastMatch=null;$('takes').value='';}
 // ---------- modes: idle / rec / play ----------
 let mode='idle',lastMode='rec',review=false,rt=0,lastT=0,runFrom=0,LISTEN=false;
 const setMode=m=>{if(m!=='idle'&&mode==='idle')scrollTo({top:0,behavior:'smooth'});mode=m;$('modeTag').textContent=m==='rec'?'● REC':m==='play'?'▶ PLAY':(review?'review':'idle');
@@ -708,10 +708,12 @@ function viewRange(t,px){let a=null,b=null;const t0=t-px/PPS,t1=t+(W-px)/PPS;
   if(a==null){const nx=events.filter(e=>e.t>=t).slice(0,8);   // пауза/проигрыш: заранее едем к следующей фразе
     if(nx.length){a=Math.min(...nx.map(e=>Math.round(e.midi)));b=Math.max(...nx.map(e=>Math.round(e.midi)));}
     else if(vLo!=null){vTs=performance.now();return;}else{a=lo+2;b=hi-2;}}
-  let L=a-2,U=b+2;if(U-L<VSPAN){const c=(L+U)/2;L=c-VSPAN/2;U=c+VSPAN/2;}
-  if(L<lo){U+=lo-L;L=lo;}if(U>hi){L-=U-hi;U=hi;}L=Math.max(L,lo);   // не выезжать за диапазон песни
+  // 26.09 owner: масштаб не меняется — всегда VSPAN полутонов, поле только едет вверх-вниз за фразой
+  if(b-a>VSPAN-3){const nx=events.filter(e=>e.t+e.dur>=t-0.2&&e.t<=t+1.6).map(e=>Math.round(e.midi));if(nx.length){a=Math.min(...nx);b=Math.max(...nx);}}   // широкая фраза — держим в кадре ближайшие ноты
+  let c=(a+b)/2,L=c-VSPAN/2,U=c+VSPAN/2;
+  if(hi-lo>=VSPAN){if(L<lo){L=lo;U=lo+VSPAN;}if(U>hi){U=hi;L=hi-VSPAN;}}else{L=(lo+hi)/2-VSPAN/2;U=L+VSPAN;}
   const now=performance.now(),dt=Math.min(0.25,(now-vTs)/1000);vTs=now;
-  if(vLo==null){vLo=L;vHi=U;return;}const k=1-Math.exp(-dt/0.45);vLo+=(L-vLo)*k;vHi+=(U-vHi)*k;}
+  if(vLo==null){vLo=L;vHi=U;return;}const k=1-Math.exp(-dt/0.45);vLo+=(L-vLo)*k;vHi=vLo+VSPAN;}
 function draw(t){if(t==null)t=mode!=='idle'?songT():(review?rt:-1.5);
   ctx.clearRect(0,0,W,H);const px=W*PLAYX;viewRange(t,px);const lo=vLo,hi=vHi,rows=hi-lo+1,rh=H/rows;const y=m=>H-(m-lo+0.5)*rh;
   const mLo=Math.floor(lo),mHi=Math.ceil(hi);
@@ -1296,7 +1298,8 @@ if(ST.view==='drone')setView('drone');else {droneStats();droneList();}
 // ---------- компоновка 26.09 (owner): одна строка сверху, шторка песни/дрона, поле фиксированной высоты, кнопки под полем ----------
 (function(){
   const mv=(id,to)=>{const e=$(id);const c=e&&(e.closest('.ctl')||e);if(c)$(to).appendChild(c);};
-  ['backing','tr','oct','lyr','tempo'].forEach(id=>mv(id,'songOpts'));
+  ['tr','oct','tempo'].forEach(id=>mv(id,'songOpts'));
+  ['backing','lyr'].forEach(id=>{const c=$(id).closest('.ctl');c.hidden=true;c.style.display='none';});$('lyr').value='notes';   // 26.09 owner: аккомпанемент всегда; слова в боксах и строкой внизу
   [...$('setDrone').querySelectorAll('.ctl')].forEach(c=>$('droneOpts').appendChild(c));
 })();
 function sheetOpen(o){const song=view==='song';

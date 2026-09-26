@@ -1386,8 +1386,9 @@ const ICO={restart:'<svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 1-7.4 5h2.2A
 (function(){const ov=document.createElement('div');ov.id='ov';
   const mk=(id,ico,title)=>{const b=document.createElement('button');b.id=id;b.type='button';b.className='ib';b.innerHTML=ICO[ico];b.title=title;b.setAttribute('aria-label',title);return b;};
   const restart=mk('restart','restart','Record again from the start'),rw=mk('rw','back','To the start'),pct=document.createElement('span');pct.id='pct';pct.textContent='0%';
-  const r1=document.createElement('div');r1.className='r1';r1.append($('scrub'),pct);
-  const r2=document.createElement('div');r2.className='r2';r2.append(restart,rw,$('rec'),$('play'),$('dStart'));$('play').classList.add('ib');
+  const recB=$('rec'),playB=$('play'),dB=$('dStart'),scr=$('scrub');playB.classList.add('ib');   // ссылки берём до переноса: вне документа getElementById их не найдёт
+  const r1=document.createElement('div');r1.className='r1';r1.append(scr,pct);
+  const r2=document.createElement('div');r2.className='r2';r2.append(restart,rw,recB,playB,dB);
   ov.append(r1,r2);
   const th=document.createElement('div');th.id='tapHint';th.innerHTML='<i><b id="miniProg"></b></i><span>tap to stop</span>';
   $('stage').append(ov,th);

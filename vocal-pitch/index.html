@@ -291,15 +291,15 @@ body.drone header #play{display:none}
   </div>
   <div class="grp setSong"><b>Sound</b>
     <label class="ctl">backing <select id="backing"><option value="synth" selected>accompaniment</option><option value="guitar">own guitar (recording)</option><option value="none">melody only</option></select></label>
-    <label class="ctl">key <select id="tr"></select></label>
-    <label class="ctl">voice <select id="oct"><option value="-12">low (−1 oct)</option><option value="0" selected>original</option><option value="12">high (+1 oct)</option></select></label>
+    <label class="ctl">Key <select id="tr"></select></label>
+    <label class="ctl">Voice <select id="oct"><option value="-12">low (−1 oct)</option><option value="0" selected>original</option><option value="12">high (+1 oct)</option></select></label>
     <label class="ctl">words <select id="lyr"><option value="notes" selected>on the notes</option><option value="line">line under the phrase</option></select></label>
     <label class="ctl">sound delay <span class="ctlv"><input id="sync" type="range" min="0" max="500" step="10" value="0"><b id="syncV">0 ms</b></span></label>
     <label class="ctl" title="Boxes reach the line a bit before you hear the note, so you can come in on time. Only the picture moves — scoring and playback stay as they are">cursor ahead <span class="ctlv"><input id="lead" type="range" min="0" max="400" step="10" value="150"><b id="leadV">150 ms</b></span></label>
     <div class="ctl calRow"><button id="calBtn" class="ghost" type="button">Measure headphone delay</button><span id="calMsg" class="hint">press an earbud onto the LEFT grille at the bottom of the phone (the microphone, screen facing you), then tap. Quiet room</span></div>
     <label class="ctl" title="Only for listening: EQ, compression and reverb on your voice. Does not touch the recording or the score">voice sound <select id="fx"><option value="off">dry</option><option value="soft" selected>soft</option><option value="studio">studio</option><option value="hall">hall</option></select></label>
     <label class="ctl" title="Shifts your recorded voice against the accompaniment when you press Play">voice in playback <span class="ctlv"><input id="voff" type="range" min="-400" max="200" step="10" value="0"><b id="voffV">0 ms</b></span></label>
-    <label class="ctl">tempo <select id="tempo"><option value="1">original</option><option value="0.9">90%</option><option value="0.8">80%</option><option value="0.7">70%</option><option value="0.6">60%</option><option value="0.5">50%</option></select></label>
+    <label class="ctl">Tempo <select id="tempo"><option value="1">original</option><option value="0.9">90%</option><option value="0.8">80%</option><option value="0.7">70%</option><option value="0.6">60%</option><option value="0.5">50%</option></select></label>
   </div>
   <div class="grp setSong"><b>Volume</b>
     <label class="ctl">melody <input id="vol" type="range" min="0" max="100" value="60"></label>

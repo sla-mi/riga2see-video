@@ -633,6 +633,7 @@ async function finish(ended){   // song ended or Stop: final results, save the t
   if(LISTEN){LISTEN=false;review=true;$('scrubrow').hidden=false;setMode('idle');setRT(here);return;}   // слушали песню — оценивать нечего, но место держим
   if(was==='rec'){await recStop();}
   setMode('idle');review=true;$('scrubrow').hidden=false;score();setRT(here);lastMode='play';
+  if(was==='rec'&&$('result').classList.contains('show'))setTimeout(()=>$('result').scrollIntoView({behavior:'smooth',block:'start'}),400);   // после записи — сразу к статистике
   if(was==='rec'&&segs.length){   // пустые и совсем короткие дубли не храним — засоряют историю и шкалу
     if(!CUR||!CUR.n)toast('take not saved \u2014 no notes recognised');
     else if(CUR.cov<20)toast('take not saved \u2014 only '+CUR.cov+'% of the song (saving from 20%)');
@@ -1320,7 +1321,7 @@ function fitStage(){const st=$('stage'),row=view==='song'?$('songCtl'):$('droneb
 addEventListener('resize',()=>{if(Math.abs(innerWidth-fitW)>40){fitW=innerWidth;fitH0=innerHeight;fitStage();}});
 fitW=innerWidth;updTitle();fitStage();
 // после попытки — сами прокручиваемся к статистике; на старте записи — наверх
-new MutationObserver(()=>{if($('result').classList.contains('show')&&mode==='idle')setTimeout(()=>$('result').scrollIntoView({behavior:'smooth',block:'start'}),300);}).observe($('result'),{attributes:true,attributeFilter:['class']});
+
 </script>
 
 </body></html>

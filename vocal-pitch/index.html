@@ -244,8 +244,8 @@ body.drone header #play{display:none}
 <header>
   <div class="seg" hidden><button id="tabSong" class="on">Songs</button><button id="tabDrone">Drone</button></div>
   <button id="modeBtn" class="icon" title="Songs / Drone">♪</button>
-  <button id="titleBtn" title="Song, take, key, tempo"><span id="titleTxt">—</span><i>▾</i></button>
-  <button id="gear" class="icon" title="Settings">⚙</button>
+  <button id="titleBtn" title="Song, take, key, tempo"><span id="titleTxt"></span><i><svg viewBox="0 0 12 8" width="11" height="8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 2 6 6.2 10.5 2"/></svg></i></button>
+  <button id="gear" class="icon" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg></button>
 </header>
 <div id="stage"><canvas id="cv"></canvas><div id="modeTag">idle</div><div id="dbig" hidden></div><div id="dsub" hidden></div><div id="meter" title="microphone level"><i></i></div><div id="meterLbl">mic</div><div id="msg">tap to start</div>
 </div>
@@ -571,7 +571,7 @@ function restoreTempo(){   // после прослушивания старог
 function clearTake(){NOACC=false;restoreTempo();if($('backing').value!=='synth'){$('backing').value='synth';}for(const s of segs){try{s.el&&s.el.pause();}catch(e){}}segs=[];samples=[];takeId=null;for(const e of events)e.ss=[];lastMatch=null;$('takes').value='';}
 // ---------- modes: idle / rec / play ----------
 let mode='idle',lastMode='rec',review=false,rt=0,lastT=0,runFrom=0,LISTEN=false;
-const setMode=m=>{if(m!=='idle'&&mode==='idle')scrollTo({top:0,behavior:'smooth'});mode=m;$('modeTag').textContent=m==='rec'?'● REC':m==='play'?'▶ PLAY':(review?'review':'idle');
+const setMode=m=>{if(m!=='idle'&&mode==='idle')scrollTo({top:0,behavior:'smooth'});mode=m;$('modeTag').textContent=m==='rec'?'REC':m==='play'?'PLAY':(review?'review':'idle');
   const b=$('rec');b.textContent=m==='rec'?'■':'●';b.classList.toggle('active',m==='rec');
   b.classList.toggle('rec',m!=='rec');b.classList.toggle('ghost',m==='rec');b.title=m==='rec'?'Stop':'Record';
   const p=$('play');p.textContent=m==='play'?'■':'▶';

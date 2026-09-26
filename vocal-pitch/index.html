@@ -1393,7 +1393,7 @@ $('titleBtn').onclick=()=>{if(mode!=='idle'||DR.on)return;sheetOpen(true);};
 $('modeBtn').onclick=()=>{if(mode!=='idle')return;setView(view==='song'?'drone':'song');};
 function updTitle(){
   if(view==='song'){const tk=$('takes'),o=tk.selectedOptions[0];$('titleTxt').textContent=(SONG?SONG.title:'')+(tk.value&&o?' · '+o.textContent.split(' · ')[0]:'');}
-  else{const ex=$('dEx').selectedOptions[0];$('titleTxt').textContent=nm(+$('dTonic').value)+' · '+(ex?ex.textContent:'')+(+$('dEx').value?' ↑':'');}
+  else{const ex=$('dEx').selectedOptions[0];$('titleTxt').textContent=nm(+$('dTonic').value)+' · '+(ex?ex.textContent:'')+(+$('dEx').value?' up':'');}
   $('modeBtn').textContent=view==='song'?'♪':'◎';if($('modeTxt'))$('modeTxt').textContent=view==='song'?'Sing':'Drone';}
 ['song','takes','dTonic','dEx'].forEach(id=>$(id).addEventListener('change',()=>setTimeout(updTitle,0)));
 const _setView=setView;setView=function(v){_setView(v);updTitle();fitStage();};

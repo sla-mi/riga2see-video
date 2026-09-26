@@ -64,6 +64,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 /* ---- grouped lists (settings, drone bar) ---- */
 #setback{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:19;opacity:0;pointer-events:none;transition:opacity .25s}
 #setback.open{opacity:1;pointer-events:auto}
+#songSheet{position:fixed;left:0;right:0;bottom:0;z-index:20;max-height:84vh;overflow:auto;-webkit-overflow-scrolling:touch;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:0 28px;padding:0 18px calc(24px + env(safe-area-inset-bottom));background:rgba(28,28,30,.97);-webkit-backdrop-filter:blur(30px) saturate(160%);backdrop-filter:blur(30px) saturate(160%);border-radius:26px 26px 0 0;box-shadow:0 -12px 44px rgba(0,0,0,.55);transform:translateY(102%);transition:transform .3s cubic-bezier(.32,.72,0,1)}
+#songSheet.open{transform:translateY(0)}
+#songSheet .grp[hidden]{display:none}
+#modeBtn{margin-left:0;font-size:20px}
+#titleBtn{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;font-size:16px;font-weight:600;text-align:left}
+#titleBtn span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#titleBtn i{font-style:normal;color:var(--muted);font-size:13px}
+#gear{margin-left:0}
+#dronebar{background:none!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;padding:2px 0!important}
+#songCtl{justify-content:center}
 #settings{position:fixed;left:0;right:0;bottom:0;z-index:20;max-height:84vh;overflow:auto;-webkit-overflow-scrolling:touch;
  display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:0 28px;
  padding:0 18px calc(24px + env(safe-area-inset-bottom));background:rgba(28,28,30,.97);
@@ -103,7 +113,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 #mictest.active{background:var(--tint)}
 #toast{position:fixed;left:14px;right:14px;top:calc(10px + env(safe-area-inset-top));z-index:40;padding:12px 15px;border-radius:16px;background:rgba(44,44,46,.95);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);color:var(--near);font-size:15px;box-shadow:0 8px 30px rgba(0,0,0,.45)}
 /* ---- stage ---- */
-#stage{position:relative;flex:1;min-height:max(320px,64vh);background:rgba(28,28,30,.72);box-shadow:inset 0 0 0 1px var(--hair);border-radius:24px;overflow:hidden}
+#stage{position:relative;flex:0 0 auto;height:max(320px,calc(100svh - 190px));background:rgba(28,28,30,.72);box-shadow:inset 0 0 0 1px var(--hair);border-radius:24px;overflow:hidden}
 canvas{display:block;width:100%;height:100%}
 #meter,#meterLbl{display:none!important}
 #meter{position:absolute;right:14px;bottom:26px;width:110px;height:6px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden}
@@ -192,25 +202,35 @@ canvas{display:block;width:100%;height:100%}
 }
 </style></head><body>
 <header>
-  <div class="seg"><button id="tabSong" class="on">Songs</button><button id="tabDrone">Drone</button></div>
+  <div class="seg" hidden><button id="tabSong" class="on">Songs</button><button id="tabDrone">Drone</button></div>
+  <button id="modeBtn" class="icon" title="Songs / Drone">♪</button>
+  <button id="titleBtn" title="Song, take, key, tempo"><span id="titleTxt">—</span><i>▾</i></button>
   <button id="gear" class="icon" title="Settings">⚙</button>
 </header>
+<div id="stage"><canvas id="cv"></canvas><div id="modeTag">idle</div><div id="dbig" hidden></div><div id="dsub" hidden></div><div id="meter" title="microphone level"><i></i></div><div id="meterLbl">mic</div><div id="msg">tap to start</div>
 <div id="songCtl">
-  <select id="song"></select>
-  <select id="takes" title="earlier takes"><option value="">— new —</option></select>
   <div class="btns"><div class="bw"><button id="rec" class="rec" title="Record / Stop">●</button><span id="recCap">Record</span></div>
   <div class="bw"><button id="play" class="ghost" title="Listen">▶</button><span id="playCap">Listen</span></div></div>
 </div>
 <div id="toast" hidden></div>
 <div id="dronebar" hidden>
-  <div class="drow">
-    <label class="dsel">tonic <select id="dTonic"></select></label>
-    <label class="dsel">sing <select id="dEx"><option value="0" selected>unison</option><option value="3">minor third</option><option value="4">third</option><option value="5">fourth</option><option value="7">fifth</option><option value="9">sixth</option><option value="12">octave</option></select></label>
-  </div>
   <div class="bw"><button id="dStart" class="rec" title="Start / Stop">●</button><span id="dHint">Start</span></div>
 </div>
 </div>
 <div id="setback"></div>
+<div id="songSheet">
+  <div class="sheetHd"><i class="grab"></i><span id="sheetTtl">Song</span><button id="songDone">Done</button></div>
+  <div class="grp" id="pickSong"><b>Song</b>
+    <label class="ctl">song <select id="song"></select></label>
+    <label class="ctl">take <select id="takes" title="earlier takes"><option value="">— new —</option></select></label>
+  </div>
+  <div class="grp" id="songOpts"><b>This song</b></div>
+  <div class="grp" id="pickDrone" hidden><b>Exercise</b>
+    <label class="ctl">tonic <select id="dTonic"></select></label>
+    <label class="ctl">sing <select id="dEx"><option value="0" selected>unison</option><option value="3">minor third</option><option value="4">third</option><option value="5">fourth</option><option value="7">fifth</option><option value="9">sixth</option><option value="12">octave</option></select></label>
+  </div>
+  <div class="grp" id="droneOpts" hidden><b>Drone</b></div>
+</div>
 <div id="settings">
   <div class="sheetHd"><i class="grab"></i><span>Settings</span><button id="setDone">Done</button></div>
   <div class="grp" id="setDrone" hidden><b>Drone</b>
@@ -221,7 +241,7 @@ canvas{display:block;width:100%;height:100%}
     <label class="ctl">timer <select id="dTimer"><option value="0" selected>off</option><option value="3">3 min</option><option value="5">5 min</option><option value="10">10 min</option><option value="20">20 min</option><option value="30">30 min</option></select></label>
     <label class="ctl">volume <input id="dVol" type="range" min="0" max="100" value="55"></label>
   </div>
-  <div class="grp setSong"><b>Song</b>
+  <div class="grp setSong"><b>Sound</b>
     <label class="ctl">backing <select id="backing"><option value="synth" selected>accompaniment</option><option value="guitar">own guitar (recording)</option><option value="none">melody only</option></select></label>
     <label class="ctl">key <select id="tr"></select></label>
     <label class="ctl">voice <select id="oct"><option value="-12">low (−1 oct)</option><option value="0" selected>original</option><option value="12">high (+1 oct)</option></select></label>
@@ -250,7 +270,6 @@ canvas{display:block;width:100%;height:100%}
   </div>
 </div>
 <audio id="gtr" preload="auto"></audio>
-<div id="stage"><canvas id="cv"></canvas><div id="modeTag">idle</div><div id="dbig" hidden></div><div id="dsub" hidden></div><div id="meter" title="microphone level"><i></i></div><div id="meterLbl">mic</div><div id="msg">tap to start</div>
 </div>
 <div id="scrubrow" hidden><button id="prev" class="ghost" title="← previous syllable">◀</button><input id="scrub" type="range" min="0" max="1000" value="0"><button id="next" class="ghost" title="→ next syllable">▶</button><span id="scrubT">0.0 s</span></div>
 <div id="result">
@@ -498,7 +517,7 @@ function restoreTempo(){   // после прослушивания старог
 function clearTake(){NOACC=false;restoreTempo();for(const s of segs){try{s.el&&s.el.pause();}catch(e){}}segs=[];samples=[];takeId=null;for(const e of events)e.ss=[];lastMatch=null;$('takes').value='';}
 // ---------- modes: idle / rec / play ----------
 let mode='idle',lastMode='rec',review=false,rt=0,lastT=0,runFrom=0,LISTEN=false;
-const setMode=m=>{mode=m;$('modeTag').textContent=m==='rec'?'● REC':m==='play'?'▶ PLAY':(review?'review':'idle');
+const setMode=m=>{if(m!=='idle'&&mode==='idle')scrollTo({top:0,behavior:'smooth'});mode=m;$('modeTag').textContent=m==='rec'?'● REC':m==='play'?'▶ PLAY':(review?'review':'idle');
   const b=$('rec');b.textContent=m==='rec'?'■':'●';b.classList.toggle('active',m==='rec');
   b.classList.toggle('rec',m!=='rec');b.classList.toggle('ghost',m==='rec');b.title=m==='rec'?'Stop':'Record';
   const p=$('play');p.textContent=m==='play'?'■':'▶';
@@ -1273,6 +1292,35 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&DR.on){
   for(const a of DR.els)if(a.paused)a.play().catch(()=>{});if(ac&&ac.state==='suspended')ac.resume().catch(()=>{});}});
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 if(ST.view==='drone')setView('drone');else {droneStats();droneList();}
+// ---------- компоновка 26.09 (owner): одна строка сверху, шторка песни/дрона, поле фиксированной высоты, кнопки под полем ----------
+(function(){
+  const mv=(id,to)=>{const e=$(id);const c=e&&(e.closest('.ctl')||e);if(c)$(to).appendChild(c);};
+  ['backing','tr','oct','lyr','tempo'].forEach(id=>mv(id,'songOpts'));
+  [...$('setDrone').querySelectorAll('.ctl')].forEach(c=>$('droneOpts').appendChild(c));
+})();
+function sheetOpen(o){const song=view==='song';
+  if(o){openSet(false);$('pickSong').hidden=!song;$('songOpts').hidden=!song;$('pickDrone').hidden=song;$('droneOpts').hidden=song;$('sheetTtl').textContent=song?'Song':'Drone';}
+  $('songSheet').classList.toggle('open',o);$('setback').classList.toggle('open',o||$('settings').classList.contains('open'));}
+const _openSet=openSet;openSet=function(o){if(o&&$('songSheet').classList.contains('open'))$('songSheet').classList.remove('open');if(!o)$('songSheet').classList.remove('open');_openSet(o);};
+$('setback').onclick=()=>{openSet(false);sheetOpen(false);};
+$('songDone').onclick=()=>sheetOpen(false);
+$('titleBtn').onclick=()=>{if(mode!=='idle'||DR.on)return;sheetOpen(true);};
+$('modeBtn').onclick=()=>{if(mode!=='idle')return;setView(view==='song'?'drone':'song');};
+function updTitle(){
+  if(view==='song'){const tk=$('takes'),o=tk.selectedOptions[0];$('titleTxt').textContent=(SONG?SONG.title:'')+(tk.value&&o?' · '+o.textContent.split(' · ')[0]:'');}
+  else{const ex=$('dEx').selectedOptions[0];$('titleTxt').textContent=nm(+$('dTonic').value)+' · '+(ex?ex.textContent:'')+(+$('dEx').value?' ↑':'');}
+  $('modeBtn').textContent=view==='song'?'♪':'◎';}
+['song','takes','dTonic','dEx'].forEach(id=>$(id).addEventListener('change',()=>setTimeout(updTitle,0)));
+const _setView=setView;setView=function(v){_setView(v);updTitle();fitStage();};
+// поле: высота считается один раз (и при повороте), а не от прыгающей высоты окна Safari
+let fitW=0,fitH0=innerHeight;
+function fitStage(){const st=$('stage'),row=view==='song'?$('songCtl'):$('dronebar');
+  const top=st.getBoundingClientRect().top+scrollY,pad=parseFloat(getComputedStyle(document.body).paddingBottom)||12;
+  const h=Math.max(300,Math.round(fitH0-top-(row.offsetHeight||96)-12-pad));st.style.height=h+'px';resize();}
+addEventListener('resize',()=>{if(Math.abs(innerWidth-fitW)>40){fitW=innerWidth;fitH0=innerHeight;fitStage();}});
+fitW=innerWidth;updTitle();fitStage();
+// после попытки — сами прокручиваемся к статистике; на старте записи — наверх
+new MutationObserver(()=>{if($('result').classList.contains('show')&&mode==='idle')setTimeout(()=>$('result').scrollIntoView({behavior:'smooth',block:'start'}),300);}).observe($('result'),{attributes:true,attributeFilter:['class']});
 </script>
 
 </body></html>

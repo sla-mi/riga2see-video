@@ -216,7 +216,7 @@ header .seg button{padding:8px 13px;font-size:15px}
 #settings.open,#songSheet.open{transform:translateY(0)}
 #settings .sheetHd .grab,#songSheet .sheetHd .grab{display:none}
 #songCtl,#dronebar{display:none!important}
-#ov{position:absolute;left:10px;right:10px;bottom:10px;display:flex;flex-direction:column;gap:8px;padding:12px 16px 10px;border-radius:22px;background:rgba(40,40,44,.55);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 8px 28px rgba(0,0,0,.35);z-index:3;transition:opacity .2s ease,transform .2s ease}
+#ov{position:absolute;left:calc(var(--kbw,54px) + 10px);right:10px;bottom:10px;display:flex;flex-direction:column;gap:8px;padding:12px 16px 10px;border-radius:22px;background:rgba(40,40,44,.55);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 8px 28px rgba(0,0,0,.35);z-index:3;transition:opacity .2s ease,transform .2s ease}
 #ov.gone{opacity:0;transform:translateY(24px);pointer-events:none}
 #stage{touch-action:none;overscroll-behavior:contain}
 #ov[hidden],#tapHint[hidden],#ov [hidden]{display:none!important}
@@ -544,7 +544,7 @@ function box(x,y,w,h,col,target){
   if(col){ctx.fillStyle=col+'3a';ctx.fillRect(x,y,w,h);ctx.fillStyle=col;ctx.fillRect(x,y,4,h);}
   ctx.restore();}
 // фортепианные клавиши слева: одна клавиша = одна строка (полутон), подписи на клавишах; подсвечена нота, которую надо петь сейчас
-const KBW=54;
+const KBW=54;document.documentElement.style.setProperty('--kbw',KBW+'px');
 function keyboard(lo,hi,y,rh,hl){   // 28.09 owner (фото клавиатуры): объёмная — кремовые белые с зазорами, чёрные глянцевые с верхней гранью, скошенным торцом и тенью; чёрные у левого края, полосы поля = строки
   ctx.save();ctx.fillStyle='#0c0c0e';ctx.fillRect(0,0,KBW+2,H);
   const pc=m=>((m%12)+12)%12,isB=m=>[1,3,6,8,10].includes(pc(m)),H0=hl!=null?Math.round(hl):null,BW=Math.round(KBW*0.62);

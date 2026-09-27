@@ -1219,8 +1219,9 @@ function droneLoop(){
   droneDraw();DR.raf=requestAnimationFrame(droneLoop);}
 function droneDraw(){syncCanvas();
   const tg=droneTargetMidi(),base=dMidi();
-  const lo2=Math.min(base,tg)-5,hi2=Math.max(base,tg,base+($('dOctL').checked?12:0))+5;
-  const rows=hi2-lo2,rh=H/rows,y=m=>H-(m-lo2+0.5)*rh;
+  const lo0=Math.min(base,tg)-5,hi0=Math.max(base,tg,base+($('dOctL').checked?12:0))+5;
+  // 28.09 owner: строки дрона той же толщины, что в песне (ROWPX) — чтобы клавиатуры сравнивались на одном масштабе
+  const rows=ROWPX?Math.max(hi0-lo0,H/ROWPX):hi0-lo0,rh=H/rows,L0=(lo0+hi0)/2-rows/2,lo2=Math.floor(L0)-1,hi2=Math.ceil(L0+rows)+1,y=m=>H-(m-L0+0.5)*rh;
   ctx.clearRect(0,0,W,H);
   for(let m=lo2;m<=hi2;m++){const yy=y(m);ctx.fillStyle=[0,2,4,5,7,9,11].includes(((m%12)+12)%12)?getVar('--grid2'):'rgba(0,0,0,.34)';ctx.fillRect(0,yy-rh/2,W,rh);
     ctx.strokeStyle=getVar('--grid');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,yy-rh/2);ctx.lineTo(W,yy-rh/2);ctx.stroke();

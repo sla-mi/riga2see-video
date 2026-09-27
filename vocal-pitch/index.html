@@ -569,6 +569,20 @@ function keyboard(lo,hi,y,rh,hl){   // 28.09 owner (фото клавиатур�
     if(isB(m)){const t2=t.replace(/-?\d+$/,'');ctx.fillStyle='#f2f2f5';ctx.fillText(t2,Math.max(3,BW-Math.min(8,BW*0.22)-ctx.measureText(t2).width-3),y(m));}
     else{ctx.fillStyle=H0===m?'#08254f':(pc(m)===0?'#0a3d8f':'#3a3a40');ctx.fillText(t,KBW-ctx.measureText(t).width-6,y(m));}}
   ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(KBW,0,1.5,H);ctx.restore();}
+function keyboardPlain(lo,hi,y,rh,hl){   // 28.09 owner: запасной вариант, стоит на дроне для сравнения   // 28.09 owner: каждая клавиша ровно в свою полосу поля; чёрные — между белыми, скруглённые, с белой подписью без октавы
+  ctx.save();ctx.fillStyle='#0e0e10';ctx.fillRect(0,0,KBW+2,H);
+  const pc=m=>((m%12)+12)%12,isB=m=>[1,3,6,8,10].includes(pc(m)),H0=hl!=null?Math.round(hl):null,BW=KBW*0.66;
+  const rr=(x,t,w,h,r)=>{ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,t,w,h,[0,r,r,0]);else ctx.rect(x,t,w,h);ctx.fill();};
+  const f=Math.max(15,Math.min(16,rh*0.5));ctx.font='700 '+f+'px -apple-system,sans-serif';ctx.textBaseline='middle';
+  for(let m=lo-1;m<=hi+1;m++){const top=y(m)-rh/2,nmx=nm(m);
+    if(!isB(m)){const g=ctx.createLinearGradient(0,0,KBW,0);g.addColorStop(0,'#d9d9de');g.addColorStop(1,'#f5f5f7');
+      ctx.fillStyle=H0===m?'#6fb1ff':g;rr(0,top+0.5,KBW,rh-1,3);
+      ctx.fillStyle=pc(m)===0?'#0a3d8f':'#3a3a40';ctx.fillText(nmx,KBW-ctx.measureText(nmx).width-5,y(m));}
+    else{const g=ctx.createLinearGradient(0,0,BW,0);g.addColorStop(0,'#101013');g.addColorStop(1,'#3b3b42');
+      ctx.fillStyle=H0===m?'#1f6fd6':g;rr(0,top+1,BW,rh-2,4);
+      ctx.fillStyle='rgba(255,255,255,.10)';rr(BW-5,top+3,3,rh-6,1.5);   // блик на торце
+      const t2=nmx.replace(/-?\d+$/,'');ctx.fillStyle='#f2f2f5';ctx.fillText(t2,Math.max(3,BW-ctx.measureText(t2).width-8),y(m));}}
+  ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(KBW,0,2,H);ctx.restore();}
 // ---------- mic ----------
 async function openMic(){
   if(stream)return true;
@@ -1239,7 +1253,7 @@ function droneDraw(){syncCanvas();
     ctx.fillStyle=getVar('--chip');ctx.fillRect(x,y0,10,h);
     if(v!=null){const p=Math.max(0,Math.min(1,(v+14)/14));ctx.fillStyle=resoCol(v);ctx.fillRect(x,y0+h*(1-p),10,h*p);}
     ctx.fillStyle=getVar('--muted');ctx.font='15px -apple-system,sans-serif';ctx.textAlign='center';ctx.fillText('ring',x+5,y0-8);ctx.textAlign='left';}
-  keyboard(lo2,hi2,y,rh,tg);
+  keyboardPlain(lo2,hi2,y,rh,tg);
   attDraw(now,tg);
   const mt=$('meter').firstElementChild,db=20*Math.log10(lastRms+1e-6);
   mt.style.width=Math.max(0,Math.min(100,(db+60)/60*100))+'%';mt.style.background=lastRms<0.003?getVar('--muted'):getVar('--good');}

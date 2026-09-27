@@ -216,7 +216,9 @@ header .seg button{padding:8px 13px;font-size:14px}
 #settings.open,#songSheet.open{transform:translateY(0)}
 #settings .sheetHd .grab,#songSheet .sheetHd .grab{display:none}
 #songCtl,#dronebar{display:none!important}
-#ov{position:absolute;left:10px;right:10px;bottom:10px;display:flex;flex-direction:column;gap:8px;padding:12px 16px 10px;border-radius:22px;background:rgba(40,40,44,.55);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 8px 28px rgba(0,0,0,.35);z-index:3}
+#ov{position:absolute;left:10px;right:10px;bottom:10px;display:flex;flex-direction:column;gap:8px;padding:12px 16px 10px;border-radius:22px;background:rgba(40,40,44,.55);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 8px 28px rgba(0,0,0,.35);z-index:3;transition:opacity .2s ease,transform .2s ease}
+#ov.gone{opacity:0;transform:translateY(24px);pointer-events:none}
+#stage{touch-action:none;overscroll-behavior:contain}
 #ov[hidden],#tapHint[hidden],#ov [hidden]{display:none!important}
 #ov .r1{display:flex;align-items:center;gap:10px}
 #ov .r2{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;column-gap:30px}
@@ -813,9 +815,9 @@ function draw(t){syncCanvas();if(ROWPX)VSPAN=Math.max(12,Math.round(H/ROWPX)-1);
     for(const o of words){let x=px+(o.e.t-t)*PPS;if(x>W)break;const tw=ctx.measureText(o.w).width;if(x<end+10)x=end+10;end=x+tw;if(x+tw<0)continue;
       const now=t>=o.e.t&&t<o.e.t+o.e.dur+0.15;ctx.fillStyle=now?'#64b5ff':(o.e.t<=t?getVar('--text'):'rgba(235,235,245,.6)');ctx.fillText(o.w,x,lyricY);}}
   ctx.font=FONT(fs);
-  // lyrics under the boxes: each word under its note, scrolling with it
+  // 28.09 owner: строка слов внизу убрана — два текста при прокрутке лишние, слова только в боксах
   const ty=H-28-(typeof BARH==='number'?BARH:0);ctx.font='700 29px -apple-system,"SF Pro Display",Helvetica,sans-serif';ctx.textBaseline='middle';let lastEnd=-1e9;
-  if(LYR==='notes')for(let i=0;i<events.length;i++){const e=events[i];if(e.syl.startsWith('-')||e.syl==='-')continue;let word=e.syl.replace(/-$/,'');for(let j=i+1;j<events.length&&events[j].syl.startsWith('-');j++)word+=events[j].syl.replace(/^-/,'').replace(/-$/,'');
+  if(false)for(let i=0;i<events.length;i++){const e=events[i];if(e.syl.startsWith('-')||e.syl==='-')continue;let word=e.syl.replace(/-$/,'');for(let j=i+1;j<events.length&&events[j].syl.startsWith('-');j++)word+=events[j].syl.replace(/^-/,'').replace(/-$/,'');
     let x=px+(e.t-t)*PPS;if(x<lastEnd+6)x=lastEnd+6;const w=ctx.measureText(word).width;if(x>W||x+w<0){lastEnd=x+w;continue;}
     const sung=e.t<=t,now=t>=e.t&&t<e.t+e.dur+0.15;ctx.fillStyle=now?'#64b5ff':(sung?getVar('--text'):getVar('--muted'));ctx.fillText(word,x,ty);lastEnd=x+w;}
   // voice: raw dots in review, comet while running (rec or play)
@@ -1031,11 +1033,12 @@ $('prev').onclick=()=>stepSyl(-1);$('next').onclick=()=>stepSyl(1);
 (function(){let dx=null,r0=0,x0=0,y0=0,t0p=0,moved=false;const st=$('stage');
   st.addEventListener('pointerdown',e=>{x0=e.clientX;y0=e.clientY;t0p=Date.now();moved=false;
     if(review&&mode==='idle'&&view==='song'){dx=e.clientX;r0=rt;st.setPointerCapture(e.pointerId);}});
-  st.addEventListener('pointermove',e=>{if(Math.hypot(e.clientX-x0,e.clientY-y0)>10)moved=true;if(dx==null)return;setRT(r0-(e.clientX-dx)/PPS);});
+  st.addEventListener('pointermove',e=>{if(Math.hypot(e.clientX-x0,e.clientY-y0)>10)moved=true;if(dx==null)return;if(moved)$('ov').classList.add('gone');setRT(r0-(e.clientX-dx)/PPS);});   // 28.09 owner: тянешь поле — плашка уходит, чтобы видеть попадания
   const up=e=>{dx=null;
     if(!moved&&Date.now()-t0p<500){        // короткий тап по экрану = старт/стоп, удобно большим пальцем
       if(view==='drone'){if(DR.on)droneStop();}
-      else if(mode!=='idle')finish(false);}};
+      else if(mode!=='idle')finish(false);
+      else $('ov').classList.remove('gone');}};   // тап — плашка возвращается
   st.addEventListener('pointerup',up);st.addEventListener('pointercancel',()=>{dx=null;});})();
 // ---------- takes: save / list / load ----------
 const R2='https://pub-65cd3ef9575c49d2b11a059f4f18684c.r2.dev/';
@@ -1429,7 +1432,7 @@ const ICO={restart:'<svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 1-7.4 5h2.2A
   setInterval(()=>{if(mode!=='idle'&&total)$('miniProg').style.width=Math.min(100,Math.max(0,lastT/total*100))+'%';},200);})();
 const _setRT=setRT;setRT=function(v){_setRT(v);ovUpd();};
 function ovUpd(){if(!document.getElementById('ov'))return;   // до создания оверлея (ранние вызовы из loadSong) — ничего
-  const run=mode!=='idle'||DR.on,song=view==='song',_r=document.body.classList.toggle('running',run),mid=song&&review&&rt>0.3&&rt<total-0.5;$('ov').hidden=run;$('tapHint').hidden=!run;
+  const run=mode!=='idle'||DR.on,song=view==='song',_r=document.body.classList.toggle('running',run),mid=song&&review&&rt>0.3&&rt<total-0.5;$('ov').hidden=run;$('tapHint').hidden=!run;if(run)$('ov').classList.remove('gone');
   for(const id of ['rec','restart','rw','scrub','pct','play'])$(id).hidden=!song;
   $('dStart').hidden=song;$('play').innerHTML=ICO.play;
   if(song){$('restart').style.visibility='visible';$('restart').disabled=!mid;   // в начале — серая, после остановки в середине — активна   // 27.09 owner: ⏮ убран; запись по центру, ↺ слева и ▶ справа симметрично$('rec').title=mid?'Record from here':'Record';$('scrub').disabled=!review;$('rw').disabled=!review||rt<0.3;

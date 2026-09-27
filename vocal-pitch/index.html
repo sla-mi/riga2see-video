@@ -544,21 +544,29 @@ function box(x,y,w,h,col,target){
   if(col){ctx.fillStyle=col+'3a';ctx.fillRect(x,y,w,h);ctx.fillStyle=col;ctx.fillRect(x,y,4,h);}
   ctx.restore();}
 // фортепианные клавиши слева: одна клавиша = одна строка (полутон), подписи на клавишах; подсвечена нота, которую надо петь сейчас
-const KBW=50;
-function keyboard(lo,hi,y,rh,hl){   // 28.09 owner: каждая клавиша ровно в свою полосу поля; чёрные — между белыми, скруглённые, с белой подписью без октавы
-  ctx.save();ctx.fillStyle='#0e0e10';ctx.fillRect(0,0,KBW+2,H);
-  const pc=m=>((m%12)+12)%12,isB=m=>[1,3,6,8,10].includes(pc(m)),H0=hl!=null?Math.round(hl):null,BW=KBW*0.66;
-  const rr=(x,t,w,h,r)=>{ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,t,w,h,[0,r,r,0]);else ctx.rect(x,t,w,h);ctx.fill();};
-  const f=Math.max(15,Math.min(16,rh*0.5));ctx.font='700 '+f+'px -apple-system,sans-serif';ctx.textBaseline='middle';
-  for(let m=lo-1;m<=hi+1;m++){const top=y(m)-rh/2,nmx=nm(m);
-    if(!isB(m)){const g=ctx.createLinearGradient(0,0,KBW,0);g.addColorStop(0,'#d9d9de');g.addColorStop(1,'#f5f5f7');
-      ctx.fillStyle=H0===m?'#6fb1ff':g;rr(0,top+0.5,KBW,rh-1,3);
-      ctx.fillStyle=pc(m)===0?'#0a3d8f':'#3a3a40';ctx.fillText(nmx,KBW-ctx.measureText(nmx).width-5,y(m));}
-    else{const g=ctx.createLinearGradient(0,0,BW,0);g.addColorStop(0,'#101013');g.addColorStop(1,'#3b3b42');
-      ctx.fillStyle=H0===m?'#1f6fd6':g;rr(0,top+1,BW,rh-2,4);
-      ctx.fillStyle='rgba(255,255,255,.10)';rr(BW-5,top+3,3,rh-6,1.5);   // блик на торце
-      const t2=nmx.replace(/-?\d+$/,'');ctx.fillStyle='#f2f2f5';ctx.fillText(t2,Math.max(3,BW-ctx.measureText(t2).width-8),y(m));}}
-  ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(KBW,0,2,H);ctx.restore();}
+const KBW=54;
+function keyboard(lo,hi,y,rh,hl){   // 28.09 owner (фото клавиатуры): как настоящая — чёрные у края поля строго в свою полосу, белые широкие спереди (слева), шов белых выходит из середины чёрной
+  ctx.save();ctx.fillStyle='#141416';ctx.fillRect(0,0,KBW+2,H);
+  const pc=m=>((m%12)+12)%12,isB=m=>[1,3,6,8,10].includes(pc(m)),H0=hl!=null?Math.round(hl):null,BW=Math.round(KBW*0.6),BX=KBW-BW;
+  const rr=(x,t,w,h,r)=>{ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,t,w,h,r);else ctx.rect(x,t,w,h);ctx.fill();};
+  const f=Math.max(15,Math.min(16,rh*0.6));ctx.font='700 '+f+'px -apple-system,sans-serif';ctx.textBaseline='middle';
+  for(let m=lo-2;m<=hi+2;m++){if(isB(m))continue;   // белые: от середины соседней чёрной до середины следующей (E–F и B–C — по краю строки)
+    const top=isB(m+1)?y(m+1):y(m)-rh/2,bot=isB(m-1)?y(m-1):y(m)+rh/2;
+    const g=ctx.createLinearGradient(0,0,KBW,0);g.addColorStop(0,'#fbfaf6');g.addColorStop(1,'#e4e2dc');
+    ctx.fillStyle=H0===m?'#6fb1ff':g;rr(0,top+0.75,KBW,bot-top-1.5,[4,0,0,4]);
+    ctx.fillStyle='rgba(0,0,0,.07)';ctx.fillRect(0,bot-3,KBW,2);}   // лёгкая тень у шва
+  for(let m=lo-2;m<=hi+2;m++){if(!isB(m))continue;const top=y(m)-rh/2,h=rh;
+    ctx.fillStyle='rgba(0,0,0,.28)';rr(BX-2,top+1.5,BW+2,h,[4,0,0,4]);   // тень на белых
+    ctx.fillStyle=H0===m?'#1f6fd6':'#0b0b0d';rr(BX,top,BW,h,[4,0,0,4]);
+    if(H0!==m){const g=ctx.createLinearGradient(BX,0,KBW,0);g.addColorStop(0,'#2e2e33');g.addColorStop(0.3,'#1a1a1e');g.addColorStop(1,'#101012');
+      ctx.fillStyle=g;rr(BX+4,top+2,BW-4,h-4,[3,0,0,3]);   // верхняя грань
+      ctx.fillStyle='rgba(255,255,255,.16)';ctx.fillRect(BX+4,top+3,BW*0.55,1);}   // блик
+  }
+  ctx.textBaseline='middle';
+  for(let m=lo-1;m<=hi+1;m++){const t=nm(m);
+    if(isB(m)){const t2=t.replace(/-?\d+$/,'');ctx.fillStyle='#f2f2f5';ctx.fillText(t2,KBW-ctx.measureText(t2).width-5,y(m));}
+    else{ctx.fillStyle=H0===m?'#08254f':(pc(m)===0?'#0a3d8f':'#3a3a40');ctx.fillText(t,KBW-ctx.measureText(t).width-5,y(m));}}
+  ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(KBW,0,1.5,H);ctx.restore();}
 // ---------- mic ----------
 async function openMic(){
   if(stream)return true;
@@ -793,7 +801,7 @@ function viewRange(t,px){let a=null,b=null;const t0=t-px/PPS,t1=t+(W-px)/PPS;
 function draw(t){syncCanvas();if(ROWPX)VSPAN=Math.max(12,Math.round(H/ROWPX)-1);if(t==null)t=mode!=='idle'?songT():(review?rt:-1.5);
   ctx.clearRect(0,0,W,H);const px=W*PLAYX;viewRange(t,px);const lo=vLo,hi=vHi,rows=hi-lo+1,rh=H/rows;const y=m=>H-(m-lo+0.5)*rh;
   const mLo=Math.floor(lo),mHi=Math.ceil(hi);
-  for(let m=mLo;m<=mHi;m++){const yy=y(m);ctx.fillStyle=[0,2,4,5,7,9,11].includes(((m%12)+12)%12)?getVar('--grid2'):'transparent';ctx.fillRect(0,yy-rh/2,W,rh);ctx.strokeStyle=getVar('--grid');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,yy-rh/2);ctx.lineTo(W,yy-rh/2);ctx.stroke();
+  for(let m=mLo;m<=mHi;m++){const yy=y(m);ctx.fillStyle=[0,2,4,5,7,9,11].includes(((m%12)+12)%12)?getVar('--grid2'):'rgba(0,0,0,.34)';ctx.fillRect(0,yy-rh/2,W,rh);ctx.strokeStyle=getVar('--grid');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,yy-rh/2);ctx.lineTo(W,yy-rh/2);ctx.stroke();
   }
   const fs=Math.max(16,Math.min(29,Math.round(rh*0.8)));ctx.font='700 '+fs+'px -apple-system,"SF Pro Display",Helvetica,sans-serif';
   for(const e of events){const x=px+(e.t-t)*PPS,w=e.dur*PPS;if(x+w<0||x>W)continue;const yy=y(e.midi);
@@ -1198,7 +1206,7 @@ function droneDraw(){syncCanvas();
   const lo2=Math.min(base,tg)-5,hi2=Math.max(base,tg,base+($('dOctL').checked?12:0))+5;
   const rows=hi2-lo2,rh=H/rows,y=m=>H-(m-lo2+0.5)*rh;
   ctx.clearRect(0,0,W,H);
-  for(let m=lo2;m<=hi2;m++){const yy=y(m);ctx.fillStyle=[0,2,4,5,7,9,11].includes(((m%12)+12)%12)?getVar('--grid2'):'transparent';ctx.fillRect(0,yy-rh/2,W,rh);
+  for(let m=lo2;m<=hi2;m++){const yy=y(m);ctx.fillStyle=[0,2,4,5,7,9,11].includes(((m%12)+12)%12)?getVar('--grid2'):'rgba(0,0,0,.34)';ctx.fillRect(0,yy-rh/2,W,rh);
     ctx.strokeStyle=getVar('--grid');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,yy-rh/2);ctx.lineTo(W,yy-rh/2);ctx.stroke();
   }
   const LX=KBW+10,BW=W-KBW-10-44,exName=$('dEx').selectedOptions[0].textContent;
@@ -1403,7 +1411,7 @@ const _setView=setView;setView=function(v){_setView(v);updTitle();fitStage();};
 let fitW=0,fitH0=innerHeight;
 function fitStage(){const st=$('stage'),row=view==='song'?$('songCtl'):$('dronebar');
   const top=st.getBoundingClientRect().top+scrollY,pad=parseFloat(getComputedStyle(document.body).paddingBottom)||12;
-  const sh=$('statsHint'),shH=sh?sh.offsetHeight+12:0;const h=Math.max(300,Math.round(fitH0-top-row.offsetHeight-(row.offsetHeight?12:0)-shH-pad));st.style.height='';st.style.setProperty('--stH',h+'px');ROWPX=h/19;
+  const sh=$('statsHint'),shH=sh?sh.offsetHeight+12:0;const h=Math.max(300,Math.round(fitH0-top-row.offsetHeight-(row.offsetHeight?12:0)-shH-pad));st.style.height='';st.style.setProperty('--stH',h+'px');ROWPX=Math.min(h/12,27);   // 28.09 owner: толщина клавиши/полосы — ровно под текст песни (~21 px)
   const hd=document.querySelector('header');document.body.style.setProperty('--hdrH',(hd.offsetHeight+parseFloat(getComputedStyle(document.body).rowGap||12))+'px');resize();}
 addEventListener('resize',()=>{if(Math.abs(innerWidth-fitW)>40){fitW=innerWidth;fitH0=innerHeight;fitStage();}});
 // 26.09 owner: Rec / Play (в дроне Start) — по центру поля поверх него; во время записи/проигрывания их нет, есть «tap to stop»

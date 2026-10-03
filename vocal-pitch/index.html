@@ -258,6 +258,8 @@ header .seg{display:none!important}
 #statsHint .pill{display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:18px;background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);color:var(--text);font-size:16px;font-weight:600}
 #statsHint .pill b{font-weight:800}
 #statsHint svg{width:13px;height:13px;margin:0;stroke-width:2.4}
+#ov #statsHint{display:none;height:auto;margin-top:2px}#ov #statsHint.on{display:flex}
+#ov #statsHint .pill{padding:6px 14px;background:rgba(255,255,255,.10)}
 header #play,header #gear{width:38px;height:38px;min-height:38px;font-size:15px;flex:0 0 auto}
 header .seg button{padding:8px 10px!important;font-size:15px!important}
 #titleBtn{padding:9px 10px;font-size:20px}   /* 28.09 owner: строка песни / дрона крупнее */
@@ -547,10 +549,10 @@ function box(x,y,w,h,col,target){
   if(col){ctx.fillStyle=col+'3a';ctx.fillRect(x,y,w,h);ctx.fillStyle=col;ctx.fillRect(x,y,4,h);}
   ctx.restore();}
 // фортепианные клавиши слева: одна клавиша = одна строка (полутон), подписи на клавишах; подсвечена нота, которую надо петь сейчас
-const KBW=54;document.documentElement.style.setProperty('--kbw',KBW+'px');
+const KBW=40;document.documentElement.style.setProperty('--kbw',KBW+'px');
 function keyboard(lo,hi,y,rh,hl){   // 28.09 owner (фото клавиатуры): объёмная — кремовые белые с зазорами, чёрные глянцевые с верхней гранью, скошенным торцом и тенью; чёрные у левого края, полосы поля = строки
   ctx.save();ctx.fillStyle='#0c0c0e';ctx.fillRect(0,0,KBW+2,H);
-  const pc=m=>((m%12)+12)%12,isB=m=>[1,3,6,8,10].includes(pc(m)),H0=hl!=null?Math.round(hl):null,BW=Math.round(KBW*0.62);
+  const pc=m=>((m%12)+12)%12,isB=m=>[1,3,6,8,10].includes(pc(m)),H0=hl!=null?Math.round(hl):null,BW=KBW;   // 04.10 owner: белые обрезаны вровень с чёрными
   const rr=(x,t,w,h,r)=>{ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,t,w,h,r);else ctx.rect(x,t,w,h);ctx.fill();};
   for(let m=lo-2;m<=hi+2;m++){if(isB(m))continue;   // белые: шов по середине соседней чёрной (E–F и B–C — по краю строки)
     const top=isB(m+1)?y(m+1):y(m)-rh/2,bot=isB(m-1)?y(m-1):y(m)+rh/2,hh=bot-top-1.5;
@@ -559,7 +561,7 @@ function keyboard(lo,hi,y,rh,hl){   // 28.09 owner (фото клавиатур�
     ctx.fillStyle='rgba(0,0,0,.10)';ctx.fillRect(KBW-3,top+0.75,3,hh);   // передний торец белой
     ctx.fillStyle='rgba(255,255,255,.55)';ctx.fillRect(0,top+0.75,KBW-3,1);}
   for(let m=lo-2;m<=hi+2;m++){if(!isB(m))continue;const top=y(m)-rh/2+0.5,h=rh-1,hot=H0===m;
-    ctx.fillStyle='rgba(60,50,40,.22)';rr(0,top-1,BW+6,h+2,[0,5,5,0]);   // тень от чёрной на белых
+    ctx.fillStyle='rgba(60,50,40,.22)';rr(0,top-1,Math.min(BW+6,KBW),h+2,[0,5,5,0]);   // тень от чёрной на белых
     ctx.fillStyle=hot?'#1f6fd6':'#050506';rr(0,top,BW,h,[0,4,4,0]);        // корпус
     const bev=Math.min(8,BW*0.22);                                          // скошенный торец
     let g=ctx.createLinearGradient(BW-bev,0,BW,0);g.addColorStop(0,hot?'#4d93ea':'#3a3a40');g.addColorStop(1,hot?'#2a7ae0':'#17171a');
@@ -819,7 +821,7 @@ function viewRange(t,px){let a=null,b=null;const t0=t-px/PPS,t1=t+(W-px)/PPS;
   const now=performance.now(),dt=Math.min(0.25,(now-vTs)/1000);vTs=now;
   if(vLo==null){vLo=L;vHi=U;return;}const k=1-Math.exp(-dt/0.45);vLo+=(L-vLo)*k;vHi=vLo+VSPAN;}
 function draw(t){syncCanvas();if(ROWPX)VSPAN=Math.max(12,H/ROWPX-1);/* 28.09: без округления — строка всегда ровно ROWPX, при остановке клавиши не меняют размер */if(t==null)t=mode!=='idle'?songT():(review?rt:-1.5);
-  ctx.clearRect(0,0,W,H);const px=W*PLAYX;viewRange(t,px);const lo=vLo,hi=vHi,rows=hi-lo+1,rh=H/rows;const y=m=>H-(m-lo+0.5)*rh;
+  ctx.clearRect(0,0,W,H);const px=KBW+(W-KBW)*PLAYX;viewRange(t,px);   /* 04.10: курсор от края клавиатуры, не от края экрана */const lo=vLo,hi=vHi,rows=hi-lo+1,rh=H/rows;const y=m=>H-(m-lo+0.5)*rh;
   const mLo=Math.floor(lo),mHi=Math.ceil(hi);
   for(let m=mLo;m<=mHi;m++){const yy=y(m);ctx.fillStyle=[0,2,4,5,7,9,11].includes(((m%12)+12)%12)?getVar('--grid2'):'rgba(0,0,0,.34)';ctx.fillRect(0,yy-rh/2,W,rh);ctx.strokeStyle=getVar('--grid');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,yy-rh/2);ctx.lineTo(W,yy-rh/2);ctx.stroke();
   }
@@ -869,7 +871,7 @@ function draw(t){syncCanvas();if(ROWPX)VSPAN=Math.max(12,H/ROWPX-1);/* 28.09: б
   {const tg=targetAt(t);keyboard(mLo,mHi,y,rh,tg?tg.midi:null);}
   const mt=$('meter').firstElementChild;const db=20*Math.log10(lastRms+1e-6);mt.style.width=Math.max(0,Math.min(100,(db+60)/60*100))+'%';mt.style.background=lastRms<0.003?getVar('--muted'):getVar('--good');
 }
-function drawTest(t){ctx.clearRect(0,0,W,H);const rows=hi-lo,rh=H/rows,px=W*PLAYX;const y=m=>H-(m-lo+0.5)*rh;
+function drawTest(t){ctx.clearRect(0,0,W,H);const rows=hi-lo,rh=H/rows,px=KBW+(W-KBW)*PLAYX;const y=m=>H-(m-lo+0.5)*rh;
   for(let m=lo;m<=hi;m++){const yy=y(m);if([0,2,4,5,7,9,11].includes(((m%12)+12)%12)){ctx.fillStyle=getVar('--grid2');ctx.fillRect(0,yy-rh/2,W,rh);ctx.fillStyle=getVar('--muted');ctx.font='15px -apple-system,sans-serif';ctx.textBaseline='middle';ctx.fillText(nm(m),6,yy);}}
   for(const s of samples){const x=px+(s.t-t)*PPS;if(x<0)continue;ctx.fillStyle=getVar('--good');ctx.fillRect(x-1.5,y(s.m)-2,3,4);}
   ctx.strokeStyle=getVar('--line');ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,H);ctx.stroke();
@@ -1431,7 +1433,7 @@ const _setView=setView;setView=function(v){_setView(v);updTitle();fitStage();};
 let fitW=0,fitH0=innerHeight;
 function fitStage(){const st=$('stage'),row=view==='song'?$('songCtl'):$('dronebar');
   const top=st.getBoundingClientRect().top+scrollY,pad=parseFloat(getComputedStyle(document.body).paddingBottom)||12;
-  const sh=$('statsHint'),shH=sh?sh.offsetHeight+12:0;const h=Math.max(300,Math.round(fitH0-top-row.offsetHeight-(row.offsetHeight?12:0)-shH-pad));st.style.height='';st.style.setProperty('--stH',h+'px');ROWPX=Math.min(h/12,27);   // 28.09 owner: толщина клавиши/полосы — ровно под текст песни (~21 px)
+  const shH=0;const h=Math.max(300,Math.round(fitH0-top-row.offsetHeight-(row.offsetHeight?12:0)-shH-pad));st.style.height='';st.style.setProperty('--stH',h+'px');ROWPX=Math.min(h/12,27);   // 28.09 owner: толщина клавиши/полосы — ровно под текст песни (~21 px)
   const hd=document.querySelector('header');document.body.style.setProperty('--hdrH',(hd.offsetHeight+parseFloat(getComputedStyle(document.body).rowGap||12))+'px');resize();}
 addEventListener('resize',()=>{if(Math.abs(innerWidth-fitW)>40){fitW=innerWidth;fitH0=innerHeight;fitStage();}});
 // 26.09 owner: Rec / Play (в дроне Start) — по центру поля поверх него; во время записи/проигрывания их нет, есть «tap to stop»
@@ -1449,8 +1451,9 @@ const ICO={restart:'<svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 1-7.4 5h2.2A
   ov.append(r1,r2);
   const th=document.createElement('div');th.id='tapHint';th.innerHTML='<i><b id="miniProg"></b></i><span>tap to stop</span>';
   $('stage').append(ov,th);
-  const sh=document.createElement('div');sh.id='statsHint';sh.innerHTML='<svg viewBox="0 0 12 8"><path d="M1.5 2 6 6.2 10.5 2"/></svg>stats';$('stage').after(sh);
+  const sh=document.createElement('div');sh.id='statsHint';sh.innerHTML='<svg viewBox="0 0 12 8"><path d="M1.5 2 6 6.2 10.5 2"/></svg>stats';ov.append(sh);   // 04.10 owner: под полем было пусто — «… in tune · results» теперь строкой в плашке, поле до низа
   sh.onclick=()=>$('result').scrollIntoView({behavior:'smooth',block:'start'});
+  {let y0=null;sh.addEventListener('pointerdown',e=>{y0=e.clientY;});sh.addEventListener('pointerup',e=>{if(y0!=null&&y0-e.clientY>20)$('result').scrollIntoView({behavior:'smooth',block:'start'});y0=null;});}   // свайп вверх по строке — к результатам
   ['pointerdown','pointerup','click','pointermove'].forEach(ev=>ov.addEventListener(ev,e=>e.stopPropagation()));
   restart.onclick=()=>{if(mode!=='idle')return;setRT(0);startRec();};
   rw.onclick=()=>{if(mode!=='idle')return;if(review)setRT(0);};

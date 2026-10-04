@@ -1,6 +1,6 @@
 // Офлайн-кеш тренажёра. Страница — всегда из сети, если сеть есть (иначе правки не доезжают);
 // иконки и манифест — из кеша. Дрон синтезируется в браузере, звуковые файлы не нужны.
-const V = 'pitch-v3';
+const V = 'pitch-v4';
 const CORE = ['./', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(V).then(c => c.addAll(CORE)).catch(() => {}).then(() => self.skipWaiting()));
@@ -16,7 +16,7 @@ self.addEventListener('fetch', e => {
   if (u.pathname.startsWith('/vocal-api/')) return;      // данные всегда с сервера
   const isPage = r.mode === 'navigate' || u.pathname.endsWith('/') || u.pathname.endsWith('index.html');
   if (isPage) {                                          // страница: сеть, кеш только как запасной вариант
-    e.respondWith(fetch(r).then(res => {
+    e.respondWith(fetch(r, { cache: 'no-store' }).then(res => {   // 04.10: мимо HTTP-кеша Safari — иначе телефон держал старую страницу
       const copy = res.clone(); caches.open(V).then(c => c.put(r, copy)); return res;
     }).catch(() => caches.match(r).then(hit => hit || caches.match('./'))));
     return;
